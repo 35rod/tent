@@ -7,7 +7,6 @@ class Lexer {
     int curPos;
     char curChar;
 
-    void nextChar();
     char peek();
     void skipWhitespace();
     void skipComment();
@@ -17,6 +16,7 @@ class Lexer {
     public:
         std::vector<Token> tokens;
 
+        void nextChar();
         void getTokens();
 
         Lexer(std::string input);

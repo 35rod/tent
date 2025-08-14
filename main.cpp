@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include "lexer.hpp"
+#include "parser.hpp"
+#include "evaluator.hpp"
 
 int main() {
     std::ifstream fileHandle("main.nl");
@@ -15,11 +17,22 @@ int main() {
 
     Lexer lexer(output);
 
+    lexer.nextChar();
     lexer.getTokens();
 
-    for (Token token : lexer.tokens) {
-        std::cout << "TOKEN(" << token.kind << ", " << token.text << ")" << std::endl;
-    }
+    Parser parser(lexer.tokens);
+    Program ast = parser.parse_program();
+
+    // for loop prints AST tree
+    // for (ExpressionStmt& stmt : ast.statements) {
+    //     ASTNode* expr = std::move(stmt.expr.get());
+
+    //     expr->print();
+    // }
+
+    Evaluator evaluator;
+    int res = evaluator.evalProgram(ast);
+    std::cout << res << std::endl;
 
     return 0;
 }

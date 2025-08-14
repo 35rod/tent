@@ -70,12 +70,12 @@ Token Lexer::getToken() {
 
             token = Token(source.substr(startPos, curPos+1), "FLOAT");
         } else {
-            token = Token(source.substr(startPos, curPos+1), "INT");
+            token = Token(source.substr(startPos, curPos-startPos+1), "INT");
         }
     } else if (curChar == ';') {
         token = Token(";", "SEM");
     } else if (curChar == '\n') {
-        token = Token("\n", "NEWLINE");
+        token = Token("\\n", "NEWLINE");
     } else if (curChar == '\0') {
         token = Token("", "EOF");
     }
@@ -99,5 +99,4 @@ void Lexer::getTokens() {
 
 Lexer::Lexer(std::string input) : source(input) {
     curPos = -1;
-    nextChar();
 }
