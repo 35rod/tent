@@ -15,6 +15,8 @@ int main() {
 
     Lexer lexer(output);
 
+    lexer.getTokens();
+
     for (Token token : lexer.tokens) {
         std::cout << "TOKEN(" << token.kind << ", " << token.text << ")" << std::endl;
     }

@@ -1,11 +1,11 @@
 #include <string>
-#include <list>
+#include <vector>
 #include "token.hpp"
 
 class Lexer {
     std::string source;
+    int curPos;
     char curChar;
-    int curPos = -1;
 
     void nextChar();
     char peek();
@@ -13,10 +13,11 @@ class Lexer {
     void skipComment();
     
     Token getToken();
-    void getTokens();
 
     public:
-        std::list<Token> tokens;
-        
+        std::vector<Token> tokens;
+
+        void getTokens();
+
         Lexer(std::string input);
 };

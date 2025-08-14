@@ -97,8 +97,7 @@ void Lexer::getTokens() {
     }
 }
 
-Lexer::Lexer(std::string input) {
-    source = input;
-
-    getTokens();
+Lexer::Lexer(std::string input) : source(input) {
+    curPos = -1;
+    nextChar();
 }
