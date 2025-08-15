@@ -23,7 +23,6 @@ int main() {
     Parser parser(lexer.tokens);
     Program ast = parser.parse_program();
 
-    // for loop prints AST tree
     // for (ExpressionStmt& stmt : ast.statements) {
     //     ASTNode* expr = std::move(stmt.expr.get());
 
