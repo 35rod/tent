@@ -9,7 +9,7 @@ class Parser {
         {"MUL", 20}, {"DIV", 20}
     };
     std::vector<Token> tokens;
-    int pos = 0;
+    std::vector<Token>::size_type pos = 0;
 
     Token current();
     Token peek();

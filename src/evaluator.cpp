@@ -36,8 +36,6 @@ EvalExpr Evaluator::evalExpr(ASTNode* node) {
         // if (bin->op == "EQEQ") return EvalExpr(left == right ? 1 : 0);
 
         // throw std::runtime_error("Unknown binary operator: " + bin->op);
-    } else if (auto il = dynamic_cast<NoOp*>(node)) {
-        return EvalExpr(0);
     } else {
         throw std::runtime_error("Unknown AST node type in evaluator");
     }

@@ -1,3 +1,5 @@
-a.out
 .vscode/
-build/
+compile_commands.json
+.cache/*
+
+build/*

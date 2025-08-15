@@ -4,7 +4,7 @@
 
 class Lexer {
     std::string source;
-    int curPos;
+    std::string::size_type curPos;
     char curChar;
 
     char peek();

@@ -8,6 +8,7 @@
 class ASTNode {
     public:
         virtual void print(int indent);
+        virtual ~ASTNode() {}
 };
 
 using ASTPtr = std::unique_ptr<ASTNode>;

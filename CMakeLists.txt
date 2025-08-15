@@ -16,3 +16,9 @@ set(SOURCE_FILES
 )
 
 add_executable(main ${SOURCE_FILES})
+
+if(MSVC)
+	target_compile_options(main PRIVATE /W4 /WX)
+else()
+	target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
+endif()
