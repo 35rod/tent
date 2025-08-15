@@ -5,7 +5,7 @@
 #include "evaluator.hpp"
 
 int main() {
-    std::ifstream fileHandle("main.nl");
+    std::ifstream fileHandle("../main.nl");
 
     std::string output;
     std::string line;
