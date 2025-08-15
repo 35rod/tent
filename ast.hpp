@@ -39,10 +39,11 @@ class BinaryOp : public ASTNode {
 class ExpressionStmt : public ASTNode {
     public:
         ASTPtr expr;
+        bool noOp;
 
         void print() override;
 
-        ExpressionStmt(ASTPtr expr);
+        ExpressionStmt(ASTPtr expr, bool exprNoOp=false);
 };
 
 class Program : public ASTNode {
