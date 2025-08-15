@@ -2,9 +2,17 @@
 
 Parser::Parser(std::vector<Token> parserTokens) : tokens(parserTokens) {}
 
-Token Parser::peek() {
+Token Parser::current() {
     if (pos >= tokens.size()) {
-        return Token("EOF", "");
+        return Token("\0", "EOF");
+    }
+
+    return tokens[pos];
+}
+
+Token Parser::peek() {
+    if ((pos+1) >= tokens.size()) {
+        return Token("\0", "EOF");
     }
 
     return tokens[pos+1];
@@ -12,7 +20,7 @@ Token Parser::peek() {
 
 Token Parser::advance() {
     if (pos >= tokens.size()) {
-        return Token("EOF", "");
+        return Token("\0", "EOF");
     }
 
     Token token = tokens[pos];
@@ -22,11 +30,11 @@ Token Parser::advance() {
 }
 
 Token Parser::expect(std::string ttype) {
-    if (peek().kind == ttype) {
-        return advance();
+    if (current().kind == ttype) {
+        return current();
     }
 
-    printf("Expected a certain type, got another");
+    throw std::runtime_error("Expected " + ttype + ", got " + current().kind);
 }
 
 Program Parser::parse_program() {
@@ -50,7 +58,7 @@ Program Parser::parse_program() {
 }
 
 ExpressionStmt Parser::parse_statement() {
-    if (tokens[pos].kind == "SEM" || tokens[pos].kind == "NEWLINE") {
+    if (current().kind == "SEM" || current().kind == "NEWLINE") {
         advance();
 
         ASTPtr noOp = std::make_unique<NoOp>(NoOp());
@@ -66,44 +74,53 @@ ExpressionStmt Parser::parse_statement() {
     if (next.kind == "SEM" || next.kind == "NEWLINE") {
         advance();
     } else {
-        throw std::runtime_error("missing statement terminator after expression");
+        throw std::runtime_error("Missing statement terminator after expression");
     }
 
     return ExpressionStmt(std::move(expr));
 }
 
 ASTPtr Parser::parse_expression(int min_bp) {
-    Token token = tokens[pos];
+    Token token = current();
+
+    ASTPtr left;
 
     if (token.kind == "INT") {
-        ASTPtr left = std::make_unique<IntLiteral>(std::stoi(token.text));
-
-        while (true) {
-            Token nextToken = peek();
-
-            if (precedence.count(nextToken.kind) == 0) {
-                break;
-            }
-
-            int bp = precedence[nextToken.kind];
-
-            if (bp < min_bp) {
-                break;
-            }
-
-            advance();
-
-            Token op = tokens[pos];
-
-            advance();
-
-            ASTPtr right = parse_expression(bp+1);
-            left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right));
-        }
-
-        return left;
+        left = std::make_unique<IntLiteral>(std::stoi(token.text));
+    } else if (token.kind == "FLOAT") {
+        left = std::make_unique<FloatLiteral>(std::stof(token.text));
+    } else if (token.kind == "OPEN_PAREN") {
+        advance();
+        left = parse_expression(0);
+        advance();
+        expect("CLOSE_PAREN");
     } else {
         throw std::runtime_error("Unexpected token in expression: " + token.kind + 
             (token.text.empty() ? "" : (", " + token.text)));
     }
+
+    while (true) {
+        Token nextToken = peek();
+
+        if (precedence.count(nextToken.kind) == 0) {
+            break;
+        }
+
+        int bp = precedence[nextToken.kind];
+
+        if (bp < min_bp) {
+            break;
+        }
+
+        advance();
+
+        Token op = current();
+
+        advance();
+
+        ASTPtr right = parse_expression(bp+1);
+        left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right));
+    }
+
+    return left;
 }

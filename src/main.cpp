@@ -23,16 +23,16 @@ int main() {
     Parser parser(lexer.tokens);
     Program ast = parser.parse_program();
 
-    // for loop prints AST tree
-    for (ExpressionStmt& stmt : ast.statements) {
-        ASTNode* expr = std::move(stmt.expr.get());
-
-        expr->print();
-    }
+    ast.print(0);
 
     Evaluator evaluator;
-    int res = evaluator.evalProgram(ast);
-    std::cout << res << std::endl;
+    EvalExpr res = evaluator.evalProgram(ast);
+    
+    if (std::holds_alternative<int>(res)) {
+        std::cout << std::get<int>(res) << std::endl;
+    } else {
+        std::cout << std::get<float>(res) << std::endl;
+    }
 
     return 0;
 }

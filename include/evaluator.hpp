@@ -1,17 +1,15 @@
+#include <iostream>
+#include <string>
+#include <variant>
 #include "ast.hpp"
 
-class EvalExpr {
-    public:
-        int res;
-        bool noOp;
-
-        EvalExpr(int exprRes, bool exprNoOp);
-};
+using EvalExpr = std::variant<int, float>;
 
 class Evaluator {
+    EvalExpr evalBinaryOp(std::string op, EvalExpr left, EvalExpr right);
     EvalExpr evalStmt(ExpressionStmt& stmt);
     EvalExpr evalExpr(ASTNode* node);
 
     public:
-        int evalProgram(Program& program);
+        EvalExpr evalProgram(Program& program);
 };

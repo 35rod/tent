@@ -11,6 +11,7 @@ class Parser {
     std::vector<Token> tokens;
     int pos = 0;
 
+    Token current();
     Token peek();
     Token advance();
     Token expect(std::string ttype);

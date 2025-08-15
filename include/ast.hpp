@@ -7,23 +7,32 @@
 
 class ASTNode {
     public:
-        virtual void print();
+        virtual void print(int indent);
 };
 
 using ASTPtr = std::unique_ptr<ASTNode>;
 
 class NoOp : public ASTNode {
     public:
-        void print() override;
+        void print(int indent) override;
 };
 
 class IntLiteral : public ASTNode {
     public:
         int value;
 
-        void print() override;
+        void print(int indent) override;
 
         IntLiteral(int literalValue);
+};
+
+class FloatLiteral : public ASTNode {
+    public:
+        float value;
+
+        void print(int indent) override;
+
+        FloatLiteral(float literalValue);
 };
 
 class BinaryOp : public ASTNode {
@@ -32,7 +41,7 @@ class BinaryOp : public ASTNode {
         ASTPtr left;
         ASTPtr right;
 
-        void print() override;
+        void print(int indent) override;
 
         BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight);
 };
@@ -42,7 +51,7 @@ class ExpressionStmt : public ASTNode {
         ASTPtr expr;
         bool noOp;
 
-        void print() override;
+        void print(int indent) override;
 
         ExpressionStmt(ASTPtr expr, bool exprNoOp=false);
 };
@@ -51,7 +60,7 @@ class Program : public ASTNode {
     public:
         std::vector<ExpressionStmt> statements;
 
-        void print() override;
+        void print(int indent) override;
 
         Program(std::vector<ExpressionStmt>&& programStatements);
 };

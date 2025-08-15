@@ -1,16 +1,12 @@
 #include "evaluator.hpp"
 
-EvalExpr::EvalExpr(int exprRes, bool exprNoOp=false) : res(exprRes), noOp(exprNoOp) {}
-
-int Evaluator::evalProgram(Program& program) {
-    int last = 0;
+EvalExpr Evaluator::evalProgram(Program& program) {
+    EvalExpr last;
 
     for (ExpressionStmt& stmt : program.statements) {
         EvalExpr expr = evalStmt(stmt);
 
-        if (!expr.noOp) {
-            last = expr.res;
-        }
+        last = expr;
     }
 
     return last;
@@ -28,21 +24,79 @@ EvalExpr Evaluator::evalExpr(ASTNode* node) {
     if (!node) throw std::runtime_error("Null AST node in evaluator");
 
     if (auto il = dynamic_cast<IntLiteral*>(node)) {
-        return EvalExpr(il->value, false);
+        return EvalExpr(il->value);
+    } else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
+        return EvalExpr(fl->value);
     } else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
-        int left = evalExpr(bin->left.get()).res;
-        int right = evalExpr(bin->right.get()).res;
+        EvalExpr left = evalExpr(bin->left.get());
+        EvalExpr right = evalExpr(bin->right.get());
+        
+        return evalBinaryOp(bin->op, left, right);
 
-        if (bin->op == "ADD") return EvalExpr(left + right);
-        if (bin->op == "SUB") return EvalExpr(left - right);
-        if (bin->op == "MUL") return EvalExpr(left * right);
-        if (bin->op == "DIV") return EvalExpr(left / right);
-        if (bin->op == "EQEQ") return EvalExpr(left == right ? 1 : 0);
+        // if (bin->op == "EQEQ") return EvalExpr(left == right ? 1 : 0);
 
-        throw std::runtime_error("Unknown binary operator: " + bin->op);
+        // throw std::runtime_error("Unknown binary operator: " + bin->op);
     } else if (auto il = dynamic_cast<NoOp*>(node)) {
-        return EvalExpr(0, true);
+        return EvalExpr(0);
     } else {
         throw std::runtime_error("Unknown AST node type in evaluator");
     }
+}
+
+EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) {
+    if (std::holds_alternative<int>(left) && std::holds_alternative<int>(right)) {
+        int leftVal = std::get<int>(left);
+        int rightVal = std::get<int>(right);
+
+        if (op == "ADD") {
+            return EvalExpr(leftVal + rightVal);
+        } else if (op == "SUB") {
+            return EvalExpr(leftVal - rightVal);
+        } else if (op == "MUL") {
+            return EvalExpr(leftVal * rightVal);
+        } else if (op == "DIV") {
+            return EvalExpr(leftVal / rightVal);
+        }
+    } else if (std::holds_alternative<int>(left) && std::holds_alternative<float>(right)) {
+        int leftVal = std::get<int>(left);
+        float rightVal = std::get<float>(right);
+
+        if (op == "ADD") {
+            return EvalExpr(leftVal + rightVal);
+        } else if (op == "SUB") {
+            return EvalExpr(leftVal - rightVal);
+        } else if (op == "MUL") {
+            return EvalExpr(leftVal * rightVal);
+        } else if (op == "DIV") {
+            return EvalExpr(leftVal / rightVal);
+        }
+    } else if (std::holds_alternative<float>(left) && std::holds_alternative<int>(right)) {
+        float leftVal = std::get<float>(left);
+        int rightVal = std::get<int>(right);
+
+        if (op == "ADD") {
+            return EvalExpr(leftVal + rightVal);
+        } else if (op == "SUB") {
+            return EvalExpr(leftVal - rightVal);
+        } else if (op == "MUL") {
+            return EvalExpr(leftVal * rightVal);
+        } else if (op == "DIV") {
+            return EvalExpr(leftVal / rightVal);
+        }
+    } else {
+        float leftVal = std::get<float>(left);
+        float rightVal = std::get<float>(right);
+
+        if (op == "ADD") {
+            return EvalExpr(leftVal + rightVal);
+        } else if (op == "SUB") {
+            return EvalExpr(leftVal - rightVal);
+        } else if (op == "MUL") {
+            return EvalExpr(leftVal * rightVal);
+        } else if (op == "DIV") {
+            return EvalExpr(leftVal / rightVal);
+        }
+    }
+
+    return EvalExpr(0);
 }
