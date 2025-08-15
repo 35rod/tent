@@ -34,7 +34,11 @@ Program Parser::parse_program() {
 
     while (pos < tokens.size()) {
         try {
-            stmts.push_back(parse_statement());
+            ExpressionStmt&& stmt = parse_statement();
+            
+            if (!stmt.noOp) {
+                stmts.push_back(std::move(stmt));
+            }
         } catch (const std::runtime_error& e) {
             std::cerr << "Parse error: " << e.what() << std::endl;
 
@@ -50,7 +54,7 @@ ExpressionStmt Parser::parse_statement() {
         advance();
 
         ASTPtr noOp = std::make_unique<NoOp>(NoOp());
-        ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp));
+        ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
         return expressionStmt;
     }

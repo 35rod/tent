@@ -21,7 +21,7 @@ void BinaryOp::print() {
     std::cout << "BinaryOp(" << op << ")\n";
 }
 
-ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr) : ASTNode(), expr(std::move(stmtExpr)) {}
+ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, bool stmtNoOp) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp) {}
 
 void ExpressionStmt::print() {
     std::cout << "ExpressionStmt()" << std::endl;

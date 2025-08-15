@@ -46,6 +46,10 @@ Token Lexer::getToken() {
         token = Token("*", "MUL");
     } else if (curChar == '/') {
         token = Token("/", "DIV");
+    } else if (curChar == '(') {
+        token = Token("(", "OPEN_PAREN");
+    } else if (curChar == ')') {
+        token = Token(")", "CLOSE_PAREN");
     } else if (curChar == '=') {
         if (peek() == '=') {
             char lastChar = curChar;
@@ -54,6 +58,16 @@ Token Lexer::getToken() {
         } else {
             token = Token("=", "EQ");
         }
+    } else if (curChar == '\"') {
+        nextChar();
+
+        int startPos = curPos;
+
+        while (curChar != '\"') {
+            nextChar();
+        }
+
+        token = Token(source.substr(startPos, curPos-startPos+1), "STR");
     } else if (isdigit(curChar)) {
         int startPos = curPos;
 
@@ -72,6 +86,14 @@ Token Lexer::getToken() {
         } else {
             token = Token(source.substr(startPos, curPos-startPos+1), "INT");
         }
+    } else if (isalpha(curChar)) {
+        int startPos = curPos;
+
+        while (isalnum(peek())) {
+            nextChar();
+        }
+
+        token = Token(source.substr(startPos, curPos-startPos+1), "IDENT");
     } else if (curChar == ';') {
         token = Token(";", "SEM");
     } else if (curChar == '\n') {
