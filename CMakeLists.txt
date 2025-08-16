@@ -9,6 +9,7 @@ include_directories(include)
 set(SOURCE_FILES
     src/main.cpp
     src/ast.cpp
+    src/args.cpp
     src/lexer.cpp
     src/evaluator.cpp
     src/parser.cpp

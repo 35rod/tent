@@ -1,7 +1,8 @@
+#include <cstdio>
 #include "ast.hpp"
 
 static void printIndent(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << ' ';
+    printf("%*s", indent, " ");
 }
 
 void ASTNode::print(int indent) {
