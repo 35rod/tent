@@ -28,6 +28,17 @@ void FloatLiteral::print(int indent) {
     std::cout << "FloatLiteral(value=" << value << ")\n";
 }
 
+Variable::Variable(std::string varName, ASTPtr varValue, std::string varContext) : ASTNode(), name(varName), value(std::move(varValue)), context(varContext) {}
+
+void Variable::print(int indent) {
+    printIndent(indent);
+    std::cout << "Variable(name=" << name << ", context=" << context << ")\n";
+
+    if (value) {
+        value->print(indent);
+    }
+}
+
 BinaryOp::BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight) :
 ASTNode(), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 

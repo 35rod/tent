@@ -30,7 +30,7 @@ int main() {
     
     if (std::holds_alternative<int>(res)) {
         std::cout << std::get<int>(res) << std::endl;
-    } else {
+    } else if (std::holds_alternative<float>(res)) {
         std::cout << std::get<float>(res) << std::endl;
     }
 

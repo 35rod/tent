@@ -58,13 +58,35 @@ Program Parser::parse_program() {
 }
 
 ExpressionStmt Parser::parse_statement() {
-    if (current().kind == "SEM" || current().kind == "NEWLINE") {
+    Token token = current();
+
+    if (token.kind == "SEM" || token.kind == "NEWLINE") {
         advance();
 
         ASTPtr noOp = std::make_unique<NoOp>(NoOp());
         ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
         return expressionStmt;
+    }
+
+    if (token.kind == "SET") {
+        advance();
+        Token nameToken = expect("IDENT");
+        advance();
+        expect("EQ");
+        advance();
+
+        ASTPtr value = parse_expression(0);
+
+        if (peek().kind == "SEM" || peek().kind == "NEWLINE") {
+            advance();
+        } else {
+            throw std::runtime_error("Missing statement terminator after variable assignment");
+        }
+
+        ASTPtr var = std::make_unique<Variable>(nameToken.text, std::move(value), "ASSIGN");
+
+        return ExpressionStmt(std::move(var));
     }
 
     ASTPtr expr = parse_expression(0);
@@ -89,6 +111,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
         left = std::make_unique<IntLiteral>(std::stoi(token.text));
     } else if (token.kind == "FLOAT") {
         left = std::make_unique<FloatLiteral>(std::stof(token.text));
+    } else if (token.kind == "IDENT") {
+        left = std::make_unique<Variable>(token.text);
     } else if (token.kind == "OPEN_PAREN") {
         advance();
         left = parse_expression(0);

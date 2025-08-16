@@ -93,7 +93,17 @@ Token Lexer::getToken() {
             nextChar();
         }
 
-        token = Token(source.substr(startPos, curPos-startPos+1), "IDENT");
+        std::string text = source.substr(startPos, curPos-startPos+1);
+
+        std::string kind;
+
+        if (text == "set") {
+            kind = "SET";
+        } else {
+            kind = "IDENT";
+        }
+
+        token = Token(text, kind);
     } else if (curChar == ';') {
         token = Token(";", "SEM");
     } else if (curChar == '\n') {
