@@ -87,6 +87,107 @@ ExpressionStmt Parser::parse_statement() {
         ASTPtr var = std::make_unique<Variable>(nameToken.text, std::move(value), "ASSIGN");
 
         return ExpressionStmt(std::move(var));
+    } else if (token.kind == "FORM") {
+        advance();
+        Token name = expect("IDENT");
+        advance();
+        expect("OPEN_PAREN");
+        advance();
+
+        std::vector<ASTPtr> params;
+
+        while (current().kind != "CLOSE_PAREN") {
+            if (current().kind == "EOF") {
+                throw std::runtime_error("Closing parentheses required for function definition");
+            }
+
+            Token param = expect("IDENT");
+
+            params.push_back(std::make_unique<Variable>(param.text, nullptr, "FUNCTION"));
+
+            advance();
+
+            if (current().kind == "CLOSE_PAREN") {
+                break;
+            }
+
+            expect("COMMA");
+
+            advance();
+        }
+
+        advance();
+        expect("OPEN_BRAC");
+        advance();
+
+        std::vector<ExpressionStmt> stmts;
+
+        while (current().kind != "CLOSE_BRAC") {
+            ExpressionStmt&& stmt = parse_statement();
+
+            if (!stmt.noOp) {
+                stmts.push_back(std::move(stmt));
+            }
+        }
+
+        advance();
+
+        ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
+
+        return ExpressionStmt(std::move(form));
+    } else if (token.kind == "IDENT") {
+        if (peek().kind == "OPEN_PAREN") {
+            advance();
+            advance();
+
+            std::vector<ASTPtr> params;
+
+            while (current().kind != "CLOSE_PAREN") {
+                if (current().kind == "EOF") {
+                    throw std::runtime_error("Closing parentheses required for function definition");
+                }
+
+                ASTPtr param = parse_expression(0);
+                params.push_back(std::move(param));
+
+                advance();
+
+                if (current().kind == "CLOSE_PAREN") {
+                    break;
+                }
+
+                expect("COMMA");
+
+                advance();
+            }
+
+            advance();
+
+            ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params));
+
+            if (current().kind == "SEM" || current().kind == "NEWLINE") {
+                advance();
+            } else {
+                throw std::runtime_error("Missing statement terminator after function call");
+            }
+
+            return ExpressionStmt(std::move(call));
+        } else if (peek().kind == "EQ") {
+            advance();
+            advance();
+
+            ASTPtr value = parse_expression(0);
+
+            if (peek().kind == "SEM" || peek().kind == "NEWLINE") {
+                advance();
+            } else {
+                throw std::runtime_error("Missing statement terminator after variable assignment");
+            }
+
+            ASTPtr var = std::make_unique<Variable>(token.text, std::move(value), "REASSIGN");
+
+            return ExpressionStmt(std::move(var));
+        }
     }
 
     ASTPtr expr = parse_expression(0);

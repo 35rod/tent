@@ -20,25 +20,80 @@ EvalExpr Evaluator::evalProgram(Program& program) {
     return last;
 }
 
-EvalExpr Evaluator::evalStmt(ExpressionStmt& stmt) {
+EvalExpr Evaluator::evalStmt(ExpressionStmt& stmt, const std::vector<Variable>& local_vars) {
     ASTNode* expr = stmt.expr.get();
     
     if (!expr) throw std::runtime_error("Invalid expression");
 
-    return evalExpr(expr);
+    return evalExpr(expr, local_vars);
 }
 
-EvalExpr Evaluator::evalExpr(ASTNode* node) {
+EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars) {
     if (!node) throw std::runtime_error("Null AST node in evaluator");
 
     if (auto il = dynamic_cast<IntLiteral*>(node)) {
         return EvalExpr(il->value);
     } else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
         return EvalExpr(fl->value);
+    } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
+        functions.push_back(fnl);
+    } else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
+        FunctionLiteral* func;
+
+        for (FunctionLiteral* form : functions) {
+            if (form->name == fc->name) {
+                func = form;
+                break;
+            }
+        }
+
+        if (func) {
+            if (fc->params.size() > func->params.size()) {
+                throw std::runtime_error("Too many parameters in function call");
+            } else if (fc->params.size() < func->params.size()) {
+                throw std::runtime_error("Too few parameters in function call");
+            }
+
+            std::vector<Variable> lvars;
+
+            for (size_t i = 0; i < func->params.size(); i++) {
+                Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
+                ASTNode* paramNode = fc->params[i].get();
+
+                EvalExpr evalValue = evalExpr(std::move(paramNode), local_vars);
+
+                ASTPtr paramNodeEval;
+
+                if (std::holds_alternative<int>(evalValue)) {
+                    paramNodeEval = std::make_unique<IntLiteral>(std::get<int>(evalValue));
+                } else if (std::holds_alternative<float>(evalValue)) {
+                    paramNodeEval = std::make_unique<FloatLiteral>(std::get<float>(evalValue));
+                } else {
+                    throw std::runtime_error("Unsupported parameter type");
+                }
+                
+                Variable newVar(formalParam->name, std::move(paramNodeEval));
+                lvars.push_back(std::move(newVar));
+            }
+
+            for (ExpressionStmt& stmt : func->stmts) {
+                int res = std::get<int>(evalStmt(stmt, lvars));
+
+                std::cout << res << std::endl;
+            }
+
+            return EvalExpr(NoOp());
+        }
     } else if (auto v = dynamic_cast<Variable*>(node)) {
         if (v->context == "ASSIGN") {
-            variables[v->name] = evalExpr(v->value.get());
+            variables[v->name] = evalExpr(v->value.get(), local_vars);
         } else if (v->context == "EXPR") {
+            for (const Variable& var : local_vars) {
+                if (var.name == v->name) {
+                    return evalExpr(var.value.get(), local_vars);
+                }
+            }
+
             if (variables.count(v->name) == 1) {
                 return variables[v->name];
             } else {
@@ -46,7 +101,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node) {
             }
         } else {
             if (variables.count(v->name) == 1) {
-                variables[v->name] = evalExpr(v->value.get());
+                variables[v->name] = evalExpr(v->value.get(), local_vars);
             } else {
                 throw std::runtime_error("Cannot reassign " + v->name + ", because it does not exist");
             }
@@ -54,8 +109,8 @@ EvalExpr Evaluator::evalExpr(ASTNode* node) {
 
         return EvalExpr(NoOp());
     } else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
-        EvalExpr left = evalExpr(bin->left.get());
-        EvalExpr right = evalExpr(bin->right.get());
+        EvalExpr left = evalExpr(bin->left.get(), local_vars);
+        EvalExpr right = evalExpr(bin->right.get(), local_vars);
         
         return evalBinaryOp(bin->op, left, right);
 
@@ -65,6 +120,8 @@ EvalExpr Evaluator::evalExpr(ASTNode* node) {
     } else {
         throw std::runtime_error("Unknown AST node type in evaluator");
     }
+
+    return EvalExpr(NoOp());
 }
 
 EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) {

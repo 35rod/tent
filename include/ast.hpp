@@ -68,6 +68,27 @@ class ExpressionStmt : public ASTNode {
         ExpressionStmt(ASTPtr expr, bool exprNoOp=false);
 };
 
+class FunctionCall : public ASTNode {
+    public:
+        std::string name;
+        std::vector<ASTPtr> params;
+
+        void print(int indent) override;
+
+        FunctionCall(std::string callName, std::vector<ASTPtr> callParams);
+};
+
+class FunctionLiteral : public ASTNode {
+    public:
+        std::string name;
+        std::vector<ASTPtr> params;
+        std::vector<ExpressionStmt> stmts;
+
+        void print(int indent) override;
+
+        FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts);
+};
+
 class Program : public ASTNode {
     public:
         std::vector<ExpressionStmt> statements;

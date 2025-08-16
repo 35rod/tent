@@ -50,6 +50,12 @@ Token Lexer::getToken() {
         token = Token("(", "OPEN_PAREN");
     } else if (curChar == ')') {
         token = Token(")", "CLOSE_PAREN");
+    } else if (curChar == '{') {
+        token = Token("{", "OPEN_BRAC");
+    } else if (curChar == '}') {
+        token = Token("}", "CLOSE_BRAC");
+    } else if (curChar == ',') {
+        token = Token(",", "COMMA");
     } else if (curChar == '=') {
         if (peek() == '=') {
             char lastChar = curChar;
@@ -99,6 +105,8 @@ Token Lexer::getToken() {
 
         if (text == "set") {
             kind = "SET";
+        } else if (text == "form") {
+            kind = "FORM";
         } else {
             kind = "IDENT";
         }
