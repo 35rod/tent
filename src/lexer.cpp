@@ -73,10 +73,10 @@ Token Lexer::getToken() {
             nextChar();
         }
 
-        token = Token(source.substr(startPos, curPos-startPos+1), "STR");
+        token = Token(source.substr(startPos, curPos-startPos), "STR");
     } else if (isdigit(curChar)) {
         int startPos = curPos;
-
+        
         while (isdigit(peek())) {
             nextChar();
         }
@@ -129,7 +129,7 @@ void Lexer::getTokens() {
     while (true) {
         Token token = getToken();
 
-        if (token.kind != "EOF") {
+        if (token.kind != "NEWLINE" && token.kind != "EOF") {
             tokens.push_back(token);
         } else {
             break;

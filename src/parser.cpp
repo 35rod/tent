@@ -60,7 +60,7 @@ Program Parser::parse_program() {
 ExpressionStmt Parser::parse_statement() {
     Token token = current();
 
-    if (token.kind == "SEM" || token.kind == "NEWLINE") {
+    if (token.kind == "SEM") {
         advance();
 
         ASTPtr noOp = std::make_unique<NoOp>(NoOp());
@@ -78,7 +78,7 @@ ExpressionStmt Parser::parse_statement() {
 
         ASTPtr value = parse_expression(0);
 
-        if (peek().kind == "SEM" || peek().kind == "NEWLINE") {
+        if (peek().kind == "SEM") {
             advance();
         } else {
             throw std::runtime_error("Missing statement terminator after variable assignment");
@@ -165,7 +165,7 @@ ExpressionStmt Parser::parse_statement() {
 
             ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params));
 
-            if (current().kind == "SEM" || current().kind == "NEWLINE") {
+            if (current().kind == "SEM") {
                 advance();
             } else {
                 throw std::runtime_error("Missing statement terminator after function call");
@@ -178,7 +178,7 @@ ExpressionStmt Parser::parse_statement() {
 
             ASTPtr value = parse_expression(0);
 
-            if (peek().kind == "SEM" || peek().kind == "NEWLINE") {
+            if (peek().kind == "SEM") {
                 advance();
             } else {
                 throw std::runtime_error("Missing statement terminator after variable assignment");
@@ -194,7 +194,7 @@ ExpressionStmt Parser::parse_statement() {
 
     Token next = peek();
 
-    if (next.kind == "SEM" || next.kind == "NEWLINE") {
+    if (next.kind == "SEM") {
         advance();
     } else {
         throw std::runtime_error("Missing statement terminator after expression");
@@ -212,6 +212,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
         left = std::make_unique<IntLiteral>(std::stoi(token.text));
     } else if (token.kind == "FLOAT") {
         left = std::make_unique<FloatLiteral>(std::stof(token.text));
+    } else if (token.kind == "STR") {
+        left = std::make_unique<StrLiteral>(token.text);
     } else if (token.kind == "IDENT") {
         left = std::make_unique<Variable>(token.text);
     } else if (token.kind == "OPEN_PAREN") {

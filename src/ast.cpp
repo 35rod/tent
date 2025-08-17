@@ -29,6 +29,13 @@ void FloatLiteral::print(int indent) {
     std::cout << "FloatLiteral(value=" << value << ")\n";
 }
 
+StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
+
+void StrLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "StringLiteral(value=" << value << ")\n";
+}
+
 Variable::Variable(std::string varName, ASTPtr varValue, std::string varContext) : ASTNode(), name(varName), value(std::move(varValue)), context(varContext) {}
 
 void Variable::print(int indent) {

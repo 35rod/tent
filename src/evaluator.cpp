@@ -1,17 +1,35 @@
 #include "evaluator.hpp"
 
+std::string Evaluator::floatToString(float v, int prec) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(prec) << v;
+    std::string s = oss.str();
+    if (s.find('e') != std::string::npos || s.find('E') != std::string::npos) return s;
+    if (s.find('.') != std::string::npos) {
+        while (!s.empty() && s.back() == '0') s.pop_back();
+        if (!s.empty() && s.back() == '.') s.pop_back();
+    }
+    return s;
+}
+
 Evaluator::Evaluator() {
-    nativeFunctions["print"] = [](const std::vector<EvalExpr>& args) {
-        std::string total = "";
+    nativeFunctions["print"] = [this](const std::vector<EvalExpr>& args) {
+        std::string total;
 
         for (size_t i = 0; i < args.size(); i++) {
-            if (std::holds_alternative<int>(args[i])) {
-                total += std::to_string(std::get<int>(args[i]));
-            } else if (std::holds_alternative<float>(args[i])) {
-                total += std::to_string(std::get<float>(args[i]));
-            } else {
-                total += "null";
-            }
+            std::visit([this, &total](auto&& v) {
+                using T = std::decay_t<decltype(v)>;
+
+                if constexpr (std::is_same_v<T, int>) {
+                    total += std::to_string(v);
+                } else if constexpr (std::is_same_v<T, float>) {
+                    total += this->floatToString(v, 6);
+                } else if constexpr (std::is_same_v<T, std::string>) {
+                    total += v;
+                } else {
+                    total += "null";
+                }
+            }, args[i]);
         }
 
         std::cout << total << std::endl;
@@ -55,6 +73,8 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         return EvalExpr(il->value);
     } else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
         return EvalExpr(fl->value);
+    } else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
+        return EvalExpr(sl->value);
     } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
         functions.push_back(fnl);
 
@@ -166,59 +186,36 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 }
 
 EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) {
-    if (std::holds_alternative<int>(left) && std::holds_alternative<int>(right)) {
-        int leftVal = std::get<int>(left);
-        int rightVal = std::get<int>(right);
+    auto visitor = [&op](auto&& l, auto&& r) -> EvalExpr {
+        using L = std::decay_t<decltype(l)>;
+        using R = std::decay_t<decltype(r)>;
 
-        if (op == "ADD") {
-            return EvalExpr(leftVal + rightVal);
-        } else if (op == "SUB") {
-            return EvalExpr(leftVal - rightVal);
-        } else if (op == "MUL") {
-            return EvalExpr(leftVal * rightVal);
-        } else if (op == "DIV") {
-            return EvalExpr(leftVal / rightVal);
+        if constexpr (std::is_same_v<L, NoOp> || std::is_same_v<R, NoOp>) {
+            return EvalExpr(NoOp());
+        } else if constexpr (std::is_same_v<L, std::string> && std::is_same_v<R, std::string>) {
+            if (op != "ADD") throw std::runtime_error("invalid operator for string type: " + op);
+            
+            return EvalExpr(l + r);
+        } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
+            using ResultType = std::conditional_t<
+                std::is_same_v<L, int> && std::is_same_v<R, int>, int, float
+            >;
+
+            ResultType a = static_cast<ResultType>(l);
+            ResultType b = static_cast<ResultType>(r);
+
+            if (op == "ADD") return EvalExpr(a + b);
+            if (op == "SUB") return EvalExpr(a - b);
+            if (op == "MUL") return EvalExpr(a * b);
+            if (op == "DIV") {
+                if (b == 0) throw std::runtime_error("Division by zero");
+
+                return EvalExpr(a / b);
+            }
         }
-    } else if (std::holds_alternative<int>(left) && std::holds_alternative<float>(right)) {
-        int leftVal = std::get<int>(left);
-        float rightVal = std::get<float>(right);
 
-        if (op == "ADD") {
-            return EvalExpr(leftVal + rightVal);
-        } else if (op == "SUB") {
-            return EvalExpr(leftVal - rightVal);
-        } else if (op == "MUL") {
-            return EvalExpr(leftVal * rightVal);
-        } else if (op == "DIV") {
-            return EvalExpr(leftVal / rightVal);
-        }
-    } else if (std::holds_alternative<float>(left) && std::holds_alternative<int>(right)) {
-        float leftVal = std::get<float>(left);
-        int rightVal = std::get<int>(right);
+        return EvalExpr(NoOp());
+    };
 
-        if (op == "ADD") {
-            return EvalExpr(leftVal + rightVal);
-        } else if (op == "SUB") {
-            return EvalExpr(leftVal - rightVal);
-        } else if (op == "MUL") {
-            return EvalExpr(leftVal * rightVal);
-        } else if (op == "DIV") {
-            return EvalExpr(leftVal / rightVal);
-        }
-    } else {
-        float leftVal = std::get<float>(left);
-        float rightVal = std::get<float>(right);
-
-        if (op == "ADD") {
-            return EvalExpr(leftVal + rightVal);
-        } else if (op == "SUB") {
-            return EvalExpr(leftVal - rightVal);
-        } else if (op == "MUL") {
-            return EvalExpr(leftVal * rightVal);
-        } else if (op == "DIV") {
-            return EvalExpr(leftVal / rightVal);
-        }
-    }
-
-    return EvalExpr(0);
+    return std::visit(visitor, left, right);
 }

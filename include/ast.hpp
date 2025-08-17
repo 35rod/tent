@@ -36,6 +36,15 @@ class FloatLiteral : public ASTNode {
         FloatLiteral(float literalValue);
 };
 
+class StrLiteral : public ASTNode {
+    public:
+        std::string value;
+
+        void print(int indent) override;
+
+        StrLiteral(std::string literalValue);
+};
+
 class Variable : public ASTNode {
     public:
         std::string name;
