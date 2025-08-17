@@ -7,8 +7,11 @@
 
 class Parser {
     std::map<std::string, int> precedence = {
-        {"EQEQ", 5}, {"ADD", 10}, {"SUB", 10},
-        {"MUL", 20}, {"DIV", 20}
+        {"EQEQ", 8}, {"ADD", 11}, {"SUB", 11},
+        {"MUL", 12}, {"DIV", 12}, {"MOD", 11},
+        {"BIN_AND", 7}, {"BIN_XOR", 6}, {"BIN_OR", 5},
+        {"LSHIFT", 10}, {"RSHIFT", 10},
+        {"POW", 16},
     };
     std::vector<Token> tokens;
     std::vector<Token>::size_type pos = 0;

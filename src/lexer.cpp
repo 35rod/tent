@@ -25,7 +25,7 @@ void Lexer::skipWhitespace() {
 }
 
 void Lexer::skipComment() {
-    if (curChar == '~') {
+    if (curChar == '`') {
         while (curChar != '\n') {
             nextChar();
         }
@@ -43,9 +43,35 @@ Token Lexer::getToken() {
     } else if (curChar == '-') {
         token = Token("-", "SUB");
     } else if (curChar == '*') {
-        token = Token("*", "MUL");
+        if (peek() == '*') {
+            char lastChar = curChar;
+            nextChar();
+            token = Token(std::string(1, lastChar) + curChar, "POW");
+        } else {
+            token = Token("*", "MUL");
+        }
     } else if (curChar == '/') {
         token = Token("/", "DIV");
+    } else if (curChar == '%') {
+        token = Token("%", "MOD");
+    } else if (curChar == '&') {
+        token = Token("&", "BIN_AND");
+    } else if (curChar == '^') {
+        token = Token("^", "BIN_XOR");
+    } else if (curChar == '|') {
+        token = Token("|", "BIN_OR");
+    } else if (curChar == '<') {
+        if (peek() == '<') {
+            char lastChar = curChar;
+            nextChar();
+            token = Token(std::string(1, lastChar) + curChar, "LSHIFT");
+        }
+    } else if (curChar == '>') {
+        if (peek() == '>') {
+            char lastChar = curChar;
+            nextChar();
+            token = Token(std::string(1, lastChar) + curChar, "RSHIFT");
+        }
     } else if (curChar == '(') {
         token = Token("(", "OPEN_PAREN");
     } else if (curChar == ')') {

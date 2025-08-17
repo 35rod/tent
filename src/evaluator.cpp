@@ -1,4 +1,6 @@
 #include "evaluator.hpp"
+#include <cmath>
+#include <cstdint>
 
 std::string Evaluator::floatToString(float v, int prec) {
     std::ostringstream oss;
@@ -36,6 +38,16 @@ Evaluator::Evaluator() {
 
         return EvalExpr(NoOp());
     };
+    // this function does not work because the functionality 
+    // does not exist for returned values from functions.
+    /*nativeFunctions["sqrt"] = [](const std::vector<EvalExpr>& args) {
+        if (std::holds_alternative<nl_int_type>(args[0]))
+            return EvalExpr(sqrtf(std::get<nl_int_type>(args[0])));
+        else if (std::holds_alternative<nl_float_type>(args[0]))
+            return EvalExpr(sqrtf(std::get<nl_float_type>(args[0])));
+
+        return EvalExpr(0);
+    };*/
 }
 
 EvalExpr Evaluator::evalProgram(Program& program) {

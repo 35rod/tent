@@ -12,8 +12,6 @@
 
 using EvalExpr = std::variant<int, float, std::string, NoOp>;
 
-
-
 class Evaluator {
     std::map<std::string, EvalExpr> variables;
     std::vector<FunctionLiteral*> functions;
