@@ -106,7 +106,7 @@ ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, bool stmtNoOp) : ASTNode(), expr
 
 void ExpressionStmt::print(int indent) {
     printIndent(indent);
-    std::cout << "ExpressionStmt(noOp=" << (noOp ? "true": "false") << ")" << std::endl;
+    std::cout << "ExpressionStmt()" << std::endl;
     
     if (expr) {
         expr->print(indent+2);

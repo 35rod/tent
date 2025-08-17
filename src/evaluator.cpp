@@ -1,5 +1,25 @@
 #include "evaluator.hpp"
 
+Evaluator::Evaluator() {
+    nativeFunctions["print"] = [](const std::vector<EvalExpr>& args) {
+        std::string total = "";
+
+        for (size_t i = 0; i < args.size(); i++) {
+            if (std::holds_alternative<int>(args[i])) {
+                total += std::to_string(std::get<int>(args[i]));
+            } else if (std::holds_alternative<float>(args[i])) {
+                total += std::to_string(std::get<float>(args[i]));
+            } else {
+                total += "null";
+            }
+        }
+
+        std::cout << total << std::endl;
+
+        return EvalExpr(NoOp());
+    };
+}
+
 EvalExpr Evaluator::evalProgram(Program& program) {
     EvalExpr last;
     int counter = 0;
@@ -37,8 +57,24 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         return EvalExpr(fl->value);
     } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
         functions.push_back(fnl);
+
+        return EvalExpr(NoOp());
     } else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
-        FunctionLiteral* func;
+        std::vector<EvalExpr> evalArgs;
+        evalArgs.reserve(fc->params.size());
+
+        for (const ASTPtr& paramPtr : fc->params) {
+            if (!paramPtr) throw std::runtime_error("Null parameter AST Node");
+            evalArgs.push_back(evalExpr(paramPtr.get(), local_vars));
+        }
+
+        auto nit = nativeFunctions.find(fc->name);
+
+        if (nit != nativeFunctions.end()) {
+            return nit->second(evalArgs);
+        }
+
+        FunctionLiteral* func = nullptr;
 
         for (FunctionLiteral* form : functions) {
             if (form->name == fc->name) {
@@ -55,6 +91,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
             }
 
             std::vector<Variable> lvars;
+            std::vector<EvalExpr> evalParams;
 
             for (size_t i = 0; i < func->params.size(); i++) {
                 Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
@@ -76,13 +113,17 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
                 lvars.push_back(std::move(newVar));
             }
 
-            for (ExpressionStmt& stmt : func->stmts) {
-                int res = std::get<int>(evalStmt(stmt, lvars));
+            EvalExpr result = EvalExpr(NoOp());
 
-                std::cout << res << std::endl;
+            for (ExpressionStmt& stmt : func->stmts) {
+                EvalExpr res = evalStmt(stmt, lvars);
+
+                if (!std::holds_alternative<NoOp>(res)) {
+                    result = res;
+                }
             }
 
-            return EvalExpr(NoOp());
+            return result;
         }
     } else if (auto v = dynamic_cast<Variable*>(node)) {
         if (v->context == "ASSIGN") {

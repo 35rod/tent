@@ -40,12 +40,6 @@ int32_t main(int32_t argc, char **argv) {
 
     Evaluator evaluator;
     EvalExpr res = evaluator.evalProgram(ast);
-    
-    if (std::holds_alternative<int>(res)) {
-        std::cout << std::get<int>(res) << std::endl;
-    } else if (std::holds_alternative<float>(res)) {
-        std::cout << std::get<float>(res) << std::endl;
-    }
 
     return 0;
 }
