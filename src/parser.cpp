@@ -144,7 +144,7 @@ ExpressionStmt Parser::parse_statement() {
 
             while (current().kind != "CLOSE_PAREN") {
                 if (current().kind == "EOF") {
-                    throw std::runtime_error("Closing parentheses required for function definition");
+                    throw std::runtime_error("Closing parentheses required for function call");
                 }
 
                 ASTPtr param = parse_expression(0);
@@ -209,7 +209,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
     ASTPtr left;
 
     if (token.kind == "INT") {
-        left = std::make_unique<IntLiteral>(std::stoi(token.text));
+        left = std::make_unique<IntLiteral>(std::stol(token.text));
     } else if (token.kind == "FLOAT") {
         left = std::make_unique<FloatLiteral>(std::stof(token.text));
     } else if (token.kind == "IDENT") {

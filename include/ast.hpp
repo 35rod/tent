@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "defs.hpp"
 
 class ASTNode {
     public:
@@ -20,20 +21,20 @@ class NoOp : public ASTNode {
 
 class IntLiteral : public ASTNode {
     public:
-        int value;
+        nl_int_type value;
 
         void print(int indent) override;
 
-        IntLiteral(int literalValue);
+        IntLiteral(nl_int_type literalValue);
 };
 
 class FloatLiteral : public ASTNode {
     public:
-        float value;
+        nl_float_type value;
 
         void print(int indent) override;
 
-        FloatLiteral(float literalValue);
+        FloatLiteral(nl_float_type literalValue);
 };
 
 class Variable : public ASTNode {

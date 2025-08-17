@@ -15,14 +15,14 @@ void NoOp::print(int ident) {
     std::cout << "NoOp()" << std::endl;
 }
 
-IntLiteral::IntLiteral(int literalValue) : ASTNode(), value(literalValue) {}
+IntLiteral::IntLiteral(nl_int_type literalValue) : ASTNode(), value(literalValue) {}
 
 void IntLiteral::print(int indent) {
     printIndent(indent);
     std::cout << "IntLiteral(value=" << value << ")\n";
 }
 
-FloatLiteral::FloatLiteral(float literalValue) : ASTNode(), value(literalValue) {}
+FloatLiteral::FloatLiteral(nl_float_type literalValue) : ASTNode(), value(literalValue) {}
 
 void FloatLiteral::print(int indent) {
     printIndent(indent);

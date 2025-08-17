@@ -7,8 +7,9 @@
 #include <map>
 #include <unordered_map>
 #include "ast.hpp"
+#include "defs.hpp"
 
-using EvalExpr = std::variant<int, float, NoOp>;
+using EvalExpr = std::variant<nl_int_type, nl_float_type, NoOp>;
 
 class Evaluator {
     std::map<std::string, EvalExpr> variables;
