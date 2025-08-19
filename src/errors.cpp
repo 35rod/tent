@@ -1,5 +1,4 @@
 #include "errors.hpp"
-#include "util-log.hpp"
 
 Error::Error(std::string errorMessage, int line) : message(errorMessage), lineNo(line) {
     printException();
@@ -14,15 +13,12 @@ std::string Error::getClassName() const {
 
 void Error::printException() {
     if (lineNo == -1)
-        errlogf(1, "%s on unknown line:\n"
-                   "%8s%s\n",
-            getClassName().c_str(),
-            "", message.c_str());
-    
-    errlogf(1, "%s on line %d:\n"
-               "%8s%s\n",
-        getClassName().c_str(), lineNo,
-		"", message.c_str());
+        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on unknown line:\n"
+                  << "        " + message + "\x1b[0m" << std::endl;
+    else
+        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on line " << lineNo << ":\n"
+                  << "        " + message + "\x1b[0m" << std::endl;
+    exit(1);
 }
 
 SyntaxError::SyntaxError(std::string errorMessage, int line) : Error(errorMessage, line) {}
