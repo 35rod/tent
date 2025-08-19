@@ -1,4 +1,5 @@
 #include "errors.hpp"
+#include "util-log.hpp"
 
 Error::Error(std::string errorMessage, int line) : message(errorMessage), lineNo(line) {
     printException();
@@ -12,10 +13,16 @@ std::string Error::getClassName() const {
 };
 
 void Error::printException() {
-    std::cout << "ERROR: Line " << lineNo << "," << std::endl;
-    std::cout << getClassName() << ": " << message << std::endl;
-
-    exit(1);
+    if (lineNo == -1)
+        errlogf(1, "%s on unknown line:\n"
+                   "%8s%s\n",
+            getClassName().c_str(),
+            "", message.c_str());
+    
+    errlogf(1, "%s on line %d:\n"
+               "%8s%s\n",
+        getClassName().c_str(), lineNo,
+		"", message.c_str());
 }
 
 SyntaxError::SyntaxError(std::string errorMessage, int line) : Error(errorMessage, line) {}
@@ -23,3 +30,5 @@ SyntaxError::SyntaxError(std::string errorMessage, int line) : Error(errorMessag
 MissingTerminatorError::MissingTerminatorError(std::string errorMessage, int line) : Error(errorMessage, line) {}
 
 IdentifierError::IdentifierError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+
+TypeError::TypeError(std::string errorMessage, int line) : Error(errorMessage, line) {}

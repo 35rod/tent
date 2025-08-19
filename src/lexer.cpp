@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "errors.hpp"
 
 void Lexer::nextChar() {
     curPos++;
@@ -95,9 +96,11 @@ Token Lexer::getToken() {
 
         int startPos = curPos;
 
-        while (curChar != '\"') {
+        while (curChar != '\"' && curChar != '\0') {
             nextChar();
         }
+	  if (curChar == '\0')
+		  MissingTerminatorError("unterminated string literal", lineNo);
 
         token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
     } else if (isdigit(curChar)) {

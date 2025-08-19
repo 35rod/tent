@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(newLang)
 
-include_directories(include)
+include_directories(include ext_include)
 
 set(SOURCE_FILES
     src/main.cpp
@@ -17,7 +17,7 @@ set(SOURCE_FILES
     src/token.cpp
 )
 
-add_executable(main ${SOURCE_FILES})
+add_executable(main ${SOURCE_FILES} ext_obj/util-log.o)
 
 if(MSVC)
 	target_compile_options(main PRIVATE /W4 /WX)

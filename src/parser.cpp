@@ -212,7 +212,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
     ASTPtr left;
 
     if (token.kind == "INT") {
-        left = std::make_unique<IntLiteral>(std::stol(token.text));
+        left = std::make_unique<IntLiteral>(std::stoll(token.text));
     } else if (token.kind == "FLOAT") {
         left = std::make_unique<FloatLiteral>(std::stof(token.text));
     } else if (token.kind == "STR") {
@@ -226,7 +226,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
         expect("CLOSE_PAREN");
     } else {
         SyntaxError("Unexpected token in expression: " + token.kind + 
-            (token.text.empty() ? "" : (", " + token.text)), token.lineNo);
+            (token.text.empty() ? "" : (", '" + token.text + "'")), token.lineNo);
     }
 
     while (true) {
