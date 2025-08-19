@@ -8,6 +8,7 @@ class Lexer {
     std::string source;
     std::string::size_type curPos;
     char curChar;
+    int lineNo;
 
     char peek();
     void skipWhitespace();

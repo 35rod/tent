@@ -13,6 +13,7 @@ set(SOURCE_FILES
     src/lexer.cpp
     src/evaluator.cpp
     src/parser.cpp
+    src/errors.cpp
     src/token.cpp
 )
 

@@ -36,59 +36,59 @@ Token Lexer::getToken() {
     skipWhitespace();
     skipComment();
 
-    Token token("", "");
+    Token token("", "", lineNo);
 
     if (curChar == '+') {
-        token = Token("+", "ADD");
+        token = Token("+", "ADD", lineNo);
     } else if (curChar == '-') {
-        token = Token("-", "SUB");
+        token = Token("-", "SUB", lineNo);
     } else if (curChar == '*') {
         if (peek() == '*') {
             char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "POW");
+            token = Token(std::string(1, lastChar) + curChar, "POW", lineNo);
         } else {
-            token = Token("*", "MUL");
+            token = Token("*", "MUL", lineNo);
         }
     } else if (curChar == '/') {
-        token = Token("/", "DIV");
+        token = Token("/", "DIV", lineNo);
     } else if (curChar == '%') {
-        token = Token("%", "MOD");
+        token = Token("%", "MOD", lineNo);
     } else if (curChar == '&') {
-        token = Token("&", "BIN_AND");
+        token = Token("&", "BIN_AND", lineNo);
     } else if (curChar == '^') {
-        token = Token("^", "BIN_XOR");
+        token = Token("^", "BIN_XOR", lineNo);
     } else if (curChar == '|') {
-        token = Token("|", "BIN_OR");
+        token = Token("|", "BIN_OR", lineNo);
     } else if (curChar == '<') {
         if (peek() == '<') {
             char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "LSHIFT");
+            token = Token(std::string(1, lastChar) + curChar, "LSHIFT", lineNo);
         }
     } else if (curChar == '>') {
         if (peek() == '>') {
             char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "RSHIFT");
+            token = Token(std::string(1, lastChar) + curChar, "RSHIFT", lineNo);
         }
     } else if (curChar == '(') {
-        token = Token("(", "OPEN_PAREN");
+        token = Token("(", "OPEN_PAREN", lineNo);
     } else if (curChar == ')') {
-        token = Token(")", "CLOSE_PAREN");
+        token = Token(")", "CLOSE_PAREN", lineNo);
     } else if (curChar == '{') {
-        token = Token("{", "OPEN_BRAC");
+        token = Token("{", "OPEN_BRAC", lineNo);
     } else if (curChar == '}') {
-        token = Token("}", "CLOSE_BRAC");
+        token = Token("}", "CLOSE_BRAC", lineNo);
     } else if (curChar == ',') {
-        token = Token(",", "COMMA");
+        token = Token(",", "COMMA", lineNo);
     } else if (curChar == '=') {
         if (peek() == '=') {
             char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "EQEQ");
+            token = Token(std::string(1, lastChar) + curChar, "EQEQ", lineNo);
         } else {
-            token = Token("=", "EQ");
+            token = Token("=", "EQ", lineNo);
         }
     } else if (curChar == '\"') {
         nextChar();
@@ -99,7 +99,7 @@ Token Lexer::getToken() {
             nextChar();
         }
 
-        token = Token(source.substr(startPos, curPos-startPos), "STR");
+        token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
     } else if (isdigit(curChar)) {
         int startPos = curPos;
         
@@ -114,9 +114,9 @@ Token Lexer::getToken() {
                 nextChar();
             }
 
-            token = Token(source.substr(startPos, curPos+1), "FLOAT");
+            token = Token(source.substr(startPos, curPos+1), "FLOAT", lineNo);
         } else {
-            token = Token(source.substr(startPos, curPos-startPos+1), "INT");
+            token = Token(source.substr(startPos, curPos-startPos+1), "INT", lineNo);
         }
     } else if (isalpha(curChar)) {
         int startPos = curPos;
@@ -137,13 +137,15 @@ Token Lexer::getToken() {
             kind = "IDENT";
         }
 
-        token = Token(text, kind);
+        token = Token(text, kind, lineNo);
     } else if (curChar == ';') {
-        token = Token(";", "SEM");
+        token = Token(";", "SEM", lineNo);
     } else if (curChar == '\n') {
-        token = Token("\\n", "NEWLINE");
+        lineNo++;
+
+        token = Token("\\n", "NEWLINE", lineNo);
     } else if (curChar == '\0') {
-        token = Token("", "EOF");
+        token = Token("", "EOF", lineNo);
     }
 
     nextChar();
@@ -158,11 +160,14 @@ void Lexer::getTokens() {
         if (token.kind != "NEWLINE" && token.kind != "EOF") {
             tokens.push_back(token);
         } else {
-            break;
+            if (token.kind == "EOF") {
+                break;
+            }
         }
     }
 }
 
 Lexer::Lexer(std::string input) : source(input) {
     curPos = -1;
+    lineNo = 1;
 }

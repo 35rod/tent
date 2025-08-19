@@ -7,8 +7,9 @@ class Token {
     public:
         std::string text;
         std::string kind;
+        int lineNo;
 
         void print();
         
-        Token(std::string tokenText, std::string tokenKind);
+        Token(std::string tokenText, std::string tokenKind, int line);
 };

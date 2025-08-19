@@ -39,7 +39,7 @@ int32_t main(int32_t argc, char **argv) {
         ast.print(0);
 
     Evaluator evaluator;
-    EvalExpr res = evaluator.evalProgram(ast);
+    evaluator.evalProgram(ast);
 
     return 0;
 }

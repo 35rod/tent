@@ -1,10 +1,11 @@
 #include "parser.hpp"
+#include "errors.hpp"
 
 Parser::Parser(std::vector<Token> parserTokens) : tokens(parserTokens) {}
 
 Token Parser::current() {
     if (pos >= tokens.size()) {
-        return Token("\0", "EOF");
+        return Token("\0", "EOF", tokens[pos-1].lineNo);
     }
 
     return tokens[pos];
@@ -12,7 +13,7 @@ Token Parser::current() {
 
 Token Parser::peek() {
     if ((pos+1) >= tokens.size()) {
-        return Token("\0", "EOF");
+        return Token("\0", "EOF", 0);
     }
 
     return tokens[pos+1];
@@ -20,7 +21,7 @@ Token Parser::peek() {
 
 Token Parser::advance() {
     if (pos >= tokens.size()) {
-        return Token("\0", "EOF");
+        return Token("\0", "EOF", 0);
     }
 
     Token token = tokens[pos];
@@ -34,7 +35,9 @@ Token Parser::expect(std::string ttype) {
         return current();
     }
 
-    throw std::runtime_error("Expected " + ttype + ", got " + current().kind);
+    SyntaxError("Expected " + ttype + ", got " + current().kind, current().lineNo);
+
+    return current();
 }
 
 Program Parser::parse_program() {
@@ -81,7 +84,7 @@ ExpressionStmt Parser::parse_statement() {
         if (peek().kind == "SEM") {
             advance();
         } else {
-            throw std::runtime_error("Missing statement terminator after variable assignment");
+            MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
         }
 
         ASTPtr var = std::make_unique<Variable>(nameToken.text, std::move(value), "ASSIGN");
@@ -98,7 +101,7 @@ ExpressionStmt Parser::parse_statement() {
 
         while (current().kind != "CLOSE_PAREN") {
             if (current().kind == "EOF") {
-                throw std::runtime_error("Closing parentheses required for function definition");
+                SyntaxError("Closing parentheses required for function definition", current().lineNo);
             }
 
             Token param = expect("IDENT");
@@ -144,7 +147,7 @@ ExpressionStmt Parser::parse_statement() {
 
             while (current().kind != "CLOSE_PAREN") {
                 if (current().kind == "EOF") {
-                    throw std::runtime_error("Closing parentheses required for function call");
+                    SyntaxError("Closing parentheses required for function call", current().lineNo);
                 }
 
                 ASTPtr param = parse_expression(0);
@@ -168,7 +171,7 @@ ExpressionStmt Parser::parse_statement() {
             if (current().kind == "SEM") {
                 advance();
             } else {
-                throw std::runtime_error("Missing statement terminator after function call");
+                MissingTerminatorError("Missing statement terminator after function call", current().lineNo);
             }
 
             return ExpressionStmt(std::move(call));
@@ -181,7 +184,7 @@ ExpressionStmt Parser::parse_statement() {
             if (peek().kind == "SEM") {
                 advance();
             } else {
-                throw std::runtime_error("Missing statement terminator after variable assignment");
+                MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
             }
 
             ASTPtr var = std::make_unique<Variable>(token.text, std::move(value), "REASSIGN");
@@ -197,7 +200,7 @@ ExpressionStmt Parser::parse_statement() {
     if (next.kind == "SEM") {
         advance();
     } else {
-        throw std::runtime_error("Missing statement terminator after expression");
+        MissingTerminatorError("Missing statement terminator after expression", current().lineNo);
     }
 
     return ExpressionStmt(std::move(expr));
@@ -222,8 +225,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
         advance();
         expect("CLOSE_PAREN");
     } else {
-        throw std::runtime_error("Unexpected token in expression: " + token.kind + 
-            (token.text.empty() ? "" : (", " + token.text)));
+        SyntaxError("Unexpected token in expression: " + token.kind + 
+            (token.text.empty() ? "" : (", " + token.text)), token.lineNo);
     }
 
     while (true) {
