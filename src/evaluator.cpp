@@ -98,15 +98,9 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
     } else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
         return EvalExpr(bl->value);
     } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
-        bool condition = std::get<nl_bool_t>(evalExpr(wl->condition.get()));
-
-        while (condition) {
+        while (std::get<nl_bool_t>(evalExpr(wl->condition.get())) == true) {
             for (ExpressionStmt& stmt : wl->stmts) {
-                if (stmt.isBreak) {
-                    condition = false;
-
-                    break;
-                }
+                if (stmt.isBreak) break;
 
                 evalStmt(stmt);
             }
@@ -234,6 +228,12 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             if (op != "ADD") throw std::runtime_error("invalid operator for string type: " + op);
             
             return EvalExpr(l + r);
+        } else if constexpr (std::is_same_v<L, nl_bool_t> && std::is_same_v<R, nl_bool_t>) {
+            nl_bool_t a = static_cast<nl_bool_t>(l);
+            nl_bool_t b = static_cast<nl_bool_t>(r);
+
+            if (op == "AND") return EvalExpr(a && b);
+            if (op == "OR") return EvalExpr(a || b);
         } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
             using ResultType = std::conditional_t<
                 std::is_same_v<L, nl_int_t> && std::is_same_v<R, nl_int_t>, nl_int_t,nl_dec_t 
@@ -262,9 +262,16 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
                 op == "BIN_XOR" ||
                 op == "BIN_OR" ||
                 op == "LSHIFT" ||
-                op == "RSHIFT") TypeError("failed to apply bitwise operator " + op + " to non-integral operand(s)\n", -1);
+                op == "RSHIFT") TypeError("failed to apply bitwise operator " + op + " to non-integral operand(s)", -1);
             if (op == "MOD") return EvalExpr(std::fmodf(a,b));
             if (op == "POW") return EvalExpr(std::powf(a, b));
+
+            if (op == "EQEQ") return EvalExpr(a == b);
+            if (op == "NOTEQ") return EvalExpr(a != b);
+            if (op == "LESS") return EvalExpr(a < b);
+            if (op == "LESSEQ") return EvalExpr(a <= b);
+            if (op == "GREATER") return EvalExpr(a > b);
+            if (op == "GREATEREQ") return EvalExpr(a >= b);
         }
 
         return EvalExpr(NoOp());

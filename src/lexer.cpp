@@ -45,34 +45,48 @@ Token Lexer::getToken() {
         token = Token("-", "SUB", lineNo);
     } else if (curChar == '*') {
         if (peek() == '*') {
-            char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "POW", lineNo);
-        } else {
+            token = Token("**", "POW", lineNo);
+        } else
             token = Token("*", "MUL", lineNo);
-        }
     } else if (curChar == '/') {
         token = Token("/", "DIV", lineNo);
     } else if (curChar == '%') {
         token = Token("%", "MOD", lineNo);
     } else if (curChar == '&') {
-        token = Token("&", "BIN_AND", lineNo);
+        if (peek() == '&') {
+            nextChar();
+            token = Token("&&", "AND", lineNo);
+        } else
+            token = Token("&", "BIN_AND", lineNo);
     } else if (curChar == '^') {
         token = Token("^", "BIN_XOR", lineNo);
     } else if (curChar == '|') {
-        token = Token("|", "BIN_OR", lineNo);
+        if (peek() == '|') {
+            nextChar();
+            token = Token("||", "OR", lineNo);
+        } else
+            token = Token("|", "BIN_OR", lineNo);
     } else if (curChar == '<') {
-        if (peek() == '<') {
-            char lastChar = curChar;
+        char peekChar = peek();
+        if (peekChar == '<') {
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "LSHIFT", lineNo);
-        }
+            token = Token("<<", "LSHIFT", lineNo);
+        } else if (peekChar == '=') {
+            nextChar();
+            token = Token("<=", "LESSEQ", lineNo);
+        } else
+            token = Token("<", "LESS", lineNo);
     } else if (curChar == '>') {
-        if (peek() == '>') {
-            char lastChar = curChar;
+        char peekChar = peek();
+        if (peekChar == '>') {
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "RSHIFT", lineNo);
-        }
+            token = Token(">>", "RSHIFT", lineNo);
+        } else if (peekChar == '=') {
+            nextChar();
+            token = Token(">=", "GREATEREQ", lineNo);
+        } else
+            token = Token(">", "GREATER", lineNo);
     } else if (curChar == '(') {
         token = Token("(", "OPEN_PAREN", lineNo);
     } else if (curChar == ')') {
@@ -83,11 +97,15 @@ Token Lexer::getToken() {
         token = Token("}", "CLOSE_BRAC", lineNo);
     } else if (curChar == ',') {
         token = Token(",", "COMMA", lineNo);
+    } else if (curChar == '!') {
+        if (peek() == '=') {
+            nextChar();
+            token = Token("!=", "NOTEQ", lineNo);
+        }
     } else if (curChar == '=') {
         if (peek() == '=') {
-            char lastChar = curChar;
             nextChar();
-            token = Token(std::string(1, lastChar) + curChar, "EQEQ", lineNo);
+            token = Token("==", "EQEQ", lineNo);
         } else {
             token = Token("=", "EQ", lineNo);
         }
@@ -99,8 +117,8 @@ Token Lexer::getToken() {
         while (curChar != '\"' && curChar != '\0') {
             nextChar();
         }
-	  if (curChar == '\0')
-		  MissingTerminatorError("unterminated string literal", lineNo);
+        if (curChar == '\0')
+            MissingTerminatorError("unterminated string literal", lineNo);
 
         token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
     } else if (isdigit(curChar)) {
