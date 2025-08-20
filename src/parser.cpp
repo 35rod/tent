@@ -160,7 +160,7 @@ ExpressionStmt Parser::parse_statement() {
 
             ExpressionStmt&& stmt = parse_statement();
 
-            if (!stmt.noOp) {
+            if ((stmt.noOp && stmt.isBreak) || !stmt.noOp) {
                 stmts.push_back(std::move(stmt));
             }
         }
@@ -168,8 +168,18 @@ ExpressionStmt Parser::parse_statement() {
         advance();
 
         ASTPtr whileLoop = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
-        
+
         return ExpressionStmt(std::move(whileLoop));
+    } else if (token.kind == "BREAK") {
+        ASTPtr noOp = std::make_unique<NoOp>();
+
+        if (peek().kind == "SEM") {
+            advance();
+        } else {
+            MissingTerminatorError("Missing statement terminator after break statement", current().lineNo);
+        }
+
+        return ExpressionStmt(std::move(noOp), true, true);
     } else if (token.kind == "IDENT") {
         if (peek().kind == "OPEN_PAREN") {
             advance();

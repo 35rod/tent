@@ -81,10 +81,11 @@ class ExpressionStmt : public ASTNode {
     public:
         ASTPtr expr;
         bool noOp;
+        bool isBreak;
 
         void print(int indent) override;
 
-        ExpressionStmt(ASTPtr expr, bool exprNoOp=false);
+        ExpressionStmt(ASTPtr expr, bool exprNoOp=false, bool exprIsBreak=false);
 };
 
 class WhileLiteral : public ASTNode {

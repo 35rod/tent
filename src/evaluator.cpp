@@ -102,6 +102,12 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 
         while (condition) {
             for (ExpressionStmt& stmt : wl->stmts) {
+                if (stmt.isBreak) {
+                    condition = false;
+
+                    break;
+                }
+
                 evalStmt(stmt);
             }
         }

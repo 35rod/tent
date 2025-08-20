@@ -133,7 +133,7 @@ void FunctionLiteral::print(int indent) {
     }
 }
 
-ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, bool stmtNoOp) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp) {}
+ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, bool stmtNoOp, bool exprIsBreak) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak) {}
 
 void ExpressionStmt::print(int indent) {
     printIndent(indent);
