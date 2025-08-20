@@ -133,6 +133,10 @@ Token Lexer::getToken() {
             kind = "SET";
         } else if (text == "form") {
             kind = "FORM";
+        } else if (text == "while") {
+            kind = "WHILE";
+        } else if (text == "true" || text == "false") {
+            kind = "BOOL";
         } else {
             kind = "IDENT";
         }

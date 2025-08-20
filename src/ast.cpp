@@ -36,6 +36,13 @@ void StrLiteral::print(int indent) {
     std::cout << "StringLiteral(value=" << value << ")\n";
 }
 
+BoolLiteral::BoolLiteral(bool literalValue) : ASTNode(), value(literalValue) {}
+
+void BoolLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "BoolLiteral(value=" << value << ")\n";
+}
+
 Variable::Variable(std::string varName, ASTPtr varValue, std::string varContext) : ASTNode(), name(varName), value(std::move(varValue)), context(varContext) {}
 
 void Variable::print(int indent) {
@@ -71,6 +78,22 @@ void BinaryOp::print(int indent) {
     } else {
         printIndent(indent+2);
         std::cout << "nullptr" << std::endl;
+    }
+}
+
+WhileLiteral::WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
+
+void WhileLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "WhileLiteral(statements=" << stmts.size() << ")\n";
+    printIndent(indent+2);
+    std::cout << "Condition:\n";
+    condition->print(indent+4);
+    printIndent(indent+2);
+    std::cout << "Statements:\n";
+
+    for (ExpressionStmt& stmt : stmts) {
+        stmt.print(indent+4);
     }
 }
 

@@ -12,8 +12,8 @@ std::string Error::getClassName() const {
 };
 
 void Error::printException() {
-    std::cout << "ERROR: Line " << lineNo << "," << std::endl;
-    std::cout << getClassName() << ": " << message << std::endl;
+    std::cerr << "\033[91mERROR: Line " << lineNo << "," << std::endl;
+    std::cerr << getClassName() << ": " << message << std::endl;
 
     exit(1);
 }

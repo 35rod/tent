@@ -25,21 +25,21 @@ int32_t main(int32_t argc, char **argv) {
     while (std::getline(fileHandle, line)) {
         output += line;
         output.push_back('\n');
-    }
+	}
 
-    Lexer lexer(output);
+	Lexer lexer(output);
 
-    lexer.nextChar();
-    lexer.getTokens();
+	lexer.nextChar();
+	lexer.getTokens();
 
-    Parser parser(lexer.tokens);
-    Program ast = parser.parse_program();
+	Parser parser(lexer.tokens);
+	Program ast = parser.parse_program();
 
-    if (IS_FLAG_SET(DEBUG))
-        ast.print(0);
+	if (IS_FLAG_SET(DEBUG))
+	    ast.print(0);
 
-    Evaluator evaluator;
-    evaluator.evalProgram(ast);
+	Evaluator evaluator;
+	evaluator.evalProgram(ast);
 
-    return 0;
+	return 0;
 }

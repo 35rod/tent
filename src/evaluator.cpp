@@ -87,6 +87,17 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         return EvalExpr(fl->value);
     } else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
         return EvalExpr(sl->value);
+    } else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
+        return EvalExpr(bl->value);
+    } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
+        bool condition = std::get<bool>(evalExpr(wl->condition.get()));
+        while (condition) {
+            for (ExpressionStmt& stmt : wl->stmts) {
+                evalStmt(stmt);
+            }
+        }
+
+        return EvalExpr(NoOp());
     } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
         functions.push_back(fnl);
 

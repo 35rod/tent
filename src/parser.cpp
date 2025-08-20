@@ -126,6 +126,10 @@ ExpressionStmt Parser::parse_statement() {
         std::vector<ExpressionStmt> stmts;
 
         while (current().kind != "CLOSE_BRAC") {
+            if (current().kind == "EOF") {
+                SyntaxError("Closing braces required for function body", current().lineNo);
+            }
+
             ExpressionStmt&& stmt = parse_statement();
 
             if (!stmt.noOp) {
@@ -138,6 +142,34 @@ ExpressionStmt Parser::parse_statement() {
         ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 
         return ExpressionStmt(std::move(form));
+    } else if (token.kind == "WHILE") {
+        advance();
+
+        ASTPtr condition = parse_expression(0);
+
+        advance();
+        expect("OPEN_BRAC");
+        advance();
+
+        std::vector<ExpressionStmt> stmts;
+
+        while (current().kind != "CLOSE_BRAC") {
+            if (current().kind == "EOF") {
+                SyntaxError("Closing braces required for while loop body", current().lineNo);
+            }
+
+            ExpressionStmt&& stmt = parse_statement();
+
+            if (!stmt.noOp) {
+                stmts.push_back(std::move(stmt));
+            }
+        }
+
+        advance();
+
+        ASTPtr whileLoop = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
+        
+        return ExpressionStmt(std::move(whileLoop));
     } else if (token.kind == "IDENT") {
         if (peek().kind == "OPEN_PAREN") {
             advance();
@@ -217,6 +249,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
         left = std::make_unique<FloatLiteral>(std::stof(token.text));
     } else if (token.kind == "STR") {
         left = std::make_unique<StrLiteral>(token.text);
+    } else if (token.kind == "BOOL") {
+        left = std::make_unique<BoolLiteral>(token.text == "true");
     } else if (token.kind == "IDENT") {
         left = std::make_unique<Variable>(token.text);
     } else if (token.kind == "OPEN_PAREN") {

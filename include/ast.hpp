@@ -45,6 +45,15 @@ class StrLiteral : public ASTNode {
         StrLiteral(std::string literalValue);
 };
 
+class BoolLiteral : public ASTNode {
+    public:
+        bool value;
+
+        void print(int indent) override;
+
+        BoolLiteral(bool literalValue);
+};
+
 class Variable : public ASTNode {
     public:
         std::string name;
@@ -75,6 +84,16 @@ class ExpressionStmt : public ASTNode {
         void print(int indent) override;
 
         ExpressionStmt(ASTPtr expr, bool exprNoOp=false);
+};
+
+class WhileLiteral : public ASTNode {
+    public:
+        ASTPtr condition;
+        std::vector<ExpressionStmt> stmts;
+
+        void print(int indent) override;
+
+        WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
 };
 
 class FunctionCall : public ASTNode {
