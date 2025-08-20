@@ -1,9 +1,12 @@
 #include "evaluator.hpp"
+#include "errors.hpp"
 #include <cmath>
-#include <cstdint>
+#include <cstdio>
 
-std::string Evaluator::floatToString(float v, int prec) {
-    std::ostringstream oss;
+#define MAX_DEC_LEN 50
+
+std::string Evaluator::floatToString(nl_dec_t v, int prec) {
+    /*std::ostringstream oss;
     oss << std::fixed << std::setprecision(prec) << v;
     std::string s = oss.str();
     if (s.find('e') != std::string::npos || s.find('E') != std::string::npos) return s;
@@ -12,24 +15,29 @@ std::string Evaluator::floatToString(float v, int prec) {
         if (!s.empty() && s.back() == '.') s.pop_back();
     }
     return s;
+    */
+    static char str_buf[MAX_DEC_LEN + 1];
+    std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", prec, v); 
+
+    return std::string(str_buf);
 }
 
 Evaluator::Evaluator() {
-    nativeFunctions["print"] = [this](const std::vector<EvalExpr>& args) {
+    nativeFunctions["print"] = [](const std::vector<EvalExpr>& args) {
         std::string total;
 
         for (size_t i = 0; i < args.size(); i++) {
-            std::visit([this, &total](auto&& v) {
+            std::visit([&total](auto&& v) {
                 using T = std::decay_t<decltype(v)>;
 
-                if constexpr (std::is_same_v<T, int>) {
+                if constexpr (std::is_same_v<T, nl_int_t>) {
                     total += std::to_string(v);
-                } else if constexpr (std::is_same_v<T, float>) {
-                    total += this->floatToString(v, 6);
+                } else if constexpr (std::is_same_v<T, nl_dec_t>) {
+                    total += Evaluator::floatToString(v, 6);
                 } else if constexpr (std::is_same_v<T, std::string>) {
                     total += v;
                 } else {
-                    total += "null";
+                    total += "(null)";
                 }
             }, args[i]);
         }
@@ -90,7 +98,8 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
     } else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
         return EvalExpr(bl->value);
     } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
-        bool condition = std::get<bool>(evalExpr(wl->condition.get()));
+        bool condition = std::get<nl_bool_t>(evalExpr(wl->condition.get()));
+
         while (condition) {
             for (ExpressionStmt& stmt : wl->stmts) {
                 evalStmt(stmt);
@@ -144,10 +153,10 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 
                 ASTPtr paramNodeEval;
 
-                if (std::holds_alternative<int>(evalValue)) {
-                    paramNodeEval = std::make_unique<IntLiteral>(std::get<int>(evalValue));
-                } else if (std::holds_alternative<float>(evalValue)) {
-                    paramNodeEval = std::make_unique<FloatLiteral>(std::get<float>(evalValue));
+                if (std::holds_alternative<nl_int_t>(evalValue)) {
+                    paramNodeEval = std::make_unique<IntLiteral>(std::get<nl_int_t>(evalValue));
+                } else if (std::holds_alternative<nl_dec_t>(evalValue)) {
+                    paramNodeEval = std::make_unique<FloatLiteral>(std::get<nl_dec_t>(evalValue));
                 } else {
                     throw std::runtime_error("Unsupported parameter type");
                 }
@@ -221,7 +230,7 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             return EvalExpr(l + r);
         } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
             using ResultType = std::conditional_t<
-                std::is_same_v<L, int> && std::is_same_v<R, int>, int, float
+                std::is_same_v<L, nl_int_t> && std::is_same_v<R, nl_int_t>, nl_int_t,nl_dec_t 
             >;
 
             ResultType a = static_cast<ResultType>(l);
@@ -235,6 +244,21 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
 
                 return EvalExpr(a / b);
             }
+            if constexpr (std::is_integral_v<ResultType>) {
+                if (op == "MOD") return EvalExpr(a % b);
+                if (op == "BIN_AND") return EvalExpr(a & b);
+                if (op == "BIN_XOR") return EvalExpr(a ^ b);
+                if (op == "BIN_OR") return EvalExpr(a | b);
+                if (op == "LSHIFT") return EvalExpr(a << b);
+                if (op == "RSHIFT") return EvalExpr(a >> b);
+            }
+            if (op == "BIN_AND" ||
+                op == "BIN_XOR" ||
+                op == "BIN_OR" ||
+                op == "LSHIFT" ||
+                op == "RSHIFT") TypeError("failed to apply bitwise operator " + op + " to non-integral operand(s)\n", -1);
+            if (op == "MOD") return EvalExpr(std::fmodf(a,b));
+            if (op == "POW") return EvalExpr(std::powf(a, b));
         }
 
         return EvalExpr(NoOp());

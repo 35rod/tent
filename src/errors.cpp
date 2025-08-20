@@ -12,9 +12,12 @@ std::string Error::getClassName() const {
 };
 
 void Error::printException() {
-    std::cerr << "\033[91mERROR: Line " << lineNo << "," << std::endl;
-    std::cerr << getClassName() << ": " << message << std::endl;
-
+    if (lineNo == -1)
+        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on unknown line:\n"
+                  << "        " + message + "\x1b[0m" << std::endl;
+    else
+        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on line " << lineNo << ":\n"
+                  << "        " + message + "\x1b[0m" << std::endl;
     exit(1);
 }
 
@@ -23,3 +26,5 @@ SyntaxError::SyntaxError(std::string errorMessage, int line) : Error(errorMessag
 MissingTerminatorError::MissingTerminatorError(std::string errorMessage, int line) : Error(errorMessage, line) {}
 
 IdentifierError::IdentifierError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+
+TypeError::TypeError(std::string errorMessage, int line) : Error(errorMessage, line) {}

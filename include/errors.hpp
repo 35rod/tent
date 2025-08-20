@@ -28,3 +28,8 @@ class IdentifierError : public Error {
     public:
         IdentifierError(std::string erorrMessage, int line);
 };
+class TypeError : public Error {
+    public:
+        TypeError(std::string errorMessage, int line);
+};
+
