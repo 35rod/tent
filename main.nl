@@ -1,5 +1,11 @@
 set a = 0;
-while a <= 9 {
-    print("Hello World! a=", a);
-    a = a + 1;
+set b = 0;
+while a < 10 {
+	b = 0;
+	while b <= a {
+		print("*");
+		b = b + 1;
+	}
+	println("");
+	a = a + 1;
 }

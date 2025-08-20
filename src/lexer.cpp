@@ -139,10 +139,11 @@ Token Lexer::getToken() {
         } else {
             token = Token(source.substr(startPos, curPos-startPos+1), "INT", lineNo);
         }
-    } else if (isalpha(curChar)) {
+    } else if (isalpha(curChar) || curChar == '_') {
         int startPos = curPos;
 
-        while (isalnum(peek())) {
+	  char curChar = 0;
+        while (isalnum(curChar = peek()) || curChar == '_') {
             nextChar();
         }
 
@@ -154,6 +155,8 @@ Token Lexer::getToken() {
             kind = "SET";
         } else if (text == "form") {
             kind = "FORM";
+        } else if (text == "if") {
+            kind = "IF";
         } else if (text == "while") {
             kind = "WHILE";
         } else if (text == "break") {

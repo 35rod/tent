@@ -82,6 +82,22 @@ void BinaryOp::print(int indent) {
     }
 }
 
+IfLiteral::IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
+
+void IfLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "IfLiteral(statements=" << stmts.size() << ")\n";
+    printIndent(indent+2);
+    std::cout << "Condition:\n";
+    condition->print(indent+4);
+    printIndent(indent+2);
+    std::cout << "Statements:\n";
+
+    for (ExpressionStmt& stmt : stmts) {
+        stmt.print(indent+4);
+    }
+}
+
 WhileLiteral::WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
 
 void WhileLiteral::print(int indent) {

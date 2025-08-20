@@ -142,7 +142,7 @@ ExpressionStmt Parser::parse_statement() {
         ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 
         return ExpressionStmt(std::move(form));
-    } else if (token.kind == "WHILE") {
+    } else if (token.kind == "WHILE" || token.kind == "IF") {
         advance();
 
         ASTPtr condition = parse_expression(0);
@@ -155,7 +155,11 @@ ExpressionStmt Parser::parse_statement() {
 
         while (current().kind != "CLOSE_BRAC") {
             if (current().kind == "EOF") {
-                SyntaxError("Closing braces required for while loop body", current().lineNo);
+                SyntaxError("Closing braces required for " +
+                        std::string((token.kind == "WHILE")
+                            ? "while loop"
+                            : "if statement")
+                        + " body", current().lineNo);
             }
 
             ExpressionStmt&& stmt = parse_statement();
@@ -167,17 +171,20 @@ ExpressionStmt Parser::parse_statement() {
 
         advance();
 
-        ASTPtr whileLoop = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
-
-        return ExpressionStmt(std::move(whileLoop));
+        if (token.kind == "WHILE") {
+            ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
+            return ExpressionStmt(std::move(whileLiteral));
+        } else {
+            ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(stmts));
+            return ExpressionStmt(std::move(ifLiteral));
+        }
     } else if (token.kind == "BREAK") {
         ASTPtr noOp = std::make_unique<NoOp>();
 
-        if (peek().kind == "SEM") {
+        if (peek().kind == "SEM")
             advance();
-        } else {
+        else
             MissingTerminatorError("Missing statement terminator after break statement", current().lineNo);
-        }
 
         return ExpressionStmt(std::move(noOp), true, true);
     } else if (token.kind == "IDENT") {

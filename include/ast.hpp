@@ -88,6 +88,16 @@ class ExpressionStmt : public ASTNode {
         ExpressionStmt(ASTPtr expr, bool exprNoOp=false, bool exprIsBreak=false);
 };
 
+class IfLiteral : public ASTNode {
+    public:
+        ASTPtr condition;
+        std::vector<ExpressionStmt> stmts;
+
+        void print(int indent) override;
+
+        IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
+};
+
 class WhileLiteral : public ASTNode {
     public:
         ASTPtr condition;

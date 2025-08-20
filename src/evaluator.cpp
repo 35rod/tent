@@ -30,21 +30,26 @@ Evaluator::Evaluator() {
             std::visit([&total](auto&& v) {
                 using T = std::decay_t<decltype(v)>;
 
-                if constexpr (std::is_same_v<T, nl_int_t>) {
+                if constexpr (std::is_same_v<T, nl_int_t>)
                     total += std::to_string(v);
-                } else if constexpr (std::is_same_v<T, nl_dec_t>) {
+                else if constexpr (std::is_same_v<T, nl_dec_t>)
                     total += Evaluator::floatToString(v, 6);
-                } else if constexpr (std::is_same_v<T, std::string>) {
+                else if constexpr (std::is_same_v<T, std::string>)
                     total += v;
-                } else {
+                else
                     total += "(null)";
-                }
             }, args[i]);
         }
 
-        std::cout << total << std::endl;
+        std::cout << total;
 
         return EvalExpr(NoOp());
+    };
+
+    nativeFunctions["println"] = [this](const std::vector<EvalExpr>& args) {
+        EvalExpr ret = this->nativeFunctions["print"](args);
+        std::cout << std::endl;
+        return ret;
     };
     // this function does not work because the functionality 
     // does not exist for returned values from functions.
@@ -86,6 +91,8 @@ EvalExpr Evaluator::evalStmt(ExpressionStmt& stmt, const std::vector<Variable>& 
     return evalExpr(expr, local_vars);
 }
 
+static bool should_break_current_loop = false;
+
 EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars) {
     if (!node) throw std::runtime_error("Null AST node in evaluator");
 
@@ -97,14 +104,27 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         return EvalExpr(sl->value);
     } else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
         return EvalExpr(bl->value);
-    } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
-        while (std::get<nl_bool_t>(evalExpr(wl->condition.get())) == true) {
-            for (ExpressionStmt& stmt : wl->stmts) {
-                if (stmt.isBreak) break;
+    } else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
+        if (std::get<nl_bool_t>(evalExpr(ifl->condition.get())) == true) {
+            for (ExpressionStmt& stmt : ifl->stmts) {
+                if (stmt.isBreak) {
+                    should_break_current_loop = true;
+                    break;
+                }
 
                 evalStmt(stmt);
             }
         }
+    } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
+        while (std::get<nl_bool_t>(evalExpr(wl->condition.get())) == true) {
+            for (ExpressionStmt& stmt : wl->stmts) {
+                should_break_current_loop |= stmt.isBreak; // if (stmt.isBreak) should_break_current_loop = true;
+                if (should_break_current_loop) goto break_whilelit_loop;
+
+                evalStmt(stmt);
+            }
+        }
+break_whilelit_loop:
 
         return EvalExpr(NoOp());
     } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
@@ -157,6 +177,10 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
                     paramNodeEval = std::make_unique<IntLiteral>(std::get<nl_int_t>(evalValue));
                 } else if (std::holds_alternative<nl_dec_t>(evalValue)) {
                     paramNodeEval = std::make_unique<FloatLiteral>(std::get<nl_dec_t>(evalValue));
+                } else if (std::holds_alternative<std::string>(evalValue)) {
+                    paramNodeEval = std::make_unique<StrLiteral>(std::get<std::string>(evalValue));
+                } else if (std::holds_alternative<nl_bool_t>(evalValue)) {
+                    paramNodeEval = std::make_unique<BoolLiteral>(std::get<nl_bool_t>(evalValue));
                 } else {
                     throw std::runtime_error("Unsupported parameter type");
                 }
