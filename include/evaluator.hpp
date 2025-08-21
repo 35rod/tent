@@ -25,7 +25,7 @@ class Evaluator {
     EvalExpr evalExpr(ASTNode* node, const std::vector<Variable>& local_vars={});
 
     public:
-        EvalExpr evalProgram(Program& program);
+        EvalExpr evalProgram(Program& program, const std::vector<std::string> args={});
 
         Evaluator();
 };

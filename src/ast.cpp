@@ -34,7 +34,7 @@ StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue
 
 void StrLiteral::print(int indent) {
     printIndent(indent);
-    std::cout << "StringLiteral(value=" << value << ")\n";
+    std::cout << "StringLiteral(value='" << value << "')\n";
 }
 
 BoolLiteral::BoolLiteral(bool literalValue) : ASTNode(), value(literalValue) {}

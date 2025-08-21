@@ -7,34 +7,53 @@
 #include "args.hpp"
 
 extern std::string SRC_FILENAME, PROG_NAME;
+extern std::vector<std::string> prog_args;
 extern uint64_t runtime_flags;
 
 void parse_args(int32_t argc, char **argv)
 {
     PROG_NAME = std::string(argv[0]);
+
+    prog_args.push_back("prog_name"); // dunno how to get program name yet
+    bool doing_prog_args = false;
     for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
     {
+        if (doing_prog_args)
+        {
+            prog_args.push_back(std::string(argv[arg_n]));
+            continue;
+        }
         if (argv[arg_n][0] == '-')
         {
             if (argv[arg_n][1] == '-')
             {
-                if (strcmp(argv[arg_n]+2, "debug") == 0)
+                if (argv[arg_n][2] == '\0')
+                {
+                    doing_prog_args = true;
+                    if (SRC_FILENAME.empty())
+                    {
+                        std::cerr << "Argument error: cannot pass arguments to program before the"
+                                     "program filename is resolved." << std::endl;
+                        print_usage();
+                    }
+                } else if (strcmp(argv[arg_n]+2, "debug") == 0)
                     SET_FLAG(DEBUG);
                 else if (strcmp(argv[arg_n]+2, "help") == 0)
                     print_usage();
                 else if (strncmp(argv[arg_n]+2, "file=", 5) == 0)
                 {
                     if (SRC_FILENAME.empty())
-                        SRC_FILENAME = std::string(argv[arg_n]+2+5);
-                    else
                     {
-                        std::cout << "Argument error: found filename indicator ('" << argv[arg_n]
+                        SRC_FILENAME = std::string(argv[arg_n]+2+5);
+                    } else
+                    {
+                        std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
                             << "') after filename was already resolved." << std::endl;
                         print_usage();
                     }
                 } else
                 {
-                    std::cout << "Argument error: unknown argument type '" << argv[arg_n] << "'." << std::endl;
+                    std::cerr << "Argument error: unknown argument type '" << argv[arg_n] << "'." << std::endl;
                     print_usage();
                 }
             } else {
@@ -51,7 +70,7 @@ void parse_args(int32_t argc, char **argv)
                     case 'f':
                         if (!SRC_FILENAME.empty())
                         {
-                            std::cout << "Argument error: found filename indicator ('" << argv[arg_n]
+                            std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
                                 << "') after filename was already resolved." << std::endl;
                             print_usage();
                         }
@@ -61,7 +80,7 @@ void parse_args(int32_t argc, char **argv)
                             SRC_FILENAME = std::string(pos+1);
                         else
                         {
-                            std::cout << "Argument error: found filename indicator ('" << argv[arg_n]
+                            std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
                                 << "') without following a filename." << std::endl;
                             print_usage();
                         }
@@ -70,7 +89,7 @@ void parse_args(int32_t argc, char **argv)
                         end_loop = true;
                         break;
                     default:
-                        std::cout << "Argument error: unknown argument type '-" << *pos << "'." << std::endl;
+                        std::cerr << "Argument error: unknown argument type '-" << *pos << "'." << std::endl;
                         print_usage();
                         break;
                     }
@@ -86,7 +105,7 @@ void parse_args(int32_t argc, char **argv)
 
 void print_usage(void)
 {
-    std::cout << "usage: " << PROG_NAME << " [options] <FILENAME>" << std::endl << std::endl
+    std::cerr << "usage: " << PROG_NAME << " [options] <FILENAME>" << std::endl << std::endl
 
               << "options:" << std::endl
               << "   -d, --debug                       Enable debug output" << std::endl

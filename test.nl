@@ -1,7 +1,5 @@
-form not(b) {
-	println(b ^ 1); ` B XOR 1 flips the least significant bit, effectively working as a substitute NOT operation
+if ARG_COUNT < 2 {
+	println("oops error");
 }
-
-set my_int = 0b101;
-set index = 2;
-println((my_int >> index) & 1);
+set test_string = ARG_1;
+println("args[1] = ", test_string);

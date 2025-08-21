@@ -49,9 +49,9 @@ Evaluator::Evaluator() {
     };
 
     nativeFunctions["println"] = [this](const std::vector<EvalExpr>& args) {
-        EvalExpr ret = this->nativeFunctions["print"](args);
+        this->nativeFunctions["print"](args);
         std::cout << std::endl;
-        return ret;
+        return EvalExpr(NoOp());
     };
     // this function does not work because the functionality 
     // does not exist for returned values from functions.
@@ -65,9 +65,13 @@ Evaluator::Evaluator() {
     };*/
 }
 
-EvalExpr Evaluator::evalProgram(Program& program) {
+EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
     EvalExpr last;
     int counter = 0;
+    for (int32_t arg_i = 0; (size_t)arg_i < args.size(); ++arg_i) {
+        variables["ARG_" + std::to_string(arg_i)] = args[arg_i];
+    }
+    variables["ARG_COUNT"] = EvalExpr((nl_int_t) args.size());
 
     for (ExpressionStmt& stmt : program.statements) {
         EvalExpr expr = evalStmt(stmt);
@@ -251,9 +255,10 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
         if constexpr (std::is_same_v<L, NoOp> || std::is_same_v<R, NoOp>) {
             return EvalExpr(NoOp());
         } else if constexpr (std::is_same_v<L, std::string> && std::is_same_v<R, std::string>) {
-            if (op != "ADD") throw std::runtime_error("invalid operator for string type: " + op);
-            
-            return EvalExpr(l + r);
+            if (op == "ADD") return EvalExpr(l + r);
+            if (op == "EQEQ") return EvalExpr(l == r);
+            if (op == "NOTEQ") return EvalExpr(l != r);
+            throw std::runtime_error("invalid operator for string type: " + op);
         } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
             using ResultType = std::conditional_t<
                     std::is_integral_v<L> && std::is_integral_v<R>, nl_int_t, nl_dec_t
