@@ -19,7 +19,7 @@ class Lexer {
     public:
         std::vector<Token> tokens;
 
-        void nextChar();
+        void nextChar(int num=1);
         void getTokens();
 
         Lexer(std::string input);

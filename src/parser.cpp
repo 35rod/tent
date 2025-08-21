@@ -260,10 +260,25 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
     ASTPtr left;
 
-    if (token.kind == "INT") {
-        left = std::make_unique<IntLiteral>(std::stoll(token.text));
+    std::string first_3_chars = token.kind.substr(0, 3);
+    if (first_3_chars == "INT") {
+        int8_t base = -1;
+        if (token.kind == "INT_HEX")
+            base = 16;
+        if (token.kind == "INT_DEC")
+            base = 10;
+        if (token.kind == "INT_OCT")
+            base = 8;
+        if (token.kind == "INT_BIN")
+            base = 2;
+        if (base == -1)
+            SyntaxError("Somehow an integer with an invalid radix has slipped through the cracks..."
+                    "this message shouldn't ever appear at all, really."
+                    "Please report this in the Issue Tracker.", token.lineNo);
+
+        left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base));
     } else if (token.kind == "FLOAT") {
-        left = std::make_unique<FloatLiteral>(std::stof(token.text));
+        left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
     } else if (token.kind == "STR") {
         left = std::make_unique<StrLiteral>(token.text);
     } else if (token.kind == "BOOL") {

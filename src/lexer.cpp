@@ -1,8 +1,8 @@
 #include "lexer.hpp"
 #include "errors.hpp"
 
-void Lexer::nextChar() {
-    curPos++;
+void Lexer::nextChar(int num) {
+    curPos += num;
 
     if (curPos >= source.length()) {
         curChar = '\0';
@@ -32,6 +32,8 @@ void Lexer::skipComment() {
         }
     }
 }
+
+#include "is_digit_incl.cpp"
 
 Token Lexer::getToken() {
     skipWhitespace();
@@ -121,28 +123,10 @@ Token Lexer::getToken() {
             MissingTerminatorError("unterminated string literal", lineNo);
 
         token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
-    } else if (isdigit(curChar)) {
-        int startPos = curPos;
-        
-        while (isdigit(peek())) {
-            nextChar();
-        }
-
-        if (peek() == '.') {
-            nextChar();
-
-            while (isdigit(peek())) {
-                nextChar();
-            }
-
-            token = Token(source.substr(startPos, curPos+1), "FLOAT", lineNo);
-        } else {
-            token = Token(source.substr(startPos, curPos-startPos+1), "INT", lineNo);
-        }
     } else if (isalpha(curChar) || curChar == '_') {
         int startPos = curPos;
 
-	  char curChar = 0;
+        char curChar = 0;
         while (isalnum(curChar = peek()) || curChar == '_') {
             nextChar();
         }
@@ -168,6 +152,59 @@ Token Lexer::getToken() {
         }
 
         token = Token(text, kind, lineNo);
+    } else if (is_hex_digit(curChar)) {
+        bool (*is_digit_func) (char) = is_dec_digit;
+        if (curChar == '0') {
+            char peekChar = peek();
+            switch (peekChar) {
+            case 'x':
+                is_digit_func = is_hex_digit;
+                nextChar(2);
+                break;
+            case 'd':
+                nextChar(2);
+                break;
+            case 'o':
+                is_digit_func = is_oct_digit;
+                nextChar(2);
+                break;
+            case 'b':
+                is_digit_func = is_bin_digit;
+                nextChar(2);
+                break;
+            default:
+                if (isalnum(peekChar))
+                    SyntaxError("illegal integer literal radix specifier: " + std::string(curChar, 1) + std::string(peekChar, 1), lineNo);
+            }
+        }
+
+        int startPos = curPos;
+        
+        while (is_digit_func(peek())) {
+            nextChar();
+        }
+
+        if (peek() == '.') {
+            if (is_digit_func != is_dec_digit) {
+                SyntaxError("floating-point literals with specified radixes are not supported.", lineNo);
+            }
+            nextChar();
+
+            while (isdigit(peek())) {
+                nextChar();
+            }
+
+            token = Token(source.substr(startPos, curPos+1), "FLOAT", lineNo);
+        } else {
+            std::string intlit_type = "INT_DEC";
+            if (is_digit_func == is_hex_digit)
+                intlit_type = "INT_HEX";
+            else if (is_digit_func == is_oct_digit)
+                intlit_type = "INT_OCT";
+            else if (is_digit_func == is_bin_digit)
+                intlit_type = "INT_BIN";
+            token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo);
+        }
     } else if (curChar == ';') {
         token = Token(";", "SEM", lineNo);
     } else if (curChar == '\n') {

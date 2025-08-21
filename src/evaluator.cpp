@@ -34,6 +34,8 @@ Evaluator::Evaluator() {
                     total += std::to_string(v);
                 else if constexpr (std::is_same_v<T, nl_dec_t>)
                     total += Evaluator::floatToString(v, 6);
+                else if constexpr (std::is_same_v<T, nl_bool_t>)
+                    total += (static_cast<nl_bool_t>(v)) ? "true" : "false";
                 else if constexpr (std::is_same_v<T, std::string>)
                     total += v;
                 else
@@ -252,15 +254,9 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             if (op != "ADD") throw std::runtime_error("invalid operator for string type: " + op);
             
             return EvalExpr(l + r);
-        } else if constexpr (std::is_same_v<L, nl_bool_t> && std::is_same_v<R, nl_bool_t>) {
-            nl_bool_t a = static_cast<nl_bool_t>(l);
-            nl_bool_t b = static_cast<nl_bool_t>(r);
-
-            if (op == "AND") return EvalExpr(a && b);
-            if (op == "OR") return EvalExpr(a || b);
         } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
             using ResultType = std::conditional_t<
-                std::is_same_v<L, nl_int_t> && std::is_same_v<R, nl_int_t>, nl_int_t,nl_dec_t 
+                    std::is_integral_v<L> && std::is_integral_v<R>, nl_int_t, nl_dec_t
             >;
 
             ResultType a = static_cast<ResultType>(l);
@@ -275,12 +271,15 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
                 return EvalExpr(a / b);
             }
             if constexpr (std::is_integral_v<ResultType>) {
-                if (op == "MOD") return EvalExpr(a % b);
-                if (op == "BIN_AND") return EvalExpr(a & b);
-                if (op == "BIN_XOR") return EvalExpr(a ^ b);
-                if (op == "BIN_OR") return EvalExpr(a | b);
-                if (op == "LSHIFT") return EvalExpr(a << b);
-                if (op == "RSHIFT") return EvalExpr(a >> b);
+                using IntegralResultType = std::conditional_t<
+                        std::is_same_v<L, nl_bool_t>, nl_bool_t, nl_int_t
+                >;
+                if (op == "MOD") return EvalExpr(static_cast<IntegralResultType>(a % b));
+                if (op == "BIN_AND") return EvalExpr(static_cast<IntegralResultType>(a & b));
+                if (op == "BIN_XOR") return EvalExpr(static_cast<IntegralResultType>(a ^ b));
+                if (op == "BIN_OR") return EvalExpr(static_cast<IntegralResultType>(a | b));
+                if (op == "LSHIFT") return EvalExpr(static_cast<IntegralResultType>(a << b));
+                if (op == "RSHIFT") return EvalExpr(static_cast<IntegralResultType>(a >> b));
             }
             if (op == "BIN_AND" ||
                 op == "BIN_XOR" ||
@@ -296,6 +295,9 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             if (op == "LESSEQ") return EvalExpr(a <= b);
             if (op == "GREATER") return EvalExpr(a > b);
             if (op == "GREATEREQ") return EvalExpr(a >= b);
+
+            if (op == "AND") return EvalExpr(a && b);
+            if (op == "OR") return EvalExpr(a || b);
         }
 
         return EvalExpr(NoOp());
