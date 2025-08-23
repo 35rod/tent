@@ -1,9 +1,6 @@
 #pragma once
 
-#include <iostream>
 #include <string>
-#include <sstream>
-#include <iomanip>
 #include <variant>
 #include <functional>
 #include <map>
@@ -11,12 +8,14 @@
 #include "ast.hpp"
 #include "misc.hpp"
 
-using EvalExpr = std::variant<nl_int_t, nl_dec_t, std::string, nl_bool_t, NoOp>;
+using EvalExpr = std::variant<
+    nl_int_t, nl_dec_t, nl_bool_t, std::string,
+    std::vector<NonVecEvalExpr>, NoOp
+>;
 
 class Evaluator {
     bool returning = false;
-
-    static std::string floatToString(nl_dec_t v, int prec);
+    bool program_should_terminate = false;
 
     std::map<std::string, EvalExpr> variables;
     std::vector<FunctionLiteral*> functions;

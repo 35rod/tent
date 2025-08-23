@@ -61,6 +61,8 @@ Token Lexer::getToken() {
             token = Token("&&", "AND", lineNo);
         } else
             token = Token("&", "BIN_AND", lineNo);
+    } else if (curChar == '@') {
+        token = Token("@", "INDEX", lineNo);
     } else if (curChar == '^') {
         token = Token("^", "BIN_XOR", lineNo);
     } else if (curChar == '|') {
@@ -99,6 +101,10 @@ Token Lexer::getToken() {
         token = Token("}", "CLOSE_BRAC", lineNo);
     } else if (curChar == ',') {
         token = Token(",", "COMMA", lineNo);
+    } else if (curChar == '[') {
+        token = Token("[", "OPEN_BRACKET", lineNo);
+    } else if (curChar == ']') {
+        token = Token("]", "CLOSE_BRACKET", lineNo);
     } else if (curChar == '!') {
         if (peek() == '=') {
             nextChar();
@@ -116,9 +122,19 @@ Token Lexer::getToken() {
 
         int startPos = curPos;
 
-        while (curChar != '\"' && curChar != '\0') {
+        while (curChar != '\"' && curChar != '\0')
             nextChar();
-        }
+        if (curChar == '\0')
+            MissingTerminatorError("Unterminated string literal", lineNo);
+
+        token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
+    } else if (curChar == '\'') {
+        nextChar();
+
+        int startPos = curPos;
+
+        while (curChar != '\'' && curChar != '\0')
+            nextChar();
         if (curChar == '\0')
             MissingTerminatorError("Unterminated string literal", lineNo);
 

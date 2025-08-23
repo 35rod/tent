@@ -1,5 +1,5 @@
-form add(a, b) {
-	return a + b;
-}
-
-print(add(3, 5));
+set k = [4, "hi", "0"];
+println(k);
+set l = ARGS @ 0 @ 0;
+println(l);
+println(ARGS);

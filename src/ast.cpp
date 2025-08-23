@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cstdio>
 #include "ast.hpp"
 #include "misc.hpp"
@@ -16,33 +17,91 @@ void NoOp::print(int ident) {
     std::cout << "NoOp()" << std::endl;
 }
 
+
 IntLiteral::IntLiteral(nl_int_t literalValue) : ASTNode(), value(literalValue) {}
+
+std::string IntLiteral::to_str(nl_int_t val) {
+    return std::to_string(val);
+}
 
 void IntLiteral::print(int indent) {
     printIndent(indent);
-    std::cout << "IntLiteral(value=" << value << ")\n";
+    std::cout << "IntLiteral(value=" << to_str(value) << ")\n";
 }
+
 
 FloatLiteral::FloatLiteral(nl_dec_t literalValue) : ASTNode(), value(literalValue) {}
 
+#define MAX_DEC_LEN 50
+std::string FloatLiteral::to_str(nl_dec_t val, int prec) {
+    static char str_buf[MAX_DEC_LEN + 1];
+    std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", prec, val); 
+
+    return std::string(str_buf);
+}
+
 void FloatLiteral::print(int indent) {
     printIndent(indent);
-    std::cout << "FloatLiteral(value=" << value << ")\n";
+    std::cout << "FloatLiteral(value=" << to_str(value) << ")\n";
 }
+
 
 StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
 
-void StrLiteral::print(int indent) {
-    printIndent(indent);
-    std::cout << "StringLiteral(value='" << value << "')\n";
+std::string StrLiteral::to_str(std::string val) {
+    return "\"" + val + "\"";
 }
 
-BoolLiteral::BoolLiteral(bool literalValue) : ASTNode(), value(literalValue) {}
+void StrLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "StringLiteral(value=" << to_str(value) << ")\n";
+}
+
+
+BoolLiteral::BoolLiteral(nl_bool_t literalValue) : ASTNode(), value(literalValue) {}
+
+std::string BoolLiteral::to_str(nl_bool_t val) {
+    return (val) ? "true" : "false";
+}
 
 void BoolLiteral::print(int indent) {
     printIndent(indent);
-    std::cout << "BoolLiteral(value=" << value << ")\n";
+    std::cout << "BoolLiteral(value=" << to_str(value) << ")\n";
 }
+
+
+VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue) : ASTNode(), elems(std::move(literalValue)) {}
+
+void VecLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "VecLiteral(size=" + std::to_string(elems.size()) + ")\n";
+}
+
+VecValue::VecValue(std::vector<NonVecEvalExpr> literalValue) : ASTNode(), elems(literalValue) {}
+
+std::string VecValue::to_str(std::vector<NonVecEvalExpr> val) {
+    std::string buf = "[";
+    const size_t val_len = val.size();
+    for (size_t i = 0; i < val_len; ++i) {
+        if (std::holds_alternative<nl_int_t>(val[i]))
+            buf += IntLiteral::to_str(std::get<nl_int_t>(val[i]));
+        else if (std::holds_alternative<nl_dec_t>(val[i]))
+            buf += FloatLiteral::to_str(std::get<nl_dec_t>(val[i]));
+        else if (std::holds_alternative<nl_bool_t>(val[i]))
+            buf += BoolLiteral::to_str(std::get<nl_bool_t>(val[i]));
+        else if (std::holds_alternative<std::string>(val[i]))
+            buf += StrLiteral::to_str(std::get<std::string>(val[i]));
+        if (i < val_len - 1)
+            buf += ", ";
+    }
+    return buf + "]";
+}
+
+void VecValue::print(int indent) {
+    printIndent(indent);
+    std::cout << "VecValue(value=" + to_str(elems) + ")\n";
+}
+
 
 Variable::Variable(std::string varName, ASTPtr varValue, std::string varContext) : ASTNode(), name(varName), value(std::move(varValue)), context(varContext) {}
 
@@ -54,6 +113,7 @@ void Variable::print(int indent) {
         value->print(indent);
     }
 }
+
 
 BinaryOp::BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight) :
 ASTNode(), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
