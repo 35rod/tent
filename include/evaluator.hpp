@@ -14,6 +14,8 @@
 using EvalExpr = std::variant<nl_int_t, nl_dec_t, std::string, nl_bool_t, NoOp>;
 
 class Evaluator {
+    bool returning = false;
+
     static std::string floatToString(nl_dec_t v, int prec);
 
     std::map<std::string, EvalExpr> variables;

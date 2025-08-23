@@ -6,16 +6,6 @@
 #define MAX_DEC_LEN 50
 
 std::string Evaluator::floatToString(nl_dec_t v, int prec) {
-    /*std::ostringstream oss;
-    oss << std::fixed << std::setprecision(prec) << v;
-    std::string s = oss.str();
-    if (s.find('e') != std::string::npos || s.find('E') != std::string::npos) return s;
-    if (s.find('.') != std::string::npos) {
-        while (!s.empty() && s.back() == '0') s.pop_back();
-        if (!s.empty() && s.back() == '.') s.pop_back();
-    }
-    return s;
-    */
     static char str_buf[MAX_DEC_LEN + 1];
     std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", prec, v); 
 
@@ -39,7 +29,7 @@ Evaluator::Evaluator() {
                 else if constexpr (std::is_same_v<T, std::string>)
                     total += v;
                 else
-                    total += "(null)";
+                    total += "null";
             }, args[i]);
         }
 
@@ -53,16 +43,6 @@ Evaluator::Evaluator() {
         std::cout << std::endl;
         return EvalExpr(NoOp());
     };
-    // this function does not work because the functionality 
-    // does not exist for returned values from functions.
-    /*nativeFunctions["sqrt"] = [](const std::vector<EvalExpr>& args) {
-        if (std::holds_alternative<nl_int_type>(args[0]))
-            return EvalExpr(sqrtf(std::get<nl_int_type>(args[0])));
-        else if (std::holds_alternative<nl_float_type>(args[0]))
-            return EvalExpr(sqrtf(std::get<nl_float_type>(args[0])));
-
-        return EvalExpr(0);
-    };*/
 }
 
 EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
@@ -78,7 +58,7 @@ EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string>
 
         if (!std::holds_alternative<NoOp>(expr)) {
             counter++;
-            last = expr;
+            last = std::move(expr);
         }
     }
 
@@ -97,8 +77,6 @@ EvalExpr Evaluator::evalStmt(ExpressionStmt& stmt, const std::vector<Variable>& 
     return evalExpr(expr, local_vars);
 }
 
-static bool should_break_current_loop = false;
-
 EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars) {
     if (!node) throw std::runtime_error("Null AST node in evaluator");
 
@@ -114,29 +92,36 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         if (std::get<nl_bool_t>(evalExpr(ifl->condition.get())) == true) {
             for (ExpressionStmt& stmt : ifl->stmts) {
                 if (stmt.isBreak) {
-                    should_break_current_loop = true;
                     break;
                 }
 
-                evalStmt(stmt);
+                EvalExpr res = evalStmt(stmt, local_vars);
+
+				if (returning) return res;
             }
         }
     } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
         while (std::get<nl_bool_t>(evalExpr(wl->condition.get())) == true) {
             for (ExpressionStmt& stmt : wl->stmts) {
-                should_break_current_loop |= stmt.isBreak; // if (stmt.isBreak) should_break_current_loop = true;
-                if (should_break_current_loop) goto break_whilelit_loop;
+                if (stmt.isBreak) {
+                    break;
+                }
 
-                evalStmt(stmt);
+                EvalExpr res = evalStmt(stmt, local_vars);
+
+				if (returning) return res;
             }
         }
-break_whilelit_loop:
 
         return EvalExpr(NoOp());
     } else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
         functions.push_back(fnl);
 
         return EvalExpr(NoOp());
+    } else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
+        returning = true;
+
+        return evalExpr(rl->value.get(), local_vars);
     } else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
         std::vector<EvalExpr> evalArgs;
         evalArgs.reserve(fc->params.size());
@@ -195,17 +180,17 @@ break_whilelit_loop:
                 lvars.push_back(std::move(newVar));
             }
 
-            EvalExpr result = EvalExpr(NoOp());
-
             for (ExpressionStmt& stmt : func->stmts) {
                 EvalExpr res = evalStmt(stmt, lvars);
 
-                if (!std::holds_alternative<NoOp>(res)) {
-                    result = res;
+                if (returning) {
+                    returning = false;
+
+                    return res;
                 }
             }
 
-            return result;
+            return EvalExpr(NoOp());
         }
     } else if (auto v = dynamic_cast<Variable*>(node)) {
         if (v->context == "ASSIGN") {
@@ -218,7 +203,7 @@ break_whilelit_loop:
             }
 
             if (variables.count(v->name) == 1) {
-                return variables[v->name];
+                return std::move(variables[v->name]);
             } else {
                 throw std::runtime_error("Unknown identifier " + v->name);
             }
@@ -235,11 +220,7 @@ break_whilelit_loop:
         EvalExpr left = evalExpr(bin->left.get(), local_vars);
         EvalExpr right = evalExpr(bin->right.get(), local_vars);
         
-        return evalBinaryOp(bin->op, left, right);
-
-        // if (bin->op == "EQEQ") return EvalExpr(left == right ? 1 : 0);
-
-        // throw std::runtime_error("Unknown binary operator: " + bin->op);
+        return evalBinaryOp(bin->op, std::move(left), std::move(right));
     } else {
         throw std::runtime_error("Unknown AST node type in evaluator");
     }

@@ -118,15 +118,25 @@ class FunctionCall : public ASTNode {
         FunctionCall(std::string callName, std::vector<ASTPtr> callParams);
 };
 
+class ReturnLiteral : public ASTNode {
+    public:
+        ASTPtr value;
+
+        void print(int indent) override;
+
+        ReturnLiteral(ASTPtr literalValue);
+};
+
 class FunctionLiteral : public ASTNode {
     public:
         std::string name;
         std::vector<ASTPtr> params;
         std::vector<ExpressionStmt> stmts;
+        ASTPtr returnValue;
 
         void print(int indent) override;
 
-        FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts);
+        FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
 };
 
 class Program : public ASTNode {

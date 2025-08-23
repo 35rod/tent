@@ -142,6 +142,20 @@ ExpressionStmt Parser::parse_statement() {
         ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 
         return ExpressionStmt(std::move(form));
+    } else if (token.kind == "RETURN") {
+        advance();
+
+        ASTPtr value = parse_expression(0);
+
+        if (peek().kind == "SEM") {
+            advance();
+        } else {
+            MissingTerminatorError("Missing statement terminator after return statement", current().lineNo);
+        }
+
+        ASTPtr returnLiteral = std::make_unique<ReturnLiteral>(std::move(value));
+
+        return ExpressionStmt(std::move(returnLiteral));
     } else if (token.kind == "WHILE" || token.kind == "IF") {
         advance();
 
@@ -188,53 +202,17 @@ ExpressionStmt Parser::parse_statement() {
 
         return ExpressionStmt(std::move(noOp), true, true);
     } else if (token.kind == "IDENT") {
-        if (peek().kind == "OPEN_PAREN") {
-            advance();
-            advance();
+        if (peek().kind == "EQ") {
+        	advance();
+        	advance();
 
-            std::vector<ASTPtr> params;
+        	ASTPtr value = parse_expression(0);
 
-            while (current().kind != "CLOSE_PAREN") {
-                if (current().kind == "EOF") {
-                    SyntaxError("Closing parentheses required for function call", current().lineNo);
-                }
-
-                ASTPtr param = parse_expression(0);
-                params.push_back(std::move(param));
-
-                advance();
-
-                if (current().kind == "CLOSE_PAREN") {
-                    break;
-                }
-
-                expect("COMMA");
-
-                advance();
-            }
-
-            advance();
-
-            ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params));
-
-            if (current().kind == "SEM") {
-                advance();
-            } else {
-                MissingTerminatorError("Missing statement terminator after function call", current().lineNo);
-            }
-
-            return ExpressionStmt(std::move(call));
-        } else if (peek().kind == "EQ") {
-            advance();
-            advance();
-
-            ASTPtr value = parse_expression(0);
-
-            if (peek().kind == "SEM") {
-                advance();
-            } else {
-                MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
-            }
+        	if (peek().kind == "SEM") {
+        	    advance();
+        	} else {
+        		MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
+        	}
 
             ASTPtr var = std::make_unique<Variable>(token.text, std::move(value), "REASSIGN");
 
@@ -261,6 +239,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
     ASTPtr left;
 
     std::string first_3_chars = token.kind.substr(0, 3);
+
     if (first_3_chars == "INT") {
         int8_t base = -1;
         if (token.kind == "INT_HEX")
@@ -284,7 +263,37 @@ ASTPtr Parser::parse_expression(int min_bp) {
     } else if (token.kind == "BOOL") {
         left = std::make_unique<BoolLiteral>(token.text == "true");
     } else if (token.kind == "IDENT") {
-        left = std::make_unique<Variable>(token.text);
+		if (peek().kind == "OPEN_PAREN") {
+            advance();
+            advance();
+
+            std::vector<ASTPtr> params;
+
+            while (current().kind != "CLOSE_PAREN") {
+                if (current().kind == "EOF") {
+                    SyntaxError("Closing parentheses required for function call", current().lineNo);
+                }
+
+                ASTPtr param = parse_expression(0);
+                params.push_back(std::move(param));
+
+                advance();
+
+                if (current().kind == "CLOSE_PAREN") {
+                    break;
+                }
+
+                expect("COMMA");
+
+                advance();
+            }
+
+            ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params));
+
+            left = std::move(call);
+        } else {
+			left = std::make_unique<Variable>(token.text);
+		}
     } else if (token.kind == "OPEN_PAREN") {
         advance();
         left = parse_expression(0);

@@ -34,7 +34,7 @@ int32_t main(int32_t argc, char **argv) {
     lexer.getTokens();
 
     Parser parser(lexer.tokens);
-    Program ast = parser.parse_program();
+    Program ast = parser.parse_program();\
 
     if (IS_FLAG_SET(DEBUG))
         ast.print(0);

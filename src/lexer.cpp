@@ -120,7 +120,7 @@ Token Lexer::getToken() {
             nextChar();
         }
         if (curChar == '\0')
-            MissingTerminatorError("unterminated string literal", lineNo);
+            MissingTerminatorError("Unterminated string literal", lineNo);
 
         token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
     } else if (isalpha(curChar) || curChar == '_') {
@@ -139,6 +139,8 @@ Token Lexer::getToken() {
             kind = "SET";
         } else if (text == "form") {
             kind = "FORM";
+        } else if (text == "return") {
+            kind = "RETURN";
         } else if (text == "if") {
             kind = "IF";
         } else if (text == "while") {
@@ -174,7 +176,7 @@ Token Lexer::getToken() {
                 break;
             default:
                 if (isalnum(peekChar))
-                    SyntaxError("illegal integer literal radix specifier: " + std::string(curChar, 1) + std::string(peekChar, 1), lineNo);
+                    SyntaxError("Illegal integer literal radix specifier: " + std::string(curChar, 1) + std::string(peekChar, 1), lineNo);
             }
         }
 
@@ -186,7 +188,7 @@ Token Lexer::getToken() {
 
         if (peek() == '.') {
             if (is_digit_func != is_dec_digit) {
-                SyntaxError("floating-point literals with specified radixes are not supported.", lineNo);
+                SyntaxError("Floating-point literals with specified radixes are not supported.", lineNo);
             }
             nextChar();
 

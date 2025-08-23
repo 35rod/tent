@@ -128,8 +128,22 @@ void FunctionCall::print(int indent) {
     }
 }
 
-FunctionLiteral::FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts)
-: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)) {}
+ReturnLiteral::ReturnLiteral(ASTPtr literalValue) : value(std::move(literalValue)) {}
+
+void ReturnLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "ReturnLiteral()\n";
+
+    if (value) {
+        value->print(indent+2);
+    } else {
+        printIndent(indent+2);
+        std::cout << "nullptr" << std::endl;
+    }
+}
+
+FunctionLiteral::FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue)
+: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)), returnValue(std::move(literalReturnValue)) {}
 
 void FunctionLiteral::print(int indent) {
     printIndent(indent);
