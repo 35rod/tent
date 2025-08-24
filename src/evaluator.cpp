@@ -1,16 +1,8 @@
 #include "evaluator.hpp"
 #include "errors.hpp"
+#include "ast.hpp"
 #include <cmath>
 #include <cstdio>
-
-#define MAX_DEC_LEN 50
-
-std::string Evaluator::floatToString(nl_dec_t v, int prec) {
-    static char str_buf[MAX_DEC_LEN + 1];
-    std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", prec, v); 
-
-    return std::string(str_buf);
-}
 
 Evaluator::Evaluator() {
     nativeFunctions["print"] = [](const std::vector<EvalExpr>& args) {
@@ -21,36 +13,70 @@ Evaluator::Evaluator() {
                 using T = std::decay_t<decltype(v)>;
 
                 if constexpr (std::is_same_v<T, nl_int_t>)
-                    total += std::to_string(v);
+                    total += IntLiteral::to_str(v);
                 else if constexpr (std::is_same_v<T, nl_dec_t>)
-                    total += Evaluator::floatToString(v, 6);
+                    total += FloatLiteral::to_str(v);
                 else if constexpr (std::is_same_v<T, nl_bool_t>)
-                    total += (static_cast<nl_bool_t>(v)) ? "true" : "false";
+                    total += BoolLiteral::to_str(v);
                 else if constexpr (std::is_same_v<T, std::string>)
                     total += v;
+                else if constexpr (std::is_same_v<T, std::vector<NonVecEvalExpr>>)
+                    total += VecValue::to_str(v);
                 else
-                    total += "null";
+                    total += "(null)";
             }, args[i]);
         }
 
         std::cout << total;
 
-        return EvalExpr(NoOp());
+        return EvalExpr((nl_int_t) total.size());
     };
 
     nativeFunctions["println"] = [this](const std::vector<EvalExpr>& args) {
-        this->nativeFunctions["print"](args);
+        EvalExpr temp = this->nativeFunctions["print"](args);
         std::cout << std::endl;
+        return EvalExpr(std::get<nl_int_t>(temp) + 1);
+    };
+
+    nativeFunctions["exit"] = [this](const std::vector<EvalExpr>& /*not used*/) {
+        program_should_terminate = true;
+
         return EvalExpr(NoOp());
+    };
+
+    nativeFunctions["stoll"] = [](const std::vector<EvalExpr>& args) {
+        if (!std::holds_alternative<std::string>(args[0]))
+            TypeError("passed non-string argument to first parameter of `stoll`", -1);
+        size_t base = 10;
+        if (args.size() > 1) {
+            if (!std::holds_alternative<nl_int_t>(args[1]))
+                TypeError("passed non-integer argument to first parameter of `stoll`", -1);
+            base = (size_t) std::get<nl_int_t>(args[1]);
+        }
+        return std::stoll(std::get<std::string>(args[0]), nullptr, base);
+    };
+
+    nativeFunctions["veclen"] = [](const std::vector<EvalExpr>& args) {
+        if (args.size() != 1)
+            Error("veclen takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
+
+        if (!std::holds_alternative<std::vector<NonVecEvalExpr>>(args[0]))
+            TypeError("passed non-vector value to first parameter of `veclen`", -1);
+
+        return EvalExpr((nl_int_t) std::get<std::vector<NonVecEvalExpr>>(args[0]).size());
     };
 }
 
 EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
     EvalExpr last;
     int counter = 0;
-    for (int32_t arg_i = 0; (size_t)arg_i < args.size(); ++arg_i) {
-        variables["ARG_" + std::to_string(arg_i)] = args[arg_i];
+
+    std::vector<NonVecEvalExpr> tmp_vec;
+    for (std::string s : args) {
+        tmp_vec.push_back(s);
     }
+    variables["ARGS"] = tmp_vec;
+
     variables["ARG_COUNT"] = EvalExpr((nl_int_t) args.size());
 
     for (ExpressionStmt& stmt : program.statements) {
@@ -60,6 +86,9 @@ EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string>
             counter++;
             last = std::move(expr);
         }
+
+        if (program_should_terminate)
+            break;
     }
 
     if (counter == 0) {
@@ -88,8 +117,25 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
         return EvalExpr(sl->value);
     } else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
         return EvalExpr(bl->value);
+    } else if (auto vl = dynamic_cast<VecLiteral*>(node)) {
+        std::vector<NonVecEvalExpr> ret;
+        const std::vector<ASTPtr>& vec = vl->elems;
+        for (auto& node : vec) {
+            EvalExpr val = evalExpr(std::move(node).get(), local_vars);
+            if (std::holds_alternative<nl_int_t>(val))
+                ret.push_back(std::get<nl_int_t>(val));
+            if (std::holds_alternative<nl_dec_t>(val))
+                ret.push_back(std::get<nl_dec_t>(val));
+            if (std::holds_alternative<nl_bool_t>(val))
+                ret.push_back(std::get<nl_bool_t>(val));
+            if (std::holds_alternative<std::string>(val))
+                ret.push_back(std::get<std::string>(val));
+        }
+        return ret;
+    } else if (auto vv = dynamic_cast<VecValue*>(node)) {
+        return EvalExpr(vv->elems);
     } else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
-        if (std::get<nl_bool_t>(evalExpr(ifl->condition.get())) == true) {
+        if (std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars)) == true) {
             for (ExpressionStmt& stmt : ifl->stmts) {
                 if (stmt.isBreak) {
                     break;
@@ -97,11 +143,11 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 
                 EvalExpr res = evalStmt(stmt, local_vars);
 
-				if (returning) return res;
+                if (returning) return res;
             }
         }
     } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
-        while (std::get<nl_bool_t>(evalExpr(wl->condition.get())) == true) {
+        while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars)) == true) {
             for (ExpressionStmt& stmt : wl->stmts) {
                 if (stmt.isBreak) {
                     break;
@@ -109,7 +155,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 
                 EvalExpr res = evalStmt(stmt, local_vars);
 
-				if (returning) return res;
+                if (returning) return res;
             }
         }
 
@@ -168,10 +214,13 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
                     paramNodeEval = std::make_unique<IntLiteral>(std::get<nl_int_t>(evalValue));
                 } else if (std::holds_alternative<nl_dec_t>(evalValue)) {
                     paramNodeEval = std::make_unique<FloatLiteral>(std::get<nl_dec_t>(evalValue));
-                } else if (std::holds_alternative<std::string>(evalValue)) {
-                    paramNodeEval = std::make_unique<StrLiteral>(std::get<std::string>(evalValue));
                 } else if (std::holds_alternative<nl_bool_t>(evalValue)) {
                     paramNodeEval = std::make_unique<BoolLiteral>(std::get<nl_bool_t>(evalValue));
+                } else if (std::holds_alternative<std::string>(evalValue)) {
+                    paramNodeEval = std::make_unique<StrLiteral>(std::get<std::string>(evalValue));
+                } else if (std::holds_alternative<std::vector<NonVecEvalExpr>>(evalValue)) {
+                    paramNodeEval = std::make_unique<VecValue>(std::get<std::vector<NonVecEvalExpr>>(evalValue));
+
                 } else {
                     throw std::runtime_error("Unsupported parameter type");
                 }
@@ -203,7 +252,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
             }
 
             if (variables.count(v->name) == 1) {
-                return std::move(variables[v->name]);
+                return variables[v->name];
             } else {
                 throw std::runtime_error("Unknown identifier " + v->name);
             }
@@ -240,6 +289,8 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             if (op == "EQEQ") return EvalExpr(l == r);
             if (op == "NOTEQ") return EvalExpr(l != r);
             throw std::runtime_error("invalid operator for string type: " + op);
+        } else if constexpr (std::is_same_v<L, std::string> && std::is_integral_v<R>) {
+            if (op == "INDEX") return std::string(1, l[static_cast<nl_int_t>(r)]);
         } else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
             using ResultType = std::conditional_t<
                     std::is_integral_v<L> && std::is_integral_v<R>, nl_int_t, nl_dec_t
@@ -248,42 +299,60 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
             ResultType a = static_cast<ResultType>(l);
             ResultType b = static_cast<ResultType>(r);
 
-            if (op == "ADD") return EvalExpr(a + b);
-            if (op == "SUB") return EvalExpr(a - b);
-            if (op == "MUL") return EvalExpr(a * b);
+            if (op == "ADD") return a + b;
+            if (op == "SUB") return a - b;
+            if (op == "MUL") return a * b;
             if (op == "DIV") {
                 if (b == 0) throw std::runtime_error("Division by zero");
 
-                return EvalExpr(a / b);
+                return a / b;
             }
             if constexpr (std::is_integral_v<ResultType>) {
                 using IntegralResultType = std::conditional_t<
                         std::is_same_v<L, nl_bool_t>, nl_bool_t, nl_int_t
                 >;
-                if (op == "MOD") return EvalExpr(static_cast<IntegralResultType>(a % b));
-                if (op == "BIN_AND") return EvalExpr(static_cast<IntegralResultType>(a & b));
-                if (op == "BIN_XOR") return EvalExpr(static_cast<IntegralResultType>(a ^ b));
-                if (op == "BIN_OR") return EvalExpr(static_cast<IntegralResultType>(a | b));
-                if (op == "LSHIFT") return EvalExpr(static_cast<IntegralResultType>(a << b));
-                if (op == "RSHIFT") return EvalExpr(static_cast<IntegralResultType>(a >> b));
+                if (op == "MOD") return static_cast<IntegralResultType>(a % b);
+                if (op == "BIN_AND") return static_cast<IntegralResultType>(a & b);
+                if (op == "BIN_XOR") return static_cast<IntegralResultType>(a ^ b);
+                if (op == "BIN_OR") return static_cast<IntegralResultType>(a | b);
+                if (op == "LSHIFT") return static_cast<IntegralResultType>(a << b);
+                if (op == "RSHIFT") return static_cast<IntegralResultType>(a >> b);
             }
             if (op == "BIN_AND" ||
                 op == "BIN_XOR" ||
                 op == "BIN_OR" ||
                 op == "LSHIFT" ||
                 op == "RSHIFT") TypeError("failed to apply bitwise operator " + op + " to non-integral operand(s)", -1);
-            if (op == "MOD") return EvalExpr(std::fmodf(a,b));
-            if (op == "POW") return EvalExpr(std::powf(a, b));
+            if (op == "MOD") return std::fmodf(a,b);
+            if (op == "POW") return std::powf(a, b);
 
-            if (op == "EQEQ") return EvalExpr(a == b);
-            if (op == "NOTEQ") return EvalExpr(a != b);
-            if (op == "LESS") return EvalExpr(a < b);
-            if (op == "LESSEQ") return EvalExpr(a <= b);
-            if (op == "GREATER") return EvalExpr(a > b);
-            if (op == "GREATEREQ") return EvalExpr(a >= b);
+            if (op == "EQEQ") return a == b;
+            if (op == "NOTEQ") return a != b;
+            if (op == "LESS") return a < b;
+            if (op == "LESSEQ") return a <= b;
+            if (op == "GREATER") return a > b;
+            if (op == "GREATEREQ") return a >= b;
 
-            if (op == "AND") return EvalExpr(a && b);
-            if (op == "OR") return EvalExpr(a || b);
+            if (op == "AND") return a && b;
+            if (op == "OR") return a || b;
+        } else if constexpr (std::is_same_v<L, std::vector<NonVecEvalExpr>> && std::is_integral_v<R>) {
+            const std::vector<NonVecEvalExpr> a = static_cast<std::vector<NonVecEvalExpr>>(l);
+            nl_int_t b = static_cast<nl_int_t>(r);
+            
+            if (op == "INDEX") {
+                if ((std::vector<NonVecEvalExpr>::size_type) b >= a.size())
+                    Error("index " + std::to_string(b) + " is out of bounds for vector of size "
+                            + std::to_string(a.size()) + ".", -1);
+
+                if (const auto* s = std::get_if<nl_int_t>(&a.at(b)))
+                    return *s;
+                if (const auto* s = std::get_if<nl_dec_t>(&a.at(b)))
+                    return *s;
+                if (const auto* s = std::get_if<nl_bool_t>(&a.at(b)))
+                    return *s;
+                if (const auto* s = std::get_if<std::string>(&a.at(b)))
+                    return *s;
+            }
         }
 
         return EvalExpr(NoOp());

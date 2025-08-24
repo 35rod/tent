@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
@@ -23,6 +22,7 @@ class IntLiteral : public ASTNode {
     public:
         nl_int_t value;
 
+        static std::string to_str(nl_int_t val);
         void print(int indent) override;
 
         IntLiteral(nl_int_t literalValue);
@@ -32,6 +32,7 @@ class FloatLiteral : public ASTNode {
     public:
         nl_dec_t value;
 
+        static std::string to_str(nl_dec_t val, int prec=6);
         void print(int indent) override;
 
         FloatLiteral(nl_dec_t literalValue);
@@ -41,6 +42,7 @@ class StrLiteral : public ASTNode {
     public:
         std::string value;
 
+        static std::string to_str(std::string val);
         void print(int indent) override;
 
         StrLiteral(std::string literalValue);
@@ -48,11 +50,31 @@ class StrLiteral : public ASTNode {
 
 class BoolLiteral : public ASTNode {
     public:
-        bool value;
+        nl_bool_t value;
 
+        static std::string to_str(nl_bool_t val);
         void print(int indent) override;
 
         BoolLiteral(bool literalValue);
+};
+
+class VecLiteral : public ASTNode {
+    public:
+        std::vector<ASTPtr> elems;
+
+        void print(int indent) override;
+
+        VecLiteral(std::vector<ASTPtr> literalValue);
+};
+
+class VecValue: public ASTNode {
+    public:
+        std::vector<NonVecEvalExpr> elems;
+
+        static std::string to_str(std::vector<NonVecEvalExpr> val);
+        void print(int indent) override;
+
+        VecValue(std::vector<NonVecEvalExpr> literalValue);
 };
 
 class Variable : public ASTNode {

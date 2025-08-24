@@ -14,7 +14,6 @@ void parse_args(int32_t argc, char **argv)
 {
     PROG_NAME = std::string(argv[0]);
 
-    prog_args.push_back("prog_name"); // dunno how to get program name yet
     bool doing_prog_args = false;
     for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
     {

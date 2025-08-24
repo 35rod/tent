@@ -13,21 +13,21 @@ Token Parser::current() {
     return tokens[pos];
 }
 
-Token Parser::peek() {
-    if ((pos+1) >= tokens.size()) {
+Token Parser::peek(int num) {
+    if ((pos+num) >= tokens.size()) {
         return Token("\0", "EOF", 0);
     }
 
-    return tokens[pos+1];
+    return tokens[pos+num];
 }
 
-Token Parser::advance() {
+Token Parser::advance(int num) {
     if (pos >= tokens.size()) {
         return Token("\0", "EOF", 0);
     }
 
     Token token = tokens[pos];
-    pos += 1;
+    pos += num;
 
     return token;
 }
@@ -304,16 +304,39 @@ ASTPtr Parser::parse_expression(int min_bp) {
         left = std::make_unique<StrLiteral>(token.text);
     } else if (token.kind == "BOOL") {
         left = std::make_unique<BoolLiteral>(token.text == "true");
+    } else if (token.kind == "OPEN_BRACKET") {
+        advance();
+
+        std::vector<ASTPtr> elems;
+        
+        while (current().kind != "CLOSE_BRACKET") {
+            if (current().kind == "EOF") {
+                SyntaxError("unterminated vector literal", current().lineNo);
+            }
+
+            ASTPtr elem = parse_expression(0);
+            elems.push_back(std::move(elem));
+
+            advance();
+
+            if (current().kind == "CLOSE_BRACKET")
+                break;
+
+            expect("COMMA");
+
+            advance();
+        }
+        
+        left = std::make_unique<VecLiteral>(std::move(elems));
     } else if (token.kind == "IDENT") {
 		if (peek().kind == "OPEN_PAREN") {
-            advance();
-            advance();
+            advance(2);
 
             std::vector<ASTPtr> params;
 
             while (current().kind != "CLOSE_PAREN") {
                 if (current().kind == "EOF") {
-                    SyntaxError("Closing parentheses required for function call", current().lineNo);
+                    SyntaxError("Closing parenthesis required for function call", current().lineNo);
                 }
 
                 ASTPtr param = parse_expression(0);

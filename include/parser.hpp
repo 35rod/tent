@@ -8,6 +8,7 @@
 class Parser {
     std::map<std::string, int> precedence = {
 	    {"POW", 16},
+        {"INDEX", 14},
 	    {"MUL", 12}, {"DIV", 12}, {"MOD", 12},
 	    {"ADD", 11}, {"SUB", 11},
 
@@ -23,8 +24,8 @@ class Parser {
     std::vector<Token>::size_type pos = 0;
 
     Token current();
-    Token peek();
-    Token advance();
+    Token peek(int num=1);
+    Token advance(int num=1);
     Token expect(std::string ttype);
     ExpressionStmt parse_statement();
     ASTPtr parse_expression(int minBp);
