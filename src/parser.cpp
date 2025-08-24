@@ -89,8 +89,7 @@ ExpressionStmt Parser::parse_statement() {
         for (std::string search_dir : file_search_dirs) {
             if (fileHandle.is_open()) break;
 
-            fileHandle = std::ifstream(search_dir + "/"
-                    + filename.text.substr(filename.text.rfind('/')+1, filename.text.length()));
+            fileHandle = std::ifstream(search_dir + "/" + filename.text);
         }
 
 		if (!fileHandle.is_open())
