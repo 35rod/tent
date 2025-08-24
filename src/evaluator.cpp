@@ -38,7 +38,33 @@ Evaluator::Evaluator() {
         return EvalExpr(std::get<nl_int_t>(temp) + 1);
     };
 
-    nativeFunctions["exit"] = [this](const std::vector<EvalExpr>& /*not used*/) {
+	nativeFunctions["input"] = [](const std::vector<EvalExpr>& args) {
+		if (!std::holds_alternative<std::string>(args[0])) {
+			TypeError("passed non-string argument to first parameter of input", -1);
+		}
+
+		std::string prompt = std::get<std::string>(args[0]);
+		std::string input;
+
+		std::cout << prompt;
+		std::cin >> input;
+
+		return EvalExpr(input);
+	};
+
+	nativeFunctions["log"] = [](const std::vector<EvalExpr>& args) {
+		if (std::holds_alternative<nl_int_t>(args[0])) {
+			return EvalExpr(nl_int_t(std::log10(std::get<nl_int_t>(args[0]))));
+		} else if (std::holds_alternative<nl_dec_t>(args[0])) {
+			return EvalExpr(nl_dec_t(std::log10(std::get<nl_dec_t>(args[0]))));
+		} else {
+			TypeError("passed non-numeric argument to first parameter of log", -1);
+		}
+
+		return EvalExpr(NoOp());
+	};
+
+    nativeFunctions["exit"] = [this](const std::vector<EvalExpr>&) {
         program_should_terminate = true;
 
         return EvalExpr(NoOp());
@@ -47,12 +73,16 @@ Evaluator::Evaluator() {
     nativeFunctions["stoll"] = [](const std::vector<EvalExpr>& args) {
         if (!std::holds_alternative<std::string>(args[0]))
             TypeError("passed non-string argument to first parameter of `stoll`", -1);
+
         size_t base = 10;
+
         if (args.size() > 1) {
             if (!std::holds_alternative<nl_int_t>(args[1]))
                 TypeError("passed non-integer argument to first parameter of `stoll`", -1);
+			
             base = (size_t) std::get<nl_int_t>(args[1]);
         }
+
         return std::stoll(std::get<std::string>(args[0]), nullptr, base);
     };
 

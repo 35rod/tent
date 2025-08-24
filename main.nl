@@ -1,3 +1,6 @@
 load "../add.nl";
 
-print(add(3, 5));
+set a = stoll(input("Enter the first number: "));
+set b = stoll(input("Enter the second number: "));
+
+print(add(a, b));
