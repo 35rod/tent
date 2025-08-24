@@ -11,7 +11,7 @@
 uint64_t runtime_flags = 0;
 
 std::string SRC_FILENAME, PROG_NAME;
-std::vector<std::string> prog_args;
+std::vector<std::string> prog_args, search_dirs;
 
 int32_t main(int32_t argc, char **argv) {
     parse_args(argc, argv);
@@ -34,7 +34,7 @@ int32_t main(int32_t argc, char **argv) {
     lexer.nextChar();
     lexer.getTokens();
 
-    Parser parser(lexer.tokens);
+    Parser parser(lexer.tokens, search_dirs);
     Program ast = parser.parse_program();
 
     if (IS_FLAG_SET(DEBUG))

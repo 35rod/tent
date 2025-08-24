@@ -7,13 +7,14 @@
 #include "args.hpp"
 
 extern std::string SRC_FILENAME, PROG_NAME;
-extern std::vector<std::string> prog_args;
+extern std::vector<std::string> prog_args, search_dirs;
 extern uint64_t runtime_flags;
 
 void parse_args(int32_t argc, char **argv)
 {
     PROG_NAME = std::string(argv[0]);
 
+    search_dirs.push_back(".");
     bool doing_prog_args = false;
     for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
     {
@@ -66,6 +67,19 @@ void parse_args(int32_t argc, char **argv)
                     case 'h':
                         print_usage();
                         break;
+                    case 'S':
+                        if (*(pos+1) == '\0' && argv[arg_n+1] != NULL)
+                            search_dirs.push_back(std::string(argv[++arg_n]));
+                        else if (*(pos+1) != '\0')
+                            search_dirs.push_back(std::string(pos+1));
+                        else
+                        {
+                            std::cerr << "Argument error: found search directory indicator ('" << argv[arg_n] << "') without a following search directory name." << std::endl;
+                            print_usage();
+                        }
+
+				end_loop = true;
+				break;
                     case 'f':
                         if (!SRC_FILENAME.empty())
                         {
@@ -80,11 +94,10 @@ void parse_args(int32_t argc, char **argv)
                         else
                         {
                             std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
-                                << "') without following a filename." << std::endl;
+                                << "') without a following filename." << std::endl;
                             print_usage();
                         }
                         
-                        arg_n++;
                         end_loop = true;
                         break;
                     default:

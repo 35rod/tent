@@ -95,6 +95,29 @@ Evaluator::Evaluator() {
 
         return EvalExpr((nl_int_t) std::get<std::vector<NonVecEvalExpr>>(args[0]).size());
     };
+
+    nativeFunctions["vecpush"] = [this](const std::vector<EvalExpr>& args) {
+        if (args.size() != 2)
+            Error("`vecpush` takes exactly 2 arguments, but " + std::to_string(args.size()) + " were given.", -1);
+
+        if (!std::holds_alternative<std::string>(args[0]))
+            TypeError("passed non-string value to first parameter of `vecpush`", -1);
+        if (auto* vec = std::get_if<std::vector<NonVecEvalExpr>>(&variables[std::get<std::string>(args[0])])) {
+            if (const auto *s = std::get_if<nl_int_t>(&args[1]))
+                vec->push_back(*s);
+            else if (const auto *s = std::get_if<nl_dec_t>(&args[1]))
+                vec->push_back(*s);
+            else if (const auto *s = std::get_if<nl_bool_t>(&args[1]))
+                vec->push_back(*s);
+            else if (const auto *s = std::get_if<std::string>(&args[1]))
+                vec->push_back(*s);
+            else
+                TypeError("invalid type of argument 1 of `vecpush`", -1);
+        } else
+            TypeError("couldn't find vector '" + std::get<std::string>(args[0]) + "'", -1);
+
+        return EvalExpr(NoOp());
+    };
 }
 
 EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
@@ -165,16 +188,18 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
     } else if (auto vv = dynamic_cast<VecValue*>(node)) {
         return EvalExpr(vv->elems);
     } else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
+        EvalExpr cur_res;
         if (std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars)) == true) {
             for (ExpressionStmt& stmt : ifl->stmts) {
                 if (stmt.isBreak) {
                     break;
                 }
 
-                EvalExpr res = evalStmt(stmt, local_vars);
+                cur_res = evalStmt(stmt, local_vars);
 
-                if (returning) return res;
+                if (returning) return cur_res;
             }
+            return cur_res;
         }
     } else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
         while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars)) == true) {

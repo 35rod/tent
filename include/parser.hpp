@@ -23,6 +23,8 @@ class Parser {
     std::vector<Token> tokens;
     std::vector<Token>::size_type pos = 0;
 
+    const std::vector<std::string> file_search_dirs;
+
     Token current();
     Token peek(int num=1);
     Token advance(int num=1);
@@ -33,5 +35,5 @@ class Parser {
     public:
         Program parse_program();
 
-        Parser(std::vector<Token> parserTokens);
+        Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs);
 };

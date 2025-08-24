@@ -3,7 +3,8 @@
 #include "lexer.hpp"
 #include "errors.hpp"
 
-Parser::Parser(std::vector<Token> parserTokens) : tokens(parserTokens) {}
+Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs)
+    : tokens(parserTokens), file_search_dirs(search_dirs) {}
 
 Token Parser::current() {
     if (pos >= tokens.size()) {
@@ -85,9 +86,15 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		std::ifstream fileHandle(filename.text);
+        for (std::string search_dir : file_search_dirs) {
+            if (fileHandle.is_open()) break;
+
+            fileHandle = std::ifstream(search_dir + "/"
+                    + filename.text.substr(filename.text.rfind('/')+1, filename.text.length()));
+        }
 
 		if (!fileHandle.is_open())
-        	std::cerr << "File error: could not open file '" << filename.text << "'." << std::endl;
+        	std::cerr << "File error: could not find file '" << filename.text << "'." << std::endl;
 		
 		std::string output;
 		std::string line;
@@ -102,7 +109,7 @@ ExpressionStmt Parser::parse_statement() {
 		lexer.nextChar();
 		lexer.getTokens();
 
-		Parser parser(lexer.tokens);
+		Parser parser(lexer.tokens, file_search_dirs);
 		
 		ASTPtr imported_program = std::make_unique<Program>(parser.parse_program());
 
