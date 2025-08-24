@@ -17,6 +17,7 @@ int32_t main(int32_t argc, char **argv) {
     parse_args(argc, argv);
 
     std::ifstream fileHandle(SRC_FILENAME);
+
     if (!fileHandle.is_open())
         std::cerr << "File error: could not open file '" << SRC_FILENAME << "'." << std::endl;
 
@@ -34,7 +35,7 @@ int32_t main(int32_t argc, char **argv) {
     lexer.getTokens();
 
     Parser parser(lexer.tokens);
-    Program ast = parser.parse_program();\
+    Program ast = parser.parse_program();
 
     if (IS_FLAG_SET(DEBUG))
         ast.print(0);

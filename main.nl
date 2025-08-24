@@ -1,5 +1,3 @@
-form add(a, b) {
-	return a + b;
-}
+load "../add.nl";
 
 print(add(3, 5));

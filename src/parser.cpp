@@ -1,4 +1,6 @@
 #include "parser.hpp"
+#include <fstream>
+#include "lexer.hpp"
 #include "errors.hpp"
 
 Parser::Parser(std::vector<Token> parserTokens) : tokens(parserTokens) {}
@@ -48,7 +50,16 @@ Program Parser::parse_program() {
             ExpressionStmt&& stmt = parse_statement();
             
             if (!stmt.noOp) {
-                stmts.push_back(std::move(stmt));
+				if (auto imported = dynamic_cast<Program*>(stmt.expr.get())) {
+                    std::vector<ExpressionStmt> imported_stmts = std::move(imported->statements);
+
+                    stmts.insert(stmts.begin(),
+                    	std::make_move_iterator(imported_stmts.begin()),
+                    	std::make_move_iterator(imported_stmts.end())
+					);
+				} else {
+					stmts.push_back(std::move(stmt));
+				}
             }
         } catch (const std::runtime_error& e) {
             std::cerr << "Parse error: " << e.what() << std::endl;
@@ -63,16 +74,47 @@ Program Parser::parse_program() {
 ExpressionStmt Parser::parse_statement() {
     Token token = current();
 
-    if (token.kind == "SEM") {
+	if (token.kind == "LOAD") {
+		advance();
+		Token filename = expect("STR");
+
+		if (peek().kind == "SEM") {
+			advance();
+		} else {
+			MissingTerminatorError("Missing statement terminator after load statement", current().lineNo);
+		}
+
+		std::ifstream fileHandle(filename.text);
+
+		if (!fileHandle.is_open())
+        	std::cerr << "File error: could not open file '" << filename.text << "'." << std::endl;
+		
+		std::string output;
+		std::string line;
+
+		while (std::getline(fileHandle, line)) {
+			output += line;
+			output.push_back('\n');
+		}
+
+		Lexer lexer(output);
+
+		lexer.nextChar();
+		lexer.getTokens();
+
+		Parser parser(lexer.tokens);
+		
+		ASTPtr imported_program = std::make_unique<Program>(parser.parse_program());
+
+		return ExpressionStmt(std::move(imported_program));
+	} else if (token.kind == "SEM") {
         advance();
 
         ASTPtr noOp = std::make_unique<NoOp>(NoOp());
         ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
         return expressionStmt;
-    }
-
-    if (token.kind == "SET") {
+    } else if (token.kind == "SET") {
         advance();
         Token nameToken = expect("IDENT");
         advance();

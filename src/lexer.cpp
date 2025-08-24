@@ -135,7 +135,9 @@ Token Lexer::getToken() {
 
         std::string kind;
 
-        if (text == "set") {
+        if (text == "load") {
+            kind = "LOAD";
+        } else if (text == "set") {
             kind = "SET";
         } else if (text == "form") {
             kind = "FORM";
