@@ -78,8 +78,8 @@ void parse_args(int32_t argc, char **argv)
                             print_usage();
                         }
 
-				end_loop = true;
-				break;
+                        end_loop = true;
+                        break;
                     case 'f':
                         if (!SRC_FILENAME.empty())
                         {
@@ -108,7 +108,14 @@ void parse_args(int32_t argc, char **argv)
                 }
             }
         } else if (SRC_FILENAME.empty())
+        {
             SRC_FILENAME = std::string(argv[arg_n]);
+        } else
+        {
+          std::cerr << "Argument error: found (assumed) filename ('" << argv[arg_n]
+              << "') after filename was already resolved." << std::endl;
+          print_usage();
+        }
     }
     
     if (SRC_FILENAME.empty())
@@ -122,8 +129,7 @@ void print_usage(void)
               << "options:" << std::endl
               << "   -d, --debug                       Enable debug output" << std::endl
               << "   -h, --help                        Display this help message" << std::endl
-              << "   -f FILENAME, --file=FILENAME      Read data from FILENAME" << std::endl;
+              << "   -f FILENAME, --file=FILENAME      Read program from FILENAME" << std::endl
+          << "   -S SEARCHDIR                      Permit the `load` statement to also search for files in SEARCHDIR" << std::endl;
     exit(1);
 }
-
-

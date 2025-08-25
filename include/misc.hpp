@@ -2,6 +2,8 @@
 #define MISC_HPP
 
 #include <variant>
+#include <cstdint>
+#include <string>
 
 typedef int64_t nl_int_t;
 typedef float nl_dec_t;

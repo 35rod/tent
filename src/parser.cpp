@@ -300,6 +300,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
 	} else if (token.kind == "STR") {
 		left = std::make_unique<StrLiteral>(token.text);
+	} else if (token.kind == "CHR") {
+        left = std::make_unique<IntLiteral>(token.text[0]);
 	} else if (token.kind == "BOOL") {
 		left = std::make_unique<BoolLiteral>(token.text == "true");
 	} else if (token.kind == "OPEN_BRACKET") {

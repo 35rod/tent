@@ -208,7 +208,10 @@ Token Lexer::getToken() {
 		if (curChar == '\0')
 			MissingTerminatorError("Unterminated string literal", lineNo);
 
-		token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
+		if (curPos - startPos == 1)
+			token = Token(source.substr(startPos, 1), "CHR", lineNo);
+		else 
+			token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
 	} else if (isalpha(curChar) || curChar == '_') {
 		int startPos = curPos;
 

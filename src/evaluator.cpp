@@ -87,19 +87,44 @@ Evaluator::Evaluator() {
 		return std::stoll(std::get<std::string>(args[0]), nullptr, base);
 	};
 
-	nativeFunctions["veclen"] = [](const std::vector<EvalExpr>& args) {
+	nativeFunctions["len"] = [](const std::vector<EvalExpr>& args) {
 		if (args.size() != 1)
 			Error("veclen takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
 
-		if (!std::holds_alternative<std::vector<NonVecEvalExpr>>(args[0]))
-			TypeError("passed non-vector value to first parameter of `veclen`", -1);
+		if (std::holds_alternative<std::vector<NonVecEvalExpr>>(args[0]))
+			return (nl_int_t) std::get<std::vector<NonVecEvalExpr>>(args[0]).size();
+		if (std::holds_alternative<std::string>(args[0]))
+			return (nl_int_t) std::get<std::string>(args[0]).length();
+		return (nl_int_t) -1;
+	};
 
-		return EvalExpr((nl_int_t) std::get<std::vector<NonVecEvalExpr>>(args[0]).size());
+	nativeFunctions["ord"] = [](const std::vector<EvalExpr>& args) {
+		if (args.size() != 1)
+			Error("`ord` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
+
+		if (const auto *s = std::get_if<std::string>(&args[0]))
+			return (nl_int_t) (*s)[0];
+		else
+			TypeError("passed non-string value to first parameter of `ord`", -1);
+
+		return (nl_int_t) -1;
+	};
+
+	nativeFunctions["chr"] = [](const std::vector<EvalExpr>& args) {
+		if (args.size() != 1)
+			Error("`chr` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
+
+		if (const auto *i = std::get_if<nl_int_t>(&args[0]))
+			return std::string(1, *i);
+		else
+			TypeError("passed non-integer value to first parameter of `chr`", -1);
+
+		return std::string("");
 	};
 
 	nativeFunctions["vecpush"] = [this](const std::vector<EvalExpr>& args) {
 		if (args.size() != 2)
-			Error("`Vecpush` takes exactly 2 arguments, but " + std::to_string(args.size()) + " were given.", -1);
+			Error("`vecpush` takes exactly 2 arguments, but " + std::to_string(args.size()) + " were given.", -1);
 
 		if (!std::holds_alternative<std::string>(args[0]))
 			TypeError("passed non-string value to first parameter of `vecpush`", -1);
@@ -148,6 +173,32 @@ Evaluator::Evaluator() {
 
 		return EvalExpr(NoOp());
 	};
+
+	nativeFunctions["getc"] = [](const std::vector<EvalExpr>&) {
+		return fgetc(stdin);
+	};
+	nativeFunctions["read_in"] = [this](const std::vector<EvalExpr>& args) {
+		nl_int_t n = 1;
+		if (args.size() < 1 || args.size() > 2)
+			TypeError("builtin functino `read_in` takes 1 or 2 arguments, but "
+					+ std::to_string(args.size()) + " were provided", -1);
+		if (!std::holds_alternative<std::string>(args[0]))
+			TypeError("passed non-string value to first parameter of `read_in`, 'buf_name'", -1);
+		if (args.size() == 2 && std::holds_alternative<nl_int_t>(args[1]))
+			n = std::get<nl_int_t>(args[1]);
+		else if (args.size() == 2)
+			TypeError("passed non-integer value to second parameter of `read_in`, 'n'", -1);
+
+		static uint8_t *buf;
+		buf = (uint8_t *)calloc(n+1, 1);
+		if (auto *s = std::get_if<std::string>(&variables[std::get<std::string>(args[0])])) {
+			nl_int_t nread = fread(buf, 1, n, stdin);
+			*s = std::string((char *)buf);
+			return nread; 
+		}
+			
+		return (nl_int_t) -1;
+	};
 }
 
 EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
@@ -161,6 +212,7 @@ EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string>
 	variables["ARGS"] = tmp_vec;
 
 	variables["ARG_COUNT"] = EvalExpr((nl_int_t) args.size());
+	variables["EOF"] = EvalExpr(EOF);
 
 	for (ExpressionStmt& stmt : program.statements) {
 		EvalExpr expr = evalStmt(stmt);

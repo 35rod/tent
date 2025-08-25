@@ -1,3 +1,5 @@
+#include <cstdint>
+
 #include "misc.hpp"
 
 int64_t ipow(int64_t base, uint8_t exp) {

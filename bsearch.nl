@@ -1,6 +1,6 @@
 form bsearch(srcvec, targ) {
 	set low = 0;
-	set high = veclen(srcvec) - 1;
+	set high = len(srcvec) - 1;
 	set mid = 0-1;
 
 	while low <= high {
