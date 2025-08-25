@@ -238,6 +238,8 @@ Token Lexer::getToken() {
 			kind = "WHILE";
 		} else if (text == "break") {
 			kind = "BREAK";
+		} else if (text == "continue") {
+			kind = "CONTINUE";
 		} else if (text == "true" || text == "false") {
 			kind = "BOOL";
 		} else {

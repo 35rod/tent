@@ -113,10 +113,15 @@ class ExpressionStmt : public ASTNode {
 		ASTPtr expr;
 		bool noOp;
 		bool isBreak;
+		bool isContinue;
 
 		void print(int indent) override;
 
-		ExpressionStmt(ASTPtr expr, bool exprNoOp=false, bool exprIsBreak=false);
+		ExpressionStmt(
+                ASTPtr expr,
+                bool exprNoOp=false,
+                bool exprIsBreak=false,
+                bool exprIsContinue=false);
 };
 
 class IfLiteral : public ASTNode {

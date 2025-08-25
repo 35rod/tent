@@ -1,7 +1,7 @@
 form bsearch(srcvec, targ) {
 	set low = 0;
 	set high = len(srcvec) - 1;
-	set mid = 0-1;
+	set mid = -1;
 
 	while low <= high {
 		mid = low + (high - low)/2;
@@ -16,5 +16,5 @@ form bsearch(srcvec, targ) {
 		}
 	}
 
-	return 0-1;
+	return -1;
 }

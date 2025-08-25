@@ -239,7 +239,12 @@ void FunctionLiteral::print(int indent) {
 	}
 }
 
-ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, bool stmtNoOp, bool exprIsBreak) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak) {}
+ExpressionStmt::ExpressionStmt(
+        ASTPtr stmtExpr,
+        bool stmtNoOp,
+        bool exprIsBreak,
+        bool exprIsContinue)
+    : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);

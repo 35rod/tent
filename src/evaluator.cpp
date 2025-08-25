@@ -275,9 +275,9 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 		EvalExpr cur_res;
 		if (std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars)) == true) {
 			for (ExpressionStmt& stmt : ifl->stmts) {
-				if (stmt.isBreak) {
+				if (stmt.isBreak || stmt.isContinue) {
 					break;
-				}
+				} 
 
 				cur_res = evalStmt(stmt, local_vars);
 
@@ -286,9 +286,13 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 			return cur_res;
 		}
 	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
-		while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars)) == true) {
+		bool break_while_loop = false;
+		while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars)) == true && !break_while_loop) {
 			for (ExpressionStmt& stmt : wl->stmts) {
 				if (stmt.isBreak) {
+					break_while_loop = true;
+					break;
+				} else if (stmt.isBreak) {
 					break;
 				}
 
