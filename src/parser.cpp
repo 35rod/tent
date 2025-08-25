@@ -124,7 +124,7 @@ ExpressionStmt Parser::parse_statement() {
 		advance();
 		Token nameToken = expect("IDENT");
 		advance();
-		expect("EQ");
+		expect("ASSIGN");
 		advance();
 
 		ASTPtr value = parse_expression(0);
@@ -135,7 +135,7 @@ ExpressionStmt Parser::parse_statement() {
 			MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
 		}
 
-		ASTPtr assign = std::make_unique<BinaryOp>("EQ", std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
+		ASTPtr assign = std::make_unique<BinaryOp>("ASSIGN", std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
 
 		return ExpressionStmt(std::move(assign));
 	} else if (token.kind == "FORM") {
@@ -267,7 +267,8 @@ ExpressionStmt Parser::parse_statement() {
 ASTPtr Parser::parse_expression(int min_bp) {
 	Token token = current();
 
-	if (token.kind == "NOT" || token.kind == "SUB" || token.kind == "ADDADD" || token.kind == "SUBSUB") {
+	if (token.kind == "BIT_NOT" || token.kind == "NOT" || token.kind == "SUB"
+     || token.kind == "INCREMENT" || token.kind == "DECREMENT") {
 		advance();
 	
 		ASTPtr operand = parse_expression(15);
@@ -369,7 +370,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 	while (true) {
 		Token nextToken = peek();
 
-		if (nextToken.kind == "ADDADD" || nextToken.kind == "SUBSUB") {
+		if (nextToken.kind == "INCREMENT" || nextToken.kind == "DECREMENT") {
 			advance();
 
 			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left));
@@ -393,7 +394,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		advance();
 
 		auto isRightAssoc = [](const std::string& op) {
-			return (op.find("EQ") != std::string::npos) && op != "EQEQ" && op != "NOTEQ";
+			return (op.find("ASSIGN") != std::string::npos || op == "POW");
 		};
 		
 		ASTPtr right = parse_expression(isRightAssoc(op.kind) ? bp : bp+1);

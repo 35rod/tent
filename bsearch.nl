@@ -8,10 +8,10 @@ form bsearch(srcvec, targ) {
 		if srcvec@mid == targ {
 			return mid;
 		}
-		if srcvec@mid+1 < targ {
+		if srcvec@mid < targ {
 			low = mid + 1;
 		}
-		if srcvec@mid+1 > targ {
+		if srcvec@mid > targ {
 			high = mid - 1;
 		}
 	}

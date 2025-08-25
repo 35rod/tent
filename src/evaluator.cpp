@@ -343,6 +343,14 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		if (un->op == "NOT") {
 			return EvalExpr(!std::get<nl_bool_t>(evalExpr(un->operand.get(), local_vars)));
+        } else if (un->op == "BIT_NOT") {
+            EvalExpr operand = evalExpr(un->operand.get(), local_vars);
+            if (std::holds_alternative<nl_int_t>(operand))
+                return EvalExpr(~std::get<nl_int_t>(operand));
+            else if (std::holds_alternative<nl_bool_t>(operand))
+                return EvalExpr(~std::get<nl_int_t>(operand));
+            else
+                TypeError("failed to apply operator BIT_NOT to non-integral operand", -1);
 		} else if (un->op == "SUB") {
 			EvalExpr val = evalExpr(un->operand.get(), local_vars);
 
@@ -355,11 +363,11 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 			}
 
 			return EvalExpr(NoOp());
-		} else if (un->op == "ADDADD" || un->op == "SUBSUB") {
+		} else if (un->op == "INCREMENT" || un->op == "DECREMENT") {
 			if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
 				if (variables.count(var->name) == 1) {
 					if (std::holds_alternative<nl_int_t>(variables[var->name])) {
-						if (un->op == "ADDADD") {
+						if (un->op == "INCREMENT") {
 							return variables[var->name] = std::get<nl_int_t>(variables[var->name]) + 1;
 						} else {
 							return variables[var->name] = std::get<nl_int_t>(variables[var->name]) - 1;
@@ -374,26 +382,24 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
 		auto isRightAssoc = [](const std::string& op) {
-			return (op.find("EQ") != std::string::npos) && op != "EQEQ" && op != "NOTEQ";
+			return (op.find("ASSIGN") != std::string::npos || op == "POW");
 		};
 
 		if (isRightAssoc(bin->op)) {
-			if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
+            if (bin->op == "POW") {
+                EvalExpr left = evalExpr(bin->left.get(), local_vars);
+                EvalExpr right = evalExpr(bin->right.get(), local_vars);
+		        
+                return evalBinaryOp("POW", std::move(left), std::move(right));
+            } else if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
 				EvalExpr right = evalExpr(bin->right.get(), local_vars);
 
-				if (bin->op == "EQ") {
-					variables[varNode->name] = right;
-				} else if (bin->op == "ADDEQ") {
-					variables[varNode->name] = evalBinaryOp("ADD", variables[varNode->name], right);
-				} else if (bin->op == "SUBEQ") {
-					variables[varNode->name] = evalBinaryOp("SUB", variables[varNode->name], right);
-				} else if (bin->op == "MULEQ") {
-					variables[varNode->name] = evalBinaryOp("MUL", variables[varNode->name], right);
-				} else if (bin->op == "DIVEQ") {
-					variables[varNode->name] = evalBinaryOp("DIV", variables[varNode->name], right);
-				}
-
-				return right;
+                if (bin->op == "ASSIGN")
+					return variables[varNode->name] = right;
+                else
+                    return variables[varNode->name] = evalBinaryOp(
+                            bin->op.substr(0, bin->op.length()-7),
+                            variables[varNode->name], right);
 			}
 		}
 
@@ -443,18 +449,21 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
 				using IntegralResultType = std::conditional_t<
 						std::is_same_v<L, nl_bool_t>, nl_bool_t, nl_int_t
 				>;
+                if (op == "POW") return static_cast<IntegralResultType>(ipow(a, b));
 				if (op == "MOD") return static_cast<IntegralResultType>(a % b);
 				if (op == "BIN_AND") return static_cast<IntegralResultType>(a & b);
 				if (op == "BIN_XOR") return static_cast<IntegralResultType>(a ^ b);
 				if (op == "BIN_OR") return static_cast<IntegralResultType>(a | b);
 				if (op == "LSHIFT") return static_cast<IntegralResultType>(a << b);
 				if (op == "RSHIFT") return static_cast<IntegralResultType>(a >> b);
+                if (op == "FLOOR_DIV") return static_cast<IntegralResultType>(a / b);
 			}
 			if (op == "BIN_AND" ||
 				op == "BIN_XOR" ||
 				op == "BIN_OR" ||
 				op == "LSHIFT" ||
-				op == "RSHIFT") TypeError("failed to apply bitwise operator " + op + " to non-integral operand(s)", -1);
+				op == "RSHIFT" ||
+                op == "FLOOR_DIV") TypeError("failed to apply operator " + op + " to non-integral operand(s)", -1);
 			if (op == "MOD") return std::fmodf(a,b);
 			if (op == "POW") return std::powf(a, b);
 

@@ -44,63 +44,100 @@ Token Lexer::getToken() {
 	if (curChar == '+') {
 		if (peek() == '+') {
 			nextChar();
-			token = Token("++", "ADDADD", lineNo);
+			token = Token("++", "INCREMENT", lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("+=", "ADDEQ", lineNo);
+			token = Token("+=", "ADD_ASSIGN", lineNo);
 		} else {
 			token = Token("+", "ADD", lineNo);
 		}
 	} else if (curChar == '-') {
 		if (peek() == '-') {
 			nextChar();
-			token = Token("--", "SUBSUB", lineNo);
+			token = Token("--", "DECREMENT", lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("-=", "SUBEQ", lineNo);
+			token = Token("-=", "SUB_ASSIGN", lineNo);
 		} else {
 			token = Token("-", "SUB", lineNo);
 		}
 	} else if (curChar == '*') {
 		if (peek() == '*') {
 			nextChar();
-			token = Token("**", "POW", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token("**=", "POW_ASSIGN", lineNo);
+			} else
+				token = Token("**", "POW", lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("*=", "MULEQ", lineNo);
+			token = Token("*=", "MUL_ASSIGN", lineNo);
 		} else {
 			token = Token("*", "MUL", lineNo);
 		}
 	} else if (curChar == '/') {
-		if (peek() == '=') {
+		if (peek() == '/') {
 			nextChar();
-			token = Token("/=", "DIVEQ", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token("//=", "FLOOR_DIV_ASSIGN", lineNo);
+			} else
+				token = Token("//", "FLOOR_DIV", lineNo);
+		} else if (peek() == '=') {
+			nextChar();
+			token = Token("/=", "DIV_ASSIGN", lineNo);
 		} else {
 			token = Token("/", "DIV", lineNo);
 		}
 	} else if (curChar == '%') {
-		token = Token("%", "MOD", lineNo);
+		if (peek() == '=') {
+			nextChar();
+			token = Token("%=", "MOD_ASSIGN", lineNo);
+		} else
+			token = Token("%", "MOD", lineNo);
 	} else if (curChar == '&') {
 		if (peek() == '&') {
 			nextChar();
-			token = Token("&&", "AND", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token("&&=", "AND_ASSIGN", lineNo);
+			} else
+				token = Token("&&", "AND", lineNo);
+		} else if (peek() == '=') {
+			nextChar();
+			token = Token("&=", "BIT_AND_ASSIGN", lineNo);
 		} else
-			token = Token("&", "BIN_AND", lineNo);
+			token = Token("&", "BIT_AND", lineNo);
 	} else if (curChar == '@') {
 		token = Token("@", "INDEX", lineNo);
 	} else if (curChar == '^') {
-		token = Token("^", "BIN_XOR", lineNo);
+		if (peek() == '=') {
+			nextChar();
+			token = Token("^=", "BIT_XOR_ASSIGN", lineNo);
+		} else
+			token = Token("^", "BIT_XOR", lineNo);
 	} else if (curChar == '|') {
 		if (peek() == '|') {
 			nextChar();
-			token = Token("||", "OR", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token("||=", "OR_ASSIGN", lineNo);
+			} else
+				token = Token("||", "OR", lineNo);
+		} else if (peek() == '=') {
+			nextChar();
+			token = Token("|=", "BIT_OR_ASSIGN", lineNo);
 		} else
-			token = Token("|", "BIN_OR", lineNo);
+			token = Token("|", "BIT_OR", lineNo);
 	} else if (curChar == '<') {
 		char peekChar = peek();
 		if (peekChar == '<') {
 			nextChar();
-			token = Token("<<", "LSHIFT", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token("<<=", "LSHIFT_ASSIGN", lineNo);
+			} else
+				token = Token("<<", "LSHIFT", lineNo);
 		} else if (peekChar == '=') {
 			nextChar();
 			token = Token("<=", "LESSEQ", lineNo);
@@ -110,7 +147,11 @@ Token Lexer::getToken() {
 		char peekChar = peek();
 		if (peekChar == '>') {
 			nextChar();
-			token = Token(">>", "RSHIFT", lineNo);
+			if (peek() == '=') {
+				nextChar();
+				token = Token(">>=", "RSHIFT_ASSIGN", lineNo);
+			} else
+				token = Token(">>", "RSHIFT", lineNo);
 		} else if (peekChar == '=') {
 			nextChar();
 			token = Token(">=", "GREATEREQ", lineNo);
@@ -131,18 +172,20 @@ Token Lexer::getToken() {
 	} else if (curChar == ']') {
 		token = Token("]", "CLOSE_BRACKET", lineNo);
 	} else if (curChar == '!') {
-		if (peek() == '=') {
+		if (peek() == '!') {
+			nextChar();
+			token = Token("!!", "BIT_NOT", lineNo);
+		} else if (peek() == '=') {
 			nextChar();
 			token = Token("!=", "NOTEQ", lineNo);
-		} else {
+		} else
 			token = Token("!", "NOT", lineNo);
-		}
 	} else if (curChar == '=') {
 		if (peek() == '=') {
 			nextChar();
 			token = Token("==", "EQEQ", lineNo);
 		} else {
-			token = Token("=", "EQ", lineNo);
+			token = Token("=", "ASSIGN", lineNo);
 		}
 	} else if (curChar == '\"') {
 		nextChar();

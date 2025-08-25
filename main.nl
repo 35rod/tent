@@ -1,5 +1,5 @@
-set x = 3;
+set x = 2;
 
-x *= 2;
+x **= 3**2;
 
-print(x);
+println(x);

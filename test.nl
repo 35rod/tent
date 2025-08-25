@@ -8,8 +8,8 @@ while a < MAX {
 	b = 0;
 	while b <= a {
 		print("*");
-		b = b + 1;
+		++b;
 	}
 	println("");
-	a = a + 1;
+	++a;
 }
