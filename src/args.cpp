@@ -2,6 +2,7 @@
 #include <string>
 
 #include <cstring>
+#include <vector>
 #include <cstdio>
 
 #include "args.hpp"

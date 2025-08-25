@@ -78,6 +78,7 @@ int64_t ipow(int64_t base, uint8_t exp) {
 	  [[fallthrough]];
     case 1:
         if (exp & 1) result *= base;
+	  [[fallthrough]];
     default:
         return result;
     }
