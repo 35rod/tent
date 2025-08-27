@@ -35,8 +35,10 @@ class Parser {
 
     Token current();
     Token peek(int num=1);
+    /* returns the current token, then advances (like i++ vs ++i) */
     Token advance(int num=1);
     Token expect(std::string ttype);
+    std::vector<ExpressionStmt> parse_block();
     ExpressionStmt parse_statement();
     ASTPtr parse_expression(int minBp);
 

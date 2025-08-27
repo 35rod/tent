@@ -158,18 +158,25 @@ void BinaryOp::print(int indent) {
 	}
 }
 
-IfLiteral::IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
+IfLiteral::IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts) : condition(std::move(literalCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
 void IfLiteral::print(int indent) {
 	printIndent(indent);
-	std::cout << "IfLiteral(statements=" << stmts.size() << ")\n";
+	std::cout << "IfLiteral(thenStmts=" << thenClauseStmts.size()
+			  << ", elseStmts=" << elseClauseStmts.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << " Condition:\n";
 	condition->print(indent+4);
-	printIndent(indent+2);
-	std::cout << " Statements:\n";
 
-	for (ExpressionStmt& stmt : stmts) {
+	printIndent(indent+2);
+	std::cout << " ThenClauseStatements:\n";
+	for (ExpressionStmt& stmt : thenClauseStmts) {
+		stmt.print(indent+4);
+	}
+
+	printIndent(indent+2);
+	std::cout << "  ElseClauseStatements:\n";
+	for (ExpressionStmt& stmt : elseClauseStmts) {
 		stmt.print(indent+4);
 	}
 }
@@ -240,11 +247,11 @@ void FunctionLiteral::print(int indent) {
 }
 
 ExpressionStmt::ExpressionStmt(
-        ASTPtr stmtExpr,
-        bool stmtNoOp,
-        bool exprIsBreak,
-        bool exprIsContinue)
-    : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+		ASTPtr stmtExpr,
+		bool stmtNoOp,
+		bool exprIsBreak,
+		bool exprIsContinue)
+	: ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);

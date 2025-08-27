@@ -22,16 +22,14 @@ while turns < 9 {
 			vecassign(spot, "board", "X");
 			current_turn = ++turns;
 		}
-	} if turns % 2 == 1 {
-		if turns != current_turn {
-			println("It is O's turn");
+	} else if turns != current_turn {
+		println("It is O's turn");
 
-			set spot = stoll(input("Choose a spot (1-9): ")) - 1;
+		set spot = stoll(input("Choose a spot (1-9): ")) - 1;
 
-			if (board@spot == " ") {
-				vecassign(spot, "board", "O");
-				++turns;
-			}
+		if (board@spot == " ") {
+			vecassign(spot, "board", "O");
+			++turns;
 		}
 	}
 }

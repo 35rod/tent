@@ -72,6 +72,28 @@ Program Parser::parse_program() {
 	return Program(std::move(stmts));
 }
 
+std::vector<ExpressionStmt> Parser::parse_block() {
+	expect("OPEN_BRAC");
+	advance();
+
+	std::vector<ExpressionStmt> stmts;
+
+	while (current().kind != "CLOSE_BRAC") {
+		if (current().kind == "EOF")
+			SyntaxError("Closing braces required for code block", current().lineNo);
+
+		ExpressionStmt&& stmt = parse_statement();
+
+		if ((stmt.noOp && stmt.isBreak) || !stmt.noOp) {
+			stmts.push_back(std::move(stmt));
+		}
+	}
+
+	advance();
+
+	return stmts;
+}
+
 ExpressionStmt Parser::parse_statement() {
 	Token token = current();
 
@@ -168,24 +190,7 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		advance();
-		expect("OPEN_BRAC");
-		advance();
-
-		std::vector<ExpressionStmt> stmts;
-
-		while (current().kind != "CLOSE_BRAC") {
-			if (current().kind == "EOF") {
-				SyntaxError("Closing braces required for function body", current().lineNo);
-			}
-
-			ExpressionStmt&& stmt = parse_statement();
-
-			if (!stmt.noOp) {
-				stmts.push_back(std::move(stmt));
-			}
-		}
-
-		advance();
+		std::vector<ExpressionStmt> stmts = parse_block();
 
 		ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 
@@ -204,42 +209,57 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr returnLiteral = std::make_unique<ReturnLiteral>(std::move(value));
 
 		return ExpressionStmt(std::move(returnLiteral));
-	} else if (token.kind == "WHILE" || token.kind == "IF") {
+	} else if (token.kind == "WHILE") {
 		advance();
 
 		ASTPtr condition = parse_expression(0);
 
-		advance();
-		expect("OPEN_BRAC");
-		advance();
-
 		std::vector<ExpressionStmt> stmts;
 
-		while (current().kind != "CLOSE_BRAC") {
-			if (current().kind == "EOF") {
-				SyntaxError("Closing braces required for " +
-						std::string((token.kind == "WHILE")
-							? "while loop"
-							: "if statement")
-						+ " body", current().lineNo);
-			}
+		advance();
 
-			ExpressionStmt&& stmt = parse_statement();
+		if (current().kind != "OPEN_BRAC") {
+			stmts.push_back(parse_statement());
+		} else {
+			stmts = parse_block();
+		}
 
-			if ((stmt.noOp && stmt.isBreak) || !stmt.noOp) {
-				stmts.push_back(std::move(stmt));
-			}
+		ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
+
+		return ExpressionStmt(std::move(whileLiteral));
+	} else if (token.kind == "IF") {
+		advance();
+
+		ASTPtr condition = parse_expression(0);
+		std::vector<ExpressionStmt> thenStmts, elseStmts;
+
+		advance();
+
+		if (current().kind != "OPEN_BRAC") {
+			thenStmts.push_back(parse_statement());
+		} else {
+			thenStmts = parse_block();
+		}
+
+		if (current().kind != "ELSE") {
+			advance();
+			
+			ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts));
+
+			return ExpressionStmt(std::move(ifLiteral));
 		}
 
 		advance();
 
-		if (token.kind == "WHILE") {
-			ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
-			return ExpressionStmt(std::move(whileLiteral));
+		if (current().kind != "OPEN_BRAC") {
+			elseStmts.push_back(parse_statement());
 		} else {
-			ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(stmts));
-			return ExpressionStmt(std::move(ifLiteral));
+			elseStmts = parse_block();
 		}
+
+		ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts), std::move(elseStmts));
+
+		return ExpressionStmt(std::move(ifLiteral));
 	} else if (token.kind == "BREAK" || token.kind == "CONTINUE") {
 		ASTPtr noOp = std::make_unique<NoOp>();
 
@@ -253,9 +273,7 @@ ExpressionStmt Parser::parse_statement() {
 
 	ASTPtr expr = parse_expression(0);
 
-	Token next = peek();
-
-	if (next.kind == "SEM") {
+	if (peek().kind == "SEM") {
 		advance();
 	} else {
 		MissingTerminatorError("Missing statement terminator after expression", current().lineNo);
@@ -267,8 +285,8 @@ ExpressionStmt Parser::parse_statement() {
 ASTPtr Parser::parse_expression(int min_bp) {
 	Token token = current();
 
-	if (token.kind == "BIT_NOT" || token.kind == "NOT" || token.kind == "SUB"
-     || token.kind == "INCREMENT" || token.kind == "DECREMENT") {
+	if (token.kind == "BIT_NOT" || token.kind == "NOT" || token.kind == "SUB" ||
+			token.kind == "INCREMENT" || token.kind == "DECREMENT") {
 		advance();
 	
 		ASTPtr operand = parse_expression(15);
@@ -291,7 +309,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		if (token.kind == "INT_BIN")
 			base = 2;
 		if (base == -1)
-			SyntaxError("Somehow an integer with an invalid radix has slipped through the cracks..."
+			SyntaxError("Somehow an integer with an invalid radix (base) has slipped through the cracks..."
 					"this message shouldn't ever appear at all, really."
 					"Please report this in the Issue Tracker.", token.lineNo);
 

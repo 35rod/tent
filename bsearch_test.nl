@@ -9,8 +9,7 @@ while cur != "end" {
 }
 set target = stoll(input("target number: "));
 set res = bsearch(in_vec, target);
-if res == -1 {
+if res == -1
 	println("target value ", target, " not found");
-	exit();
-}
-println("found target value ", target, " at index ", res);
+else
+	println("found target value ", target, " at index ", res);

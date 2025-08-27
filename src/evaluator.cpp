@@ -272,9 +272,10 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 	} else if (auto vv = dynamic_cast<VecValue*>(node)) {
 		return EvalExpr(vv->elems);
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
-		EvalExpr cur_res;
-		if (std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars)) == true) {
-			for (ExpressionStmt& stmt : ifl->stmts) {
+		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars));
+		EvalExpr cur_res = EvalExpr(NoOp());
+		if (condition) {
+			for (ExpressionStmt& stmt : ifl->thenClauseStmts) {
 				if (stmt.isBreak || stmt.isContinue) {
 					break;
 				} 
@@ -283,8 +284,18 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 
 				if (returning) return cur_res;
 			}
-			return cur_res;
+		} else {
+			for (ExpressionStmt& stmt : ifl->elseClauseStmts) {
+				if (stmt.isBreak || stmt.isContinue) {
+					break;
+				} 
+
+				cur_res = evalStmt(stmt, local_vars);
+
+				if (returning) return cur_res;
+			}
 		}
+		return cur_res;
 	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
 		bool break_while_loop = false;
 		while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars)) == true && !break_while_loop) {

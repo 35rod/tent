@@ -234,6 +234,8 @@ Token Lexer::getToken() {
 			kind = "RETURN";
 		} else if (text == "if") {
 			kind = "IF";
+		} else if (text == "else") {
+			kind = "ELSE";
 		} else if (text == "while") {
 			kind = "WHILE";
 		} else if (text == "break") {

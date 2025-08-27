@@ -127,11 +127,12 @@ class ExpressionStmt : public ASTNode {
 class IfLiteral : public ASTNode {
 	public:
 		ASTPtr condition;
-		std::vector<ExpressionStmt> stmts;
+		std::vector<ExpressionStmt> thenClauseStmts;
+		std::vector<ExpressionStmt> elseClauseStmts;
 
 		void print(int indent) override;
 
-		IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
+		IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts={});
 };
 
 class WhileLiteral : public ASTNode {
