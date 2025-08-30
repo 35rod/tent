@@ -20,7 +20,7 @@ while turns < 9 {
 
 		if (board@spot == " ") {
 			vecassign(spot, "board", "X");
-			current_turn = ++turns;
+			current_turn = turns++;
 		}
 	} else if turns != current_turn {
 		println("It is O's turn");
@@ -29,7 +29,7 @@ while turns < 9 {
 
 		if (board@spot == " ") {
 			vecassign(spot, "board", "O");
-			++turns;
+			turns++;
 		}
 	}
 }

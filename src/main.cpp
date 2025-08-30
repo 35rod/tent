@@ -40,8 +40,17 @@ int32_t main(int32_t argc, char **argv) {
 	if (IS_FLAG_SET(DEBUG))
 		ast.print(0);
 
-	Evaluator evaluator;
-	evaluator.evalProgram(ast, prog_args);
+	if (IS_FLAG_SET(COMPILE)) {
+		std::ofstream out("main.nlc");
+
+		if (out.is_open()) {
+			ast.serialize(out, 0);
+			out.close();
+		}
+	} else {
+		Evaluator evaluator;
+		evaluator.evalProgram(ast, prog_args);
+	}
 
 	return 0;
 }

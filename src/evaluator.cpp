@@ -13,7 +13,7 @@ Evaluator::Evaluator() {
 				using T = std::decay_t<decltype(v)>;
 
 				if constexpr (std::is_same_v<T, nl_int_t>)
-					total += IntLiteral::to_str(v);
+					total += std::to_string(v);
 				else if constexpr (std::is_same_v<T, nl_dec_t>)
 					total += FloatLiteral::to_str(v);
 				else if constexpr (std::is_same_v<T, nl_bool_t>)

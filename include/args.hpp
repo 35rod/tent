@@ -5,6 +5,7 @@
 #define BIT(n) (1<<n)
 enum {
 	DEBUG = BIT(0),
+	COMPILE = BIT(1),
 };
 
 #define IS_FLAG_SET(f) ((runtime_flags & f) != 0)

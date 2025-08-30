@@ -7,26 +7,40 @@ static void printIndent(int indent) {
 	printf("%*s", indent, " ");
 }
 
+static void writeIndent(std::ostream& out, int indent) {
+	out << std::string(indent, ' ');
+}
+
 void ASTNode::print(int indent) {
 	printIndent(indent);
 	std::cout << "ASTNode()" << std::endl;
 }
 
-void NoOp::print(int ident) {
-	printIndent(ident);
-	std::cout << "NoOp()" << std::endl;
+void ASTNode::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "ASTNode()" << std::endl;
 }
 
+void NoOp::print(int ident) {
+	printIndent(ident);
+	std::cout << "NoOp()\n";
+}
+
+void NoOp::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "NoOp()\n";
+}
 
 IntLiteral::IntLiteral(nl_int_t literalValue) : ASTNode(), value(literalValue) {}
 
-std::string IntLiteral::to_str(nl_int_t val) {
-	return std::to_string(val);
-}
-
 void IntLiteral::print(int indent) {
 	printIndent(indent);
-	std::cout << "IntLiteral(value=" << to_str(value) << ")\n";
+	std::cout << "IntLiteral(value=" << value << ")\n";
+}
+
+void IntLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "IntLiteral(value=" << value << ")\n";
 }
 
 
@@ -45,6 +59,10 @@ void FloatLiteral::print(int indent) {
 	std::cout << "FloatLiteral(value=" << to_str(value) << ")\n";
 }
 
+void FloatLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "FloatLiteral(value=" << to_str(value) << ")\n";
+}
 
 StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
 
@@ -55,6 +73,11 @@ std::string StrLiteral::to_str(std::string val) {
 void StrLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "StringLiteral(value=" << to_str(value) << ")\n";
+}
+
+void StrLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "StringLiteral(value=" << to_str(value) << ")\n";
 }
 
 
@@ -70,11 +93,21 @@ void BoolLiteral::print(int indent) {
 }
 
 
+void BoolLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "BoolLiteral(value=" << to_str(value) << ")\n";
+}
+
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue) : ASTNode(), elems(std::move(literalValue)) {}
 
 void VecLiteral::print(int indent) {
 	printIndent(indent);
-	std::cout << "VecLiteral(size=" + std::to_string(elems.size()) + ")\n";
+	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
+}
+
+void VecLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
 VecValue::VecValue(std::vector<NonVecEvalExpr> literalValue) : ASTNode(), elems(literalValue) {}
@@ -84,7 +117,7 @@ std::string VecValue::to_str(std::vector<NonVecEvalExpr> val) {
 	const size_t val_len = val.size();
 	for (size_t i = 0; i < val_len; ++i) {
 		if (std::holds_alternative<nl_int_t>(val[i]))
-			buf += IntLiteral::to_str(std::get<nl_int_t>(val[i]));
+			buf += std::to_string(std::get<nl_int_t>(val[i]));
 		else if (std::holds_alternative<nl_dec_t>(val[i]))
 			buf += FloatLiteral::to_str(std::get<nl_dec_t>(val[i]));
 		else if (std::holds_alternative<nl_bool_t>(val[i]))
@@ -102,32 +135,68 @@ void VecValue::print(int indent) {
 	std::cout << "VecValue(value=" + to_str(elems) + ")\n";
 }
 
+void VecValue::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "VecValue(value=" << to_str(elems) << ")\n";
+}
+
 
 Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
 
 void Variable::print(int indent) {
 	printIndent(indent);
 	std::cout << "Variable(name=" << name << ")\n";
+	printIndent(indent+2);
+	std::cout << "Value:\n";
 
 	if (value) {
-		value->print(indent);
+		value->print(indent+4);
 	}
 }
+
+void Variable::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "Variable(name=" << name << ")\n";
+	writeIndent(out, indent+2);
+	out << "Value:\n";
+
+	if (value) {
+		value->serialize(out, indent+4);
+	} else {
+		writeIndent(out, indent+4);
+		out << "nullptr\n";
+	}
+}
+
 
 UnaryOp::UnaryOp(std::string opOp, ASTPtr opOperand)
 : ASTNode(), op(opOp), operand(std::move(opOperand)) {}
 
 void UnaryOp::print(int indent) {
 	printIndent(indent);
-	std::cout << "UnaryOp(op=\"" << op << "\")" << std::endl;
+	std::cout << "UnaryOp(op=\"" << op << "\")\n";
 	printIndent(indent);
-	std::cout << " Operand:" << std::endl;
+	std::cout << "Operand:\n";
 
 	if (operand) {
 		operand->print(indent+2);
 	} else {
 		printIndent(indent+2);
-		std::cout << "nullptr" << std::endl;
+		std::cout << "nullptr\n";
+	}
+}
+
+void UnaryOp::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "UnaryOp(op=\"" << op << "\")\n";
+	writeIndent(out, indent);
+	out << "Operand:\n";
+
+	if (operand) {
+		operand->serialize(out, indent+2);
+	} else {
+		writeIndent(out, indent+2);
+		out << "nullptr\n";
 	}
 }
 
@@ -137,24 +206,48 @@ ASTNode(), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 void BinaryOp::print(int indent) {
 	printIndent(indent);
 	std::cout << "BinaryOp(op=\"" << op << "\")" << std::endl;
-	printIndent(indent);
-	std::cout << " Left:" << std::endl;
+	printIndent(indent+2);
+	std::cout << "Left:\n";
 	
 	if (left) {
-		left->print(indent+2);
+		left->print(indent+4);
 	} else {
-		printIndent(indent+2);
-		std::cout << "nullptr" << std::endl;
+		printIndent(indent+4);
+		std::cout << "nullptr\n";
 	}
 
-	printIndent(indent);
-	std::cout << " Right:" << std::endl;
+	printIndent(indent+2);
+	std::cout << "Right:\n";
 	
 	if (right) {
-		right->print(indent+2);
+		right->print(indent+4);
 	} else {
-		printIndent(indent+2);
-		std::cout << "nullptr" << std::endl;
+		printIndent(indent+4);
+		std::cout << "nullptr\n";
+	}
+}
+
+void BinaryOp::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "BinaryOp(op=\"" << op << "\")" << std::endl;
+	writeIndent(out, indent+2);
+	out << "Left:\n";
+	
+	if (left) {
+		left->print(indent+4);
+	} else {
+		writeIndent(out, indent+4);
+		out << "nullptr\n";
+	}
+
+	writeIndent(out, indent+2);
+	out << "Right:\n";
+	
+	if (right) {
+		right->serialize(out, indent+4);
+	} else {
+		writeIndent(out, indent+4);
+		out << "nullptr\n";
 	}
 }
 
@@ -165,19 +258,40 @@ void IfLiteral::print(int indent) {
 	std::cout << "IfLiteral(thenStmts=" << thenClauseStmts.size()
 			  << ", elseStmts=" << elseClauseStmts.size() << ")\n";
 	printIndent(indent+2);
-	std::cout << " Condition:\n";
+	std::cout << "Condition:\n";
 	condition->print(indent+4);
 
 	printIndent(indent+2);
-	std::cout << " ThenClauseStatements:\n";
+	std::cout << "ThenClauseStatements:\n";
 	for (ExpressionStmt& stmt : thenClauseStmts) {
 		stmt.print(indent+4);
 	}
 
 	printIndent(indent+2);
-	std::cout << "  ElseClauseStatements:\n";
+	std::cout << "ElseClauseStatements:\n";
 	for (ExpressionStmt& stmt : elseClauseStmts) {
 		stmt.print(indent+4);
+	}
+}
+
+void IfLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "IfLiteral(thenStmts=" << thenClauseStmts.size()
+			  << ", elseStmts=" << elseClauseStmts.size() << ")\n";
+	writeIndent(out, indent+2);
+	out << "Condition:\n";
+	condition->serialize(out, indent+4);
+
+	printIndent(indent+2);
+	out << "ThenClauseStatements:\n";
+	for (ExpressionStmt& stmt : thenClauseStmts) {
+		stmt.serialize(out, indent+4);
+	}
+
+	printIndent(indent+2);
+	out << "ElseClauseStatements:\n";
+	for (ExpressionStmt& stmt : elseClauseStmts) {
+		stmt.serialize(out, indent+4);
 	}
 }
 
@@ -187,13 +301,27 @@ void WhileLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "WhileLiteral(statements=" << stmts.size() << ")\n";
 	printIndent(indent+2);
-	std::cout << " Condition:\n";
+	std::cout << "Condition:\n";
 	condition->print(indent+4);
 	printIndent(indent+2);
-	std::cout << " Statements:\n";
+	std::cout << "Statements:\n";
 
 	for (ExpressionStmt& stmt : stmts) {
 		stmt.print(indent+4);
+	}
+}
+
+void WhileLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "WhileLiteral(statements=" << stmts.size() << ")\n";
+	writeIndent(out, indent+2);
+	out << "Condition:\n";
+	condition->serialize(out, indent+4);
+	writeIndent(out, indent+2);
+	out << "Statements:\n";
+
+	for (ExpressionStmt& stmt : stmts) {
+		stmt.serialize(out, indent+4);
 	}
 }
 
@@ -204,10 +332,21 @@ void FunctionCall::print(int indent) {
 	printIndent(indent);
 	std::cout << "FunctionCall(name=" << name << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
-	std::cout << " Parameters:\n";
+	std::cout << "Parameters:\n";
 
 	for (const auto& param : params) {
 		param->print(indent+4);
+	}
+}
+
+void FunctionCall::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "FunctionCall(name=" << name << ", parameters=" << params.size() << ")\n";
+	writeIndent(out, indent+2);
+	out << "Parameters:\n";
+
+	for (const auto& param : params) {
+		param->serialize(out, indent+4);
 	}
 }
 
@@ -221,7 +360,19 @@ void ReturnLiteral::print(int indent) {
 		value->print(indent+2);
 	} else {
 		printIndent(indent+2);
-		std::cout << "nullptr" << std::endl;
+		std::cout << "nullptr\n";
+	}
+}
+
+void ReturnLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "ReturnLiteral()\n";
+
+	if (value) {
+		value->serialize(out, indent+2);
+	} else {
+		writeIndent(out, indent+2);
+		out << "nullptr\n";
 	}
 }
 
@@ -232,19 +383,38 @@ void FunctionLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "FunctionLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
-	std::cout << " Parameters:\n";
+	std::cout << "Parameters:\n";
 
 	for (const auto& param : params) {
 		param->print(indent+4);
 	}
 
 	printIndent(indent+2);
-	std::cout << " Statements:\n";
+	std::cout << "Statements:\n";
 
 	for (ExpressionStmt& stmt: stmts) {
 		stmt.print(indent+4);
 	}
 }
+
+void FunctionLiteral::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "FunctionLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
+	writeIndent(out, indent+2);
+	out << "Parameters:\n";
+
+	for (const auto& param : params) {
+		param->serialize(out, indent+4);
+	}
+
+	writeIndent(out, indent+2);
+	out << "Statements:\n";
+
+	for (ExpressionStmt& stmt: stmts) {
+		stmt.serialize(out, indent+4);
+	}
+}
+
 
 ExpressionStmt::ExpressionStmt(
 		ASTPtr stmtExpr,
@@ -261,9 +431,22 @@ void ExpressionStmt::print(int indent) {
 		expr->print(indent+2);
 	} else {
 		printIndent(indent+2);
-		std::cout << "nullptr" << std::endl;
+		std::cout << "nullptr\n";
 	}
 }
+
+void ExpressionStmt::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "ExpressionStmt()" << std::endl;
+	
+	if (expr) {
+		expr->serialize(out, indent+2);
+	} else {
+		writeIndent(out, indent+2);
+		out << "nullptr\n";
+	}
+}
+
 
 Program::Program(std::vector<ExpressionStmt>&& programStatements) : ASTNode(), statements(std::move(programStatements)) {}
 
@@ -273,5 +456,14 @@ void Program::print(int indent) {
 
 	for (ExpressionStmt& stmt : statements) {
 		stmt.print(indent+2);
+	}
+}
+
+void Program::serialize(std::ostream& out, int indent) {
+	writeIndent(out, indent);
+	out << "Program(statements=" << statements.size() << ")" << std::endl;
+
+	for (ExpressionStmt& stmt : statements) {
+		stmt.serialize(out, indent+2);
 	}
 }
