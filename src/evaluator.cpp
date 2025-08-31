@@ -201,7 +201,7 @@ Evaluator::Evaluator() {
 	};
 }
 
-EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string> args) {
+EvalExpr Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args) {
 	EvalExpr last;
 	int counter = 0;
 
@@ -214,7 +214,9 @@ EvalExpr Evaluator::evalProgram(Program& program, const std::vector<std::string>
 	variables["ARG_COUNT"] = EvalExpr((nl_int_t) args.size());
 	variables["EOF"] = EvalExpr(EOF);
 
-	for (ExpressionStmt& stmt : program.statements) {
+	Program* p = dynamic_cast<Program*>(program.get());
+
+	for (ExpressionStmt& stmt : p->statements) {
 		EvalExpr expr = evalStmt(stmt);
 
 		if (!std::holds_alternative<NoOp>(expr)) {

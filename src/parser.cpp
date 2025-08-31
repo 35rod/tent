@@ -43,7 +43,7 @@ Token Parser::expect(std::string ttype) {
 	return current();
 }
 
-Program Parser::parse_program() {
+ASTPtr Parser::parse_program() {
 	std::vector<ExpressionStmt> stmts;
 
 	while (pos < tokens.size()) {
@@ -69,7 +69,7 @@ Program Parser::parse_program() {
 		}
 	}
 
-	return Program(std::move(stmts));
+	return std::make_unique<Program>(std::move(stmts));
 }
 
 std::vector<ExpressionStmt> Parser::parse_block() {
@@ -132,7 +132,7 @@ ExpressionStmt Parser::parse_statement() {
 
 		Parser parser(lexer.tokens, file_search_dirs);
 		
-		ASTPtr imported_program = std::make_unique<Program>(parser.parse_program());
+		ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
 
 		return ExpressionStmt(std::move(imported_program));
 	} else if (token.kind == "SEM") {

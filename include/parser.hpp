@@ -43,7 +43,7 @@ class Parser {
     ASTPtr parse_expression(int minBp);
 
     public:
-        Program parse_program();
+        ASTPtr parse_program();
 
         Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs);
 };

@@ -12,7 +12,7 @@ enum class NodeType : uint8_t {
 	ExpressionStmt,
 	IntLiteral,
 	FloatLiteral,
-	StringLiteral,
+	StrLiteral,
 	BoolLiteral,
 	VecLiteral,
 	Variable,
@@ -34,19 +34,27 @@ void writeBinary(std::ostream& out, const T& value);
 
 void writeText(std::ostream& out, std::string& s);
 
+template<typename T>
+T readBinary(std::istream& in);
+
+std::string readText(std::istream& in);
+
 class ASTNode {
 	public:
 		virtual void print(int indent);
 		virtual void serialize(std::ostream& out);
+		
 		virtual ~ASTNode() {}
 };
 
 using ASTPtr = std::unique_ptr<ASTNode>;
 
+ASTPtr deserializeAST(std::istream& in);
+
 class NoOp : public ASTNode {
 	public:
 		void print(int indent) override;
-		void serialize(std::ostream& out) override;
+		void serialize(std::ostream& out) override;\
 };
 
 class IntLiteral : public ASTNode {
@@ -55,6 +63,7 @@ class IntLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		IntLiteral(nl_int_t literalValue);
 };
@@ -66,6 +75,7 @@ class FloatLiteral : public ASTNode {
 		static std::string to_str(nl_dec_t val, int prec=6);
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		FloatLiteral(nl_dec_t literalValue);
 };
@@ -73,10 +83,10 @@ class FloatLiteral : public ASTNode {
 class StrLiteral : public ASTNode {
 	public:
 		std::string value;
-
-		static std::string to_str(std::string val);
+		
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		StrLiteral(std::string literalValue);
 };
@@ -88,6 +98,7 @@ class BoolLiteral : public ASTNode {
 		static std::string to_str(nl_bool_t val);
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		BoolLiteral(bool literalValue);
 };
@@ -98,6 +109,7 @@ class VecLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		VecLiteral(std::vector<ASTPtr> literalValue);
 };
@@ -119,6 +131,7 @@ class Variable : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		Variable(std::string varName, ASTPtr varValue=nullptr);
 };
@@ -130,6 +143,7 @@ class UnaryOp : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		UnaryOp(std::string opOp, ASTPtr opOperand);
 };
@@ -142,6 +156,7 @@ class BinaryOp : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight);
 };
@@ -155,6 +170,7 @@ class ExpressionStmt : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		ExpressionStmt(
                 ASTPtr expr,
@@ -171,6 +187,7 @@ class IfLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts={});
 };
@@ -182,6 +199,7 @@ class WhileLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
 };
@@ -193,6 +211,7 @@ class FunctionCall : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		FunctionCall(std::string callName, std::vector<ASTPtr> callParams);
 };
@@ -203,6 +222,7 @@ class ReturnLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		ReturnLiteral(ASTPtr literalValue);
 };
@@ -216,6 +236,7 @@ class FunctionLiteral : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
 };
@@ -226,6 +247,7 @@ class Program : public ASTNode {
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
 
 		Program(std::vector<ExpressionStmt>&& programStatements);
 };

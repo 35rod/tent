@@ -27,31 +27,36 @@ int32_t main(int32_t argc, char **argv) {
 		output.push_back('\n');
 	}
 
+	fileHandle.close();
+
+	ASTPtr program = nullptr;
+
 	if (static_cast<uint8_t>(output[0]) == 0xC0) {
-		return 0;
+		std::ifstream binFile(SRC_FILENAME, std::ios::binary);
+		program = deserializeAST(binFile);
+	} else {
+		Lexer lexer(output);
+
+		lexer.nextChar();
+		lexer.getTokens();
+
+		Parser parser(lexer.tokens, search_dirs);
+		program = parser.parse_program();
 	}
 
-	Lexer lexer(output);
-
-	lexer.nextChar();
-	lexer.getTokens();
-
-	Parser parser(lexer.tokens, search_dirs);
-	Program ast = parser.parse_program();
-
 	if (IS_FLAG_SET(DEBUG))
-		ast.print(0);
+		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
 		std::ofstream out("main.nlc");
 
 		if (out.is_open()) {
-			ast.serialize(out);
+			program->serialize(out);
 			out.close();
 		}
 	} else {
 		Evaluator evaluator;
-		evaluator.evalProgram(ast, prog_args);
+		evaluator.evalProgram(std::move(program), prog_args);
 	}
 
 	return 0;
