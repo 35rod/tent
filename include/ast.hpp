@@ -27,8 +27,6 @@ enum class NodeType : uint8_t {
 	ASTNode
 };
 
-static void printIndent(int indent);
-
 template<typename T>
 void writeBinary(std::ostream& out, const T& value);
 

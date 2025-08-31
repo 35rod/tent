@@ -3,3 +3,8 @@ compile_commands.json
 .cache/*
 
 build/*
+tests/*
+!tests/*.nl
+!tests/*.c
+!tests/*.sh
+*.nlc

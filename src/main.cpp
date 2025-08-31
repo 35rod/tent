@@ -48,7 +48,7 @@ int32_t main(int32_t argc, char **argv) {
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		std::ofstream out("main.nlc");
+		std::ofstream out(SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
 
 		if (out.is_open()) {
 			program->serialize(out);

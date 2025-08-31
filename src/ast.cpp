@@ -2,7 +2,7 @@
 #include "ast.hpp"
 #include "misc.hpp"
 
-void printIndent(int indent) {
+static void printIndent(int indent) {
 	printf("%*s", indent, " ");
 }
 
