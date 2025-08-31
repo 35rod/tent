@@ -1,14 +1,20 @@
 #include <iostream>
-#include <cstdio>
 #include "ast.hpp"
 #include "misc.hpp"
 
-static void printIndent(int indent) {
+void printIndent(int indent) {
 	printf("%*s", indent, " ");
 }
 
-static void writeIndent(std::ostream& out, int indent) {
-	out << std::string(indent, ' ');
+template<typename T>
+void writeBinary(std::ostream& out, const T& value) {
+	out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+}
+
+void writeText(std::ostream& out, std::string& s) {
+	uint32_t length = s.length();
+	writeBinary(out, length);
+	out.write(s.data(), length);
 }
 
 void ASTNode::print(int indent) {
@@ -16,9 +22,8 @@ void ASTNode::print(int indent) {
 	std::cout << "ASTNode()" << std::endl;
 }
 
-void ASTNode::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "ASTNode()" << std::endl;
+void ASTNode::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::ASTNode);
 }
 
 void NoOp::print(int ident) {
@@ -26,9 +31,8 @@ void NoOp::print(int ident) {
 	std::cout << "NoOp()\n";
 }
 
-void NoOp::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "NoOp()\n";
+void NoOp::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::NoOp);
 }
 
 IntLiteral::IntLiteral(nl_int_t literalValue) : ASTNode(), value(literalValue) {}
@@ -38,11 +42,10 @@ void IntLiteral::print(int indent) {
 	std::cout << "IntLiteral(value=" << value << ")\n";
 }
 
-void IntLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "IntLiteral(value=" << value << ")\n";
+void IntLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::IntLiteral);
+	writeBinary<nl_int_t>(out, value);
 }
-
 
 FloatLiteral::FloatLiteral(nl_dec_t literalValue) : ASTNode(), value(literalValue) {}
 
@@ -59,9 +62,9 @@ void FloatLiteral::print(int indent) {
 	std::cout << "FloatLiteral(value=" << to_str(value) << ")\n";
 }
 
-void FloatLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "FloatLiteral(value=" << to_str(value) << ")\n";
+void FloatLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::FloatLiteral);
+	writeBinary<nl_dec_t>(out, value);
 }
 
 StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
@@ -75,11 +78,10 @@ void StrLiteral::print(int indent) {
 	std::cout << "StringLiteral(value=" << to_str(value) << ")\n";
 }
 
-void StrLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "StringLiteral(value=" << to_str(value) << ")\n";
+void StrLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::StringLiteral);
+	writeText(out, value);
 }
-
 
 BoolLiteral::BoolLiteral(nl_bool_t literalValue) : ASTNode(), value(literalValue) {}
 
@@ -93,9 +95,10 @@ void BoolLiteral::print(int indent) {
 }
 
 
-void BoolLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "BoolLiteral(value=" << to_str(value) << ")\n";
+void BoolLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::BoolLiteral);
+	uint8_t bool_val = value ? 1 : 0;
+	writeBinary<uint8_t>(out, bool_val);
 }
 
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue) : ASTNode(), elems(std::move(literalValue)) {}
@@ -105,9 +108,14 @@ void VecLiteral::print(int indent) {
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
-void VecLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "VecLiteral(size=" << elems.size() << ")\n";
+void VecLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::VecLiteral);
+	uint32_t size = elems.size();
+	writeBinary<uint32_t>(out, size);
+
+	for (const auto& elem : elems) {
+		elem->serialize(out);
+	}
 }
 
 VecValue::VecValue(std::vector<NonVecEvalExpr> literalValue) : ASTNode(), elems(literalValue) {}
@@ -135,12 +143,6 @@ void VecValue::print(int indent) {
 	std::cout << "VecValue(value=" + to_str(elems) + ")\n";
 }
 
-void VecValue::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "VecValue(value=" << to_str(elems) << ")\n";
-}
-
-
 Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
 
 void Variable::print(int indent) {
@@ -154,20 +156,17 @@ void Variable::print(int indent) {
 	}
 }
 
-void Variable::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "Variable(name=" << name << ")\n";
-	writeIndent(out, indent+2);
-	out << "Value:\n";
+void Variable::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::Variable);
+	writeText(out, name);
 
 	if (value) {
-		value->serialize(out, indent+4);
+		writeBinary<bool>(out, true);
+		value->serialize(out);
 	} else {
-		writeIndent(out, indent+4);
-		out << "nullptr\n";
+		writeBinary<bool>(out, false);
 	}
 }
-
 
 UnaryOp::UnaryOp(std::string opOp, ASTPtr opOperand)
 : ASTNode(), op(opOp), operand(std::move(opOperand)) {}
@@ -186,18 +185,10 @@ void UnaryOp::print(int indent) {
 	}
 }
 
-void UnaryOp::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "UnaryOp(op=\"" << op << "\")\n";
-	writeIndent(out, indent);
-	out << "Operand:\n";
-
-	if (operand) {
-		operand->serialize(out, indent+2);
-	} else {
-		writeIndent(out, indent+2);
-		out << "nullptr\n";
-	}
+void UnaryOp::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::UnaryOp);
+	writeText(out, op);
+	operand->serialize(out);
 }
 
 BinaryOp::BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight) :
@@ -227,28 +218,11 @@ void BinaryOp::print(int indent) {
 	}
 }
 
-void BinaryOp::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "BinaryOp(op=\"" << op << "\")" << std::endl;
-	writeIndent(out, indent+2);
-	out << "Left:\n";
-	
-	if (left) {
-		left->print(indent+4);
-	} else {
-		writeIndent(out, indent+4);
-		out << "nullptr\n";
-	}
-
-	writeIndent(out, indent+2);
-	out << "Right:\n";
-	
-	if (right) {
-		right->serialize(out, indent+4);
-	} else {
-		writeIndent(out, indent+4);
-		out << "nullptr\n";
-	}
+void BinaryOp::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::BinaryOp);
+	writeText(out, op);
+	left->serialize(out);
+	right->serialize(out);
 }
 
 IfLiteral::IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts) : condition(std::move(literalCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
@@ -274,24 +248,22 @@ void IfLiteral::print(int indent) {
 	}
 }
 
-void IfLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "IfLiteral(thenStmts=" << thenClauseStmts.size()
-			  << ", elseStmts=" << elseClauseStmts.size() << ")\n";
-	writeIndent(out, indent+2);
-	out << "Condition:\n";
-	condition->serialize(out, indent+4);
+void IfLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::IfLiteral);
+	condition->serialize(out);
 
-	printIndent(indent+2);
-	out << "ThenClauseStatements:\n";
+	uint32_t then_count = thenClauseStmts.size();
+	writeBinary<uint32_t>(out, then_count);
+
 	for (ExpressionStmt& stmt : thenClauseStmts) {
-		stmt.serialize(out, indent+4);
+		stmt.serialize(out);
 	}
 
-	printIndent(indent+2);
-	out << "ElseClauseStatements:\n";
+	uint32_t else_count = elseClauseStmts.size();
+	writeBinary<uint32_t>(out, else_count);
+
 	for (ExpressionStmt& stmt : elseClauseStmts) {
-		stmt.serialize(out, indent+4);
+		stmt.serialize(out);
 	}
 }
 
@@ -311,17 +283,15 @@ void WhileLiteral::print(int indent) {
 	}
 }
 
-void WhileLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "WhileLiteral(statements=" << stmts.size() << ")\n";
-	writeIndent(out, indent+2);
-	out << "Condition:\n";
-	condition->serialize(out, indent+4);
-	writeIndent(out, indent+2);
-	out << "Statements:\n";
+void WhileLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::WhileLiteral);
+	condition->serialize(out);
+
+	uint32_t stmt_count = stmts.size();
+	writeBinary<uint32_t>(out, stmt_count);
 
 	for (ExpressionStmt& stmt : stmts) {
-		stmt.serialize(out, indent+4);
+		stmt.serialize(out);
 	}
 }
 
@@ -339,14 +309,15 @@ void FunctionCall::print(int indent) {
 	}
 }
 
-void FunctionCall::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "FunctionCall(name=" << name << ", parameters=" << params.size() << ")\n";
-	writeIndent(out, indent+2);
-	out << "Parameters:\n";
+void FunctionCall::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::FunctionCall);
+	writeText(out, name);
+
+	uint32_t param_count = params.size();
+	writeBinary<uint32_t>(out, param_count);
 
 	for (const auto& param : params) {
-		param->serialize(out, indent+4);
+		param->serialize(out);
 	}
 }
 
@@ -364,15 +335,14 @@ void ReturnLiteral::print(int indent) {
 	}
 }
 
-void ReturnLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "ReturnLiteral()\n";
+void ReturnLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::ReturnLiteral);
 
 	if (value) {
-		value->serialize(out, indent+2);
+		writeBinary<bool>(out, true);
+		value->serialize(out);
 	} else {
-		writeIndent(out, indent+2);
-		out << "nullptr\n";
+		writeBinary<bool>(out, false);
 	}
 }
 
@@ -397,24 +367,31 @@ void FunctionLiteral::print(int indent) {
 	}
 }
 
-void FunctionLiteral::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "FunctionLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
-	writeIndent(out, indent+2);
-	out << "Parameters:\n";
+void FunctionLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::FunctionLiteral);
+	writeText(out, name);
+
+	uint32_t param_count = params.size();
+	writeBinary<uint32_t>(out, param_count);
 
 	for (const auto& param : params) {
-		param->serialize(out, indent+4);
+		param->serialize(out);
 	}
 
-	writeIndent(out, indent+2);
-	out << "Statements:\n";
+	uint32_t stmt_count = stmts.size();
+	writeBinary<uint32_t>(out, stmt_count);
 
-	for (ExpressionStmt& stmt: stmts) {
-		stmt.serialize(out, indent+4);
+	for (ExpressionStmt& stmt : stmts) {
+		stmt.serialize(out);
+	}
+
+	if (returnValue) {
+		writeBinary<bool>(out, true);
+		returnValue->serialize(out);
+	} else {
+		writeBinary<bool>(out, false);
 	}
 }
-
 
 ExpressionStmt::ExpressionStmt(
 		ASTPtr stmtExpr,
@@ -435,15 +412,17 @@ void ExpressionStmt::print(int indent) {
 	}
 }
 
-void ExpressionStmt::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "ExpressionStmt()" << std::endl;
-	
+void ExpressionStmt::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::ExpressionStmt);
+	writeBinary<bool>(out, noOp);
+	writeBinary<bool>(out, isBreak);
+	writeBinary<bool>(out, isContinue);
+
 	if (expr) {
-		expr->serialize(out, indent+2);
+		writeBinary<bool>(out, true);
+		expr->serialize(out);
 	} else {
-		writeIndent(out, indent+2);
-		out << "nullptr\n";
+		writeBinary<bool>(out, false);
 	}
 }
 
@@ -459,11 +438,12 @@ void Program::print(int indent) {
 	}
 }
 
-void Program::serialize(std::ostream& out, int indent) {
-	writeIndent(out, indent);
-	out << "Program(statements=" << statements.size() << ")" << std::endl;
+void Program::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::Program);
+	uint32_t num_stmts = statements.size();
+	writeBinary<uint32_t>(out, num_stmts);
 
 	for (ExpressionStmt& stmt : statements) {
-		stmt.serialize(out, indent+2);
+		stmt.serialize(out);
 	}
 }

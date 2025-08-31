@@ -1,8 +1,6 @@
 #include <iostream>
 #include <fstream>
-
 #include <cstdint>
-
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "evaluator.hpp"
@@ -29,6 +27,10 @@ int32_t main(int32_t argc, char **argv) {
 		output.push_back('\n');
 	}
 
+	if (static_cast<uint8_t>(output[0]) == 0xC0) {
+		return 0;
+	}
+
 	Lexer lexer(output);
 
 	lexer.nextChar();
@@ -44,7 +46,7 @@ int32_t main(int32_t argc, char **argv) {
 		std::ofstream out("main.nlc");
 
 		if (out.is_open()) {
-			ast.serialize(out, 0);
+			ast.serialize(out);
 			out.close();
 		}
 	} else {
