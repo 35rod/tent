@@ -3,6 +3,7 @@
 #include "ast.hpp"
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 
 Evaluator::Evaluator() {
 	nativeFunctions["print"] = [](const std::vector<EvalExpr>& args) {
@@ -85,6 +86,14 @@ Evaluator::Evaluator() {
 		}
 
 		return std::stoll(std::get<std::string>(args[0]), nullptr, base);
+	};
+
+	nativeFunctions["vec_from_size"] = [](const std::vector<EvalExpr>& args) {
+		if (!std::holds_alternative<nl_int_t>(args[0]))
+			TypeError("passed non-integer argument to first parameter of `vec_from_size`, `size`", -1);
+		size_t size = std::get<nl_int_t>(args[0]);
+
+		return std::vector<NonVecEvalExpr>(size, 0);
 	};
 
 	nativeFunctions["len"] = [](const std::vector<EvalExpr>& args) {
@@ -198,6 +207,24 @@ Evaluator::Evaluator() {
 		}
 			
 		return (nl_int_t) -1;
+	};
+
+	nativeFunctions["read_file"] = [](const std::vector<EvalExpr>& args) {
+		if (!std::holds_alternative<std::string>(args[0]))
+			TypeError("passed non-string value to first parameter of `read_file`, `file_name`", -1);
+
+		const std::string& FILENAME = std::get<std::string>(args[0]);
+		std::ifstream fileHandle(FILENAME);
+		if (!fileHandle.is_open())
+			Error("failed to open file '" + FILENAME + "'.", -1);
+
+		std::string buf, line;
+		while (std::getline(fileHandle, line)) {
+			buf += line;
+			buf.push_back('\n');
+		}
+
+		return buf;
 	};
 }
 

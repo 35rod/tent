@@ -16,6 +16,7 @@ set(SOURCE_FILES
     src/parser.cpp
     src/errors.cpp
     src/token.cpp
+    src/esc_codes.cpp
 )
 
 add_executable(main ${SOURCE_FILES})

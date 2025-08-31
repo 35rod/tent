@@ -1,7 +1,9 @@
-#include "parser.hpp"
 #include <fstream>
+
+#include "parser.hpp"
 #include "lexer.hpp"
 #include "errors.hpp"
+#include "esc_codes.hpp"
 
 Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs)
 	: tokens(parserTokens), file_search_dirs(search_dirs) {}
@@ -317,9 +319,11 @@ ASTPtr Parser::parse_expression(int min_bp) {
 	} else if (token.kind == "FLOAT") {
 		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
 	} else if (token.kind == "STR") {
-		left = std::make_unique<StrLiteral>(token.text);
+		left = std::make_unique<StrLiteral>(read_escape(token.text));
 	} else if (token.kind == "CHR") {
-        left = std::make_unique<IntLiteral>(token.text[0]);
+		char c = 0;
+		get_escape(token.text, &c);
+		left = std::make_unique<IntLiteral>(c);
 	} else if (token.kind == "BOOL") {
 		left = std::make_unique<BoolLiteral>(token.text == "true");
 	} else if (token.kind == "OPEN_BRACKET") {
