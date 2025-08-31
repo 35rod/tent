@@ -3,7 +3,9 @@
 #include <cstdint>
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "compiler.hpp"
 #include "evaluator.hpp"
+#include "vm.hpp"
 #include "args.hpp"
 
 uint64_t runtime_flags = 0;
@@ -34,6 +36,11 @@ int32_t main(int32_t argc, char **argv) {
 	if (static_cast<uint8_t>(output[0]) == 0xC0) {
 		std::ifstream binFile(SRC_FILENAME, std::ios::binary);
 		program = deserializeAST(binFile);
+	} else if (SRC_FILENAME.find(".nlc") != std::string::npos) {
+		VM vm;
+		auto bytecode = vm.loadFile(SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
+		vm.run(bytecode);
+		exit(0);
 	} else {
 		Lexer lexer(output);
 
@@ -48,12 +55,16 @@ int32_t main(int32_t argc, char **argv) {
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		std::ofstream out(SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
+		// std::ofstream out(SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
 
-		if (out.is_open()) {
-			program->serialize(out);
-			out.close();
-		}
+		// if (out.is_open()) {
+		// 	program->serialize(out);
+		// 	out.close();
+		// }
+
+		Compiler compiler;
+		std::vector<Instruction> bytecode = compiler.compileProgram(std::move(program));
+		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
 	} else {
 		Evaluator evaluator;
 		evaluator.evalProgram(std::move(program), prog_args);
