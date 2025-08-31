@@ -54,6 +54,12 @@ void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 			}
 
 			bytecode.push_back(Instruction(Opcode::PRINT));
+		} else if (fc->name == "println") {
+			for (auto& param : fc->params) {
+				compileExpr(param.get(), bytecode);
+			}
+
+			bytecode.push_back(Instruction(Opcode::PRINTLN));
 		} else {
 			throw std::runtime_error("Only 'print' function is supported");
 		}

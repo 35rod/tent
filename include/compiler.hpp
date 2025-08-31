@@ -11,7 +11,8 @@ enum class Opcode : uint8_t {
 	SUB,
 	MUL,
 	DIV,
-	PRINT
+	PRINT,
+	PRINTLN,
 };
 
 class Instruction {

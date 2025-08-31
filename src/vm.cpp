@@ -75,7 +75,9 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				EvalExpr a = stack.back(); stack.pop_back();
 				stack.push_back(applyBinaryOp(a, b, instr.op));
 				break;
-			} case Opcode::PRINT: {
+			}
+			case Opcode::PRINTLN:
+			case Opcode::PRINT: {
 				if (stack.empty()) {
 					std::cerr << "Error: Stack is empty on PRINT\n";
 					break;
@@ -100,7 +102,9 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 						std::cout << "(null)";
 				}, val);
 
-				std::cout << std::endl; // <-- flush and newline
+				if (instr.op == Opcode::PRINTLN)
+					std::cout << std::endl;
+				std::cout.flush(); // <-- flush output
 				break;
 			} default:
 				std::cerr << "Unknown opcode\n";
