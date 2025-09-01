@@ -4,6 +4,7 @@
 #include <fstream>
 #include "compiler.hpp"
 #include "evaluator.hpp"
+#include "errors.hpp"
 
 class VM {
 	std::vector<EvalExpr> stack;

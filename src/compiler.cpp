@@ -36,6 +36,17 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				nl_dec_t val = std::get<nl_dec_t>(instr.operand);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
+			} case Opcode::PUSH_STRING: {
+				std::string val = std::get<std::string>(instr.operand);
+				uint64_t len = static_cast<uint64_t>(val.size());
+				out.write(reinterpret_cast<const char*>(&len), sizeof(len));
+				if (len) out.write(val.data(), static_cast<std::streamsize>(len));
+				break;
+			} case Opcode::PUSH_BOOL: {
+				nl_bool_t val = std::get<bool>(instr.operand);
+				uint8_t b = val ? 1 : 0;
+				out.write(reinterpret_cast<const char*>(&b), sizeof(b));
+				break;
 			} default:
 				break;
 		}
@@ -61,7 +72,7 @@ void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 
 			bytecode.push_back(Instruction(Opcode::PRINTLN));
 		} else {
-			throw std::runtime_error("Only 'print' function is supported");
+			throw std::runtime_error("Only 'print' or 'println' function is supported");
 		}
 	}
 }
@@ -73,6 +84,10 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		bytecode.push_back(Instruction(Opcode::PUSH_INT, il->value));
 	} else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
 		bytecode.push_back(Instruction(Opcode::PUSH_FLOAT, fl->value));
+	} else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
+		bytecode.push_back(Instruction(Opcode::PUSH_STRING, sl->value));
+	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
+		bytecode.push_back(Instruction(Opcode::PUSH_BOOL, bl->value));
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
 		compileExpr(bin->left.get(), bytecode);
 		compileExpr(bin->right.get(), bytecode);
