@@ -1,3 +1,4 @@
+#include <cmath>
 #include "vm.hpp"
 
 EvalExpr VM::applyBinaryOp(const EvalExpr& a, const EvalExpr& b, Opcode op) {
