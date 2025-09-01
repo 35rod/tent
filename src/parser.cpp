@@ -286,20 +286,16 @@ ExpressionStmt Parser::parse_statement() {
 ASTPtr Parser::parse_expression(int min_bp) {
 	Token token = current();
 
+	ASTPtr left;
+
 	if (token.kind == "BIT_NOT" || token.kind == "NOT" || token.kind == "SUB" ||
 			token.kind == "INCREMENT" || token.kind == "DECREMENT") {
 		advance();
 	
 		ASTPtr operand = parse_expression(15);
 
-		return std::make_unique<UnaryOp>(token.kind, std::move(operand));
-	}
-
-	ASTPtr left;
-
-	std::string first_3_chars = token.kind.substr(0, 3);
-
-	if (first_3_chars == "INT") {
+		left = std::make_unique<UnaryOp>(token.kind, std::move(operand));
+	} else if (token.kind.substr(0, 3) == "INT") {
 		int8_t base = -1;
 		if (token.kind == "INT_HEX")
 			base = 16;
@@ -370,7 +366,6 @@ ASTPtr Parser::parse_expression(int min_bp) {
 				}
 
 				expect("COMMA");
-
 				advance();
 			}
 

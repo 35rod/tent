@@ -478,16 +478,11 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
 		auto isRightAssoc = [](const std::string& op) {
-			return (op.find("ASSIGN") != std::string::npos || op == "POW");
+			return (op.find("ASSIGN") != std::string::npos);
 		};
 
 		if (isRightAssoc(bin->op)) {
-            if (bin->op == "POW") {
-                EvalExpr left = evalExpr(bin->left.get(), local_vars);
-                EvalExpr right = evalExpr(bin->right.get(), local_vars);
-		        
-                return evalBinaryOp("POW", std::move(left), std::move(right));
-            } else if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
+            if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
 				EvalExpr right = evalExpr(bin->right.get(), local_vars);
 
                 if (bin->op == "ASSIGN")

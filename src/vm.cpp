@@ -1,6 +1,22 @@
 #include <cmath>
 #include "vm.hpp"
 
+#include <unordered_set>
+
+static const std::unordered_set<Opcode> binaryOps = {
+    Opcode::ADD, Opcode::SUB, Opcode::MUL, Opcode::DIV, Opcode::FLOOR_DIV,
+    Opcode::MOD, Opcode::POW, Opcode::LSHIFT, Opcode::RSHIFT,
+    Opcode::LESS, Opcode::LESSEQ, Opcode::GREATER, Opcode::GREATEREQ,
+    Opcode::EQEQ, Opcode::NOTEQ,
+    Opcode::BIT_AND, Opcode::BIT_XOR, Opcode::BIT_OR,
+    Opcode::AND, Opcode::OR
+};
+
+static const std::unordered_set<Opcode> unaryOps = {
+    Opcode::SUB, Opcode::INCREMENT, Opcode::DECREMENT,
+    Opcode::BIT_NOT, Opcode::NOT
+};
+
 EvalExpr VM::applyBinaryOp(const EvalExpr& a, const EvalExpr& b, Opcode op) {
 	auto visitor = [&op](auto&& l, auto&& r) -> EvalExpr {
 		using L = std::decay_t<decltype(l)>;
@@ -128,6 +144,16 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 
 void VM::run(const std::vector<Instruction>& bytecode) {
 	for (const auto& instr : bytecode) {
+		if (binaryOps.count(instr.op) > 0) {
+			if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
+			EvalExpr b = stack.back(); stack.pop_back();
+			EvalExpr a = stack.back(); stack.pop_back();
+			stack.push_back(applyBinaryOp(a, b, instr.op));
+			continue;
+		} else if (unaryOps.count(instr.op) > 0) {
+			if (stack.size() < 1) throw std::runtime_error("Stack underflow for unary op");
+		}
+
 		switch(instr.op) {
 			case Opcode::PUSH_INT: {
 				nl_int_t val = std::get<nl_int_t>(instr.operand);
@@ -145,17 +171,7 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				bool val = std::get<bool>(instr.operand);
 				stack.push_back(val);
 				break;
-			} case Opcode::ADD:
-			case Opcode::SUB:
-			case Opcode::MUL:
-			case Opcode::DIV: {
-				if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
-				EvalExpr b = stack.back(); stack.pop_back();
-				EvalExpr a = stack.back(); stack.pop_back();
-				stack.push_back(applyBinaryOp(a, b, instr.op));
-				break;
-			}
-			case Opcode::PRINTLN:
+			} case Opcode::PRINTLN:
 			case Opcode::PRINT: {
 				if (stack.empty()) {
 					std::cerr << "Error: Stack is empty on PRINT\n";

@@ -8,7 +8,7 @@
 class Parser {
     std::map<std::string, int> precedence = {
 	    {"POW", 16},
-        {"NOT", 15}, {"BIT_NOT", 15}, {"SUB", 15},
+        {"NOT", 15}, {"BIT_NOT", 15},
         {"INCREMENT", 15}, {"DECREMENT", 15},
         {"INDEX", 14},
 	    {"MUL", 12}, {"DIV", 12}, {"FLOOR_DIV", 12}, {"MOD", 12},

@@ -30,6 +30,9 @@ enum class Opcode : uint8_t {
 	PRINTLN,
 };
 
+Opcode opcodeForBinaryOp(const std::string& opName);
+Opcode opcodeForUnaryOp(const std::string& opName);
+
 class Instruction {
 	public:
 		Opcode op;
