@@ -437,67 +437,43 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 			SyntaxError("Undefined variable: " + v->name, -1);
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
-		if (un->op == "NOT") {
-			return EvalExpr(!std::get<nl_bool_t>(evalExpr(un->operand.get(), local_vars)));
-        } else if (un->op == "BIT_NOT") {
-            EvalExpr operand = evalExpr(un->operand.get(), local_vars);
-            if (std::holds_alternative<nl_int_t>(operand))
-                return EvalExpr(~std::get<nl_int_t>(operand));
-            else if (std::holds_alternative<nl_bool_t>(operand))
-                return EvalExpr(~std::get<nl_int_t>(operand));
-            else
-                TypeError("failed to apply operator BIT_NOT to non-integral operand", -1);
-		} else if (un->op == "SUB") {
-			EvalExpr val = evalExpr(un->operand.get(), local_vars);
-
-			if (std::holds_alternative<nl_int_t>(val)) {
-				return EvalExpr(-std::get<nl_int_t>(val));
-			} else if (std::holds_alternative<nl_dec_t>(val)) {
-				return EvalExpr(-std::get<nl_dec_t>(val));
-			} else {
-				TypeError("Unary minus operator applied to non-numeric type", -1);
+		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {
+			return evalUnaryOp(evalExpr(un->operand.get(), local_vars), un->op);
+		}
+		if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
+			if (variables.count(var->name) != 1) {
+				SyntaxError("Undefined variable: " + var->name, -1);
 			}
-
-			return EvalExpr(NoOp());
-		} else if (un->op == "INCREMENT" || un->op == "DECREMENT") {
-			if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
-				if (variables.count(var->name) == 1) {
-					if (std::holds_alternative<nl_int_t>(variables[var->name])) {
-						if (un->op == "INCREMENT") {
-							return variables[var->name] = std::get<nl_int_t>(variables[var->name]) + 1;
-						} else {
-							return variables[var->name] = std::get<nl_int_t>(variables[var->name]) - 1;
-						}
-					}
+			if (std::holds_alternative<nl_int_t>(variables[var->name])) {
+				if (un->op == TokenType::INCREMENT) {
+					return variables[var->name] = std::get<nl_int_t>(variables[var->name]) + 1;
 				} else {
-					SyntaxError("Undefined variable: " + var->name, -1);
+					return variables[var->name] = std::get<nl_int_t>(variables[var->name]) - 1;
 				}
-			} else {
-				TypeError("Increment/decrement operator applied to non-variable", -1);
 			}
+		} else {
+			TypeError("Increment/decrement operator applied to non-variable", -1);
 		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
-		auto isRightAssoc = [](const std::string& op) {
-			return (op.find("ASSIGN") != std::string::npos);
-		};
-
 		if (isRightAssoc(bin->op)) {
-            if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
+			if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
 				EvalExpr right = evalExpr(bin->right.get(), local_vars);
 
-                if (bin->op == "ASSIGN")
+				if (bin->op == TokenType::ASSIGN)
 					return variables[varNode->name] = right;
-                else
-                    return variables[varNode->name] = evalBinaryOp(
-                            bin->op.substr(0, bin->op.length()-7),
-                            variables[varNode->name], right);
+				else
+					return variables[varNode->name] = evalBinaryOp(
+							variables[varNode->name], right,
+							(TokenType)((uint16_t)bin->op -
+								((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN))
+							);
 			}
 		}
 
 		EvalExpr left = evalExpr(bin->left.get(), local_vars);
 		EvalExpr right = evalExpr(bin->right.get(), local_vars);
 		
-		return evalBinaryOp(bin->op, std::move(left), std::move(right));
+		return evalBinaryOp(std::move(left), std::move(right), bin->op);
 	} else {
 		throw std::runtime_error("Unknown AST node type in evaluator");
 	}
@@ -505,7 +481,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 	return EvalExpr(NoOp());
 }
 
-EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) {
+EvalExpr Evaluator::evalBinaryOp(const EvalExpr& left, const EvalExpr& right, TokenType op) {
 	auto visitor = [&op](auto&& l, auto&& r) -> EvalExpr {
 		using L = std::decay_t<decltype(l)>;
 		using R = std::decay_t<decltype(r)>;
@@ -513,13 +489,16 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
 		if constexpr (std::is_same_v<L, NoOp> || std::is_same_v<R, NoOp>) {
 			return EvalExpr(NoOp());
 		} else if constexpr (std::is_same_v<L, std::string> && std::is_same_v<R, std::string>) {
-			if (op == "ADD") return EvalExpr(l + r);
-			if (op == "EQEQ") return EvalExpr(l == r);
-			if (op == "NOTEQ") return EvalExpr(l != r);
-
-			throw std::runtime_error("invalid operator for string type: " + op);
+			switch (op) {
+			case TokenType::ADD:  return EvalExpr(l + r); break;
+			case TokenType::EQEQ: return EvalExpr(l == r); break;
+			case TokenType::NOTEQ: return EvalExpr(l != r); break;
+			default:
+				throw std::runtime_error("invalid operator for string type: "
+						+ std::to_string((uint16_t)op));
+			}
 		} else if constexpr (std::is_same_v<L, std::string> && std::is_integral_v<R>) {
-			if (op == "INDEX") return std::string(1, l[static_cast<nl_int_t>(r)]);
+			if (op == TokenType::INDEX) return std::string(1, l[static_cast<nl_int_t>(r)]);
 		} else if constexpr (std::is_arithmetic_v<L> && std::is_arithmetic_v<R>) {
 			using ResultType = std::conditional_t<
 					std::is_integral_v<L> && std::is_integral_v<R>, nl_int_t, nl_dec_t
@@ -528,50 +507,56 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
 			ResultType a = static_cast<ResultType>(l);
 			ResultType b = static_cast<ResultType>(r);
 
-			if (op == "ADD") return a + b;
-			if (op == "SUB") return a - b;
-			if (op == "MUL") return a * b;
-			if (op == "DIV") {
-				if (b == 0) throw std::runtime_error("Division by zero");
-
-				return a / b;
-			}
 			if constexpr (std::is_integral_v<ResultType>) {
 				using IntegralResultType = std::conditional_t<
 						std::is_same_v<L, nl_bool_t>, nl_bool_t, nl_int_t
 				>;
-                if (op == "POW") return static_cast<IntegralResultType>(ipow(a, b));
-				if (op == "MOD") return static_cast<IntegralResultType>(a % b);
-				if (op == "BIN_AND") return static_cast<IntegralResultType>(a & b);
-				if (op == "BIN_XOR") return static_cast<IntegralResultType>(a ^ b);
-				if (op == "BIN_OR") return static_cast<IntegralResultType>(a | b);
-				if (op == "LSHIFT") return static_cast<IntegralResultType>(a << b);
-				if (op == "RSHIFT") return static_cast<IntegralResultType>(a >> b);
-                if (op == "FLOOR_DIV") return static_cast<IntegralResultType>(a / b);
+				switch (op) {
+				case TokenType::POW: return static_cast<IntegralResultType>(ipow(a, b));
+				case TokenType::MOD: return static_cast<IntegralResultType>(a % b);
+				case TokenType::FLOOR_DIV: return static_cast<IntegralResultType>(a / b);
+				case TokenType::BIT_AND: return static_cast<IntegralResultType>(a & b);
+				case TokenType::BIT_XOR: return static_cast<IntegralResultType>(a ^ b);
+				case TokenType::BIT_OR: return static_cast<IntegralResultType>(a | b);
+				case TokenType::LSHIFT: return static_cast<IntegralResultType>(a << b);
+				case TokenType::RSHIFT: return static_cast<IntegralResultType>(a >> b);
+				default:
+					break;
+				}
 			}
-			if (op == "BIN_AND" ||
-				op == "BIN_XOR" ||
-				op == "BIN_OR" ||
-				op == "LSHIFT" ||
-				op == "RSHIFT" ||
-                op == "FLOOR_DIV") TypeError("failed to apply operator " + op + " to non-integral operand(s)", -1);
-			if (op == "MOD") return std::fmodf(a,b);
-			if (op == "POW") return std::powf(a, b);
+			
+			if (op >= TokenType::FLOOR_DIV
+			 && op <= TokenType::RSHIFT)
+				TypeError("failed to apply operator "
+						+ std::to_string((uint16_t)op) + " to non-integral operand(s)", -1);
+			switch (op) {
+			case TokenType::ADD: return a + b;
+			case TokenType::SUB: return a - b;
+			case TokenType::MUL: return a * b;
+			case TokenType::DIV:
+				if (b == 0) throw std::runtime_error("Division by zero");
+				return a / b;
+			case TokenType::MOD: return std::fmodf(a,b);
+			case TokenType::POW: return std::powf(a, b);
 
-			if (op == "EQEQ") return a == b;
-			if (op == "NOTEQ") return a != b;
-			if (op == "LESS") return a < b;
-			if (op == "LESSEQ") return a <= b;
-			if (op == "GREATER") return a > b;
-			if (op == "GREATEREQ") return a >= b;
+			case TokenType::EQEQ: return a == b;
+			case TokenType::NOTEQ: return a != b;
+			case TokenType::LESS: return a < b;
+			case TokenType::LESSEQ: return a <= b;
+			case TokenType::GREATER: return a > b;
+			case TokenType::GREATEREQ: return a >= b;
 
-			if (op == "AND") return a && b;
-			if (op == "OR") return a || b;
+			case TokenType::AND: return a && b;
+			case TokenType::OR: return a || b;
+			default:
+				Error("unknown operator for arithmetic operands: "
+						+ std::to_string((uint16_t)op), -1);
+			}
 		} else if constexpr (std::is_same_v<L, std::vector<NonVecEvalExpr>> && std::is_integral_v<R>) {
 			const std::vector<NonVecEvalExpr> a = static_cast<std::vector<NonVecEvalExpr>>(l);
 			nl_int_t b = static_cast<nl_int_t>(r);
 			
-			if (op == "INDEX") {
+			if (op == TokenType::INDEX) {
 				if ((std::vector<NonVecEvalExpr>::size_type) b >= a.size())
 					Error("index " + std::to_string(b) + " is out of bounds for vector of size "
 							+ std::to_string(a.size()) + ".", -1);
@@ -591,4 +576,27 @@ EvalExpr Evaluator::evalBinaryOp(std::string op, EvalExpr left, EvalExpr right) 
 	};
 
 	return std::visit(visitor, left, right);
+}
+
+EvalExpr Evaluator::evalUnaryOp(const EvalExpr& operand, TokenType op) {
+	if (op == TokenType::NOT) {
+		return EvalExpr(!std::get<nl_bool_t>(operand));
+	} else if (op == TokenType::BIT_NOT) {
+		if (std::holds_alternative<nl_int_t>(operand))
+			return EvalExpr(~std::get<nl_int_t>(operand));
+		else if (std::holds_alternative<nl_bool_t>(operand))
+			return EvalExpr(~std::get<nl_int_t>(operand));
+		else
+			TypeError("failed to apply operator BIT_NOT to non-integral operand", -1);
+	} else if (op == TokenType::NEGATE) {
+		if (std::holds_alternative<nl_int_t>(operand)) {
+			return EvalExpr(-std::get<nl_int_t>(operand));
+		} else if (std::holds_alternative<nl_dec_t>(operand)) {
+			return EvalExpr(-std::get<nl_dec_t>(operand));
+		} else {
+			TypeError("Unary minus operator applied to non-numeric type", -1);
+		}
+	}
+
+	return EvalExpr(NoOp());
 }

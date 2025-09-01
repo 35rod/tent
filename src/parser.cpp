@@ -10,7 +10,7 @@ Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_
 
 Token Parser::current() {
 	if (pos >= tokens.size()) {
-		return Token("\0", "EOF", tokens[pos-1].lineNo);
+		return Token("\0", TokenType::EOF_TOK, tokens[pos-1].lineNo);
 	}
 
 	return tokens[pos];
@@ -18,7 +18,7 @@ Token Parser::current() {
 
 Token Parser::peek(int num) {
 	if ((pos+num) >= tokens.size()) {
-		return Token("\0", "EOF", 0);
+		return Token("\0", TokenType::EOF_TOK, 0);
 	}
 
 	return tokens[pos+num];
@@ -26,7 +26,7 @@ Token Parser::peek(int num) {
 
 Token Parser::advance(int num) {
 	if (pos >= tokens.size()) {
-		return Token("\0", "EOF", 0);
+		return Token("\0", TokenType::EOF_TOK, 0);
 	}
 
 	Token token = tokens[pos];
@@ -35,12 +35,13 @@ Token Parser::advance(int num) {
 	return token;
 }
 
-Token Parser::expect(std::string ttype) {
+Token Parser::expect(TokenType ttype) {
 	if (current().kind == ttype) {
 		return current();
 	}
 
-	SyntaxError("Expected " + ttype + ", got " + current().kind, current().lineNo);
+	SyntaxError("Expected " + std::to_string((uint16_t)ttype)
+            + ", got " + std::to_string((uint16_t)current().kind), current().lineNo);
 
 	return current();
 }
@@ -75,13 +76,13 @@ ASTPtr Parser::parse_program() {
 }
 
 std::vector<ExpressionStmt> Parser::parse_block() {
-	expect("OPEN_BRAC");
+	expect(TokenType::OPEN_BRAC);
 	advance();
 
 	std::vector<ExpressionStmt> stmts;
 
-	while (current().kind != "CLOSE_BRAC") {
-		if (current().kind == "EOF")
+	while (current().kind != TokenType::CLOSE_BRAC) {
+		if (current().kind == TokenType::EOF_TOK)
 			SyntaxError("Closing braces required for code block", current().lineNo);
 
 		ExpressionStmt&& stmt = parse_statement();
@@ -97,11 +98,11 @@ std::vector<ExpressionStmt> Parser::parse_block() {
 ExpressionStmt Parser::parse_statement() {
 	Token token = current();
 
-	if (token.kind == "LOAD") {
+	if (token.kind == TokenType::LOAD) {
 		advance();
-		Token filename = expect("STR");
+		Token filename = expect(TokenType::STR);
 
-		if (peek().kind == "SEM") {
+		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
 			MissingTerminatorError("Missing statement terminator after load statement", current().lineNo);
@@ -135,56 +136,56 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
 
 		return ExpressionStmt(std::move(imported_program));
-	} else if (token.kind == "SEM") {
+	} else if (token.kind == TokenType::SEM) {
 		advance();
 
 		ASTPtr noOp = std::make_unique<NoOp>(NoOp());
 		ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
 		return expressionStmt;
-	} else if (token.kind == "SET") {
+	} else if (token.kind == TokenType::SET) {
 		advance();
-		Token nameToken = expect("IDENT");
+		Token nameToken = expect(TokenType::IDENT);
 		advance();
-		expect("ASSIGN");
+		expect(TokenType::ASSIGN);
 		advance();
 
 		ASTPtr value = parse_expression(0);
 
-		if (peek().kind == "SEM") {
+		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
 			MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
 		}
 
-		ASTPtr assign = std::make_unique<BinaryOp>("ASSIGN", std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
+		ASTPtr assign = std::make_unique<BinaryOp>(TokenType::ASSIGN, std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
 
 		return ExpressionStmt(std::move(assign));
-	} else if (token.kind == "FORM") {
+	} else if (token.kind == TokenType::FORM) {
 		advance();
-		Token name = expect("IDENT");
+		Token name = expect(TokenType::IDENT);
 		advance();
-		expect("OPEN_PAREN");
+		expect(TokenType::OPEN_PAREN);
 		advance();
 
 		std::vector<ASTPtr> params;
 
-		while (current().kind != "CLOSE_PAREN") {
-			if (current().kind == "EOF") {
+		while (current().kind != TokenType::CLOSE_PAREN) {
+			if (current().kind == TokenType::EOF_TOK) {
 				SyntaxError("Closing parentheses required for function definition", current().lineNo);
 			}
 
-			Token param = expect("IDENT");
+			Token param = expect(TokenType::IDENT);
 
 			params.push_back(std::make_unique<Variable>(param.text, nullptr));
 
 			advance();
 
-			if (current().kind == "CLOSE_PAREN") {
+			if (current().kind == TokenType::CLOSE_PAREN) {
 				break;
 			}
 
-			expect("COMMA");
+			expect(TokenType::COMMA);
 
 			advance();
 		}
@@ -195,12 +196,12 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 
 		return ExpressionStmt(std::move(form));
-	} else if (token.kind == "RETURN") {
+	} else if (token.kind == TokenType::RETURN) {
 		advance();
 
 		ASTPtr value = parse_expression(0);
 
-		if (peek().kind == "SEM") {
+		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
 			MissingTerminatorError("Missing statement terminator after return statement", current().lineNo);
@@ -209,7 +210,7 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr returnLiteral = std::make_unique<ReturnLiteral>(std::move(value));
 
 		return ExpressionStmt(std::move(returnLiteral));
-	} else if (token.kind == "WHILE") {
+	} else if (token.kind == TokenType::WHILE) {
 		advance();
 
 		ASTPtr condition = parse_expression(0);
@@ -218,7 +219,7 @@ ExpressionStmt Parser::parse_statement() {
 
 		advance();
 
-		if (current().kind != "OPEN_BRAC") {
+		if (current().kind != TokenType::OPEN_BRAC) {
 			stmts.push_back(parse_statement());
 		} else {
 			stmts = parse_block();
@@ -228,7 +229,7 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
 
 		return ExpressionStmt(std::move(whileLiteral));
-	} else if (token.kind == "IF") {
+	} else if (token.kind == TokenType::IF) {
 		advance();
 
 		ASTPtr condition = parse_expression(0);
@@ -236,14 +237,14 @@ ExpressionStmt Parser::parse_statement() {
 
 		advance();
 
-		if (current().kind != "OPEN_BRAC") {
+		if (current().kind != TokenType::OPEN_BRAC) {
 			thenStmts.push_back(parse_statement());
 		} else {
 			thenStmts = parse_block();
 			advance();
 		}
 
-		if (current().kind != "ELSE") {
+		if (current().kind != TokenType::ELSE) {
 			ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts));
 
 			return ExpressionStmt(std::move(ifLiteral));
@@ -251,7 +252,7 @@ ExpressionStmt Parser::parse_statement() {
 
 		advance();
 
-		if (current().kind != "OPEN_BRAC") {
+		if (current().kind != TokenType::OPEN_BRAC) {
 			elseStmts.push_back(parse_statement());
 		} else {
 			elseStmts = parse_block();
@@ -261,20 +262,20 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts), std::move(elseStmts));
 
 		return ExpressionStmt(std::move(ifLiteral));
-	} else if (token.kind == "BREAK" || token.kind == "CONTINUE") {
+	} else if (token.kind == TokenType::BREAK || token.kind == TokenType::CONTINUE) {
 		ASTPtr noOp = std::make_unique<NoOp>();
 
-		if (peek().kind == "SEM")
+		if (peek().kind == TokenType::SEM)
 			advance();
 		else
 			MissingTerminatorError("Missing statement terminator after break statement", current().lineNo);
 
-		return ExpressionStmt(std::move(noOp), true, true, token.kind == "CONTINUE");
+		return ExpressionStmt(std::move(noOp), true, true, token.kind == TokenType::CONTINUE);
 	}
 
 	ASTPtr expr = parse_expression(0);
 
-	if (peek().kind == "SEM") {
+	if (peek().kind == TokenType::SEM) {
 		advance();
 	} else {
 		MissingTerminatorError("Missing statement terminator after expression", current().lineNo);
@@ -288,22 +289,25 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 	ASTPtr left;
 
-	if (token.kind == "BIT_NOT" || token.kind == "NOT" || token.kind == "SUB" ||
-			token.kind == "INCREMENT" || token.kind == "DECREMENT") {
+	if (token.kind == TokenType::BIT_NOT || token.kind == TokenType::NOT || token.kind == TokenType::SUB ||
+			token.kind == TokenType::INCREMENT || token.kind == TokenType::DECREMENT) {
 		advance();
 	
 		ASTPtr operand = parse_expression(15);
 
-		left = std::make_unique<UnaryOp>(token.kind, std::move(operand));
-	} else if (token.kind.substr(0, 3) == "INT") {
+		TokenType new_token_type = (token.kind == TokenType::SUB)
+			? TokenType::NEGATE
+			: token.kind;
+		left = std::make_unique<UnaryOp>(new_token_type, std::move(operand));
+	} else if (token.kind >= TokenType::INT_HEX && token.kind <= TokenType::INT_BIN) {
 		int8_t base = -1;
-		if (token.kind == "INT_HEX")
+		if (token.kind == TokenType::INT_HEX)
 			base = 16;
-		if (token.kind == "INT_DEC")
+		if (token.kind == TokenType::INT_DEC)
 			base = 10;
-		if (token.kind == "INT_OCT")
+		if (token.kind == TokenType::INT_OCT)
 			base = 8;
-		if (token.kind == "INT_BIN")
+		if (token.kind == TokenType::INT_BIN)
 			base = 2;
 		if (base == -1)
 			SyntaxError("Somehow an integer with an invalid radix (base) has slipped through the cracks..."
@@ -311,23 +315,23 @@ ASTPtr Parser::parse_expression(int min_bp) {
 					"Please report this in the Issue Tracker.", token.lineNo);
 
 		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base));
-	} else if (token.kind == "FLOAT") {
+	} else if (token.kind == TokenType::FLOAT) {
 		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
-	} else if (token.kind == "STR") {
+	} else if (token.kind == TokenType::STR) {
 		left = std::make_unique<StrLiteral>(read_escape(token.text));
-	} else if (token.kind == "CHR") {
+	} else if (token.kind == TokenType::CHR) {
 		char c = 0;
 		get_escape(token.text, &c);
 		left = std::make_unique<IntLiteral>(c);
-	} else if (token.kind == "BOOL") {
+	} else if (token.kind == TokenType::BOOL) {
 		left = std::make_unique<BoolLiteral>(token.text == "true");
-	} else if (token.kind == "OPEN_BRACKET") {
+	} else if (token.kind == TokenType::OPEN_BRACKET) {
 		advance();
 
 		std::vector<ASTPtr> elems;
 		
-		while (current().kind != "CLOSE_BRACKET") {
-			if (current().kind == "EOF") {
+		while (current().kind != TokenType::CLOSE_BRACKET) {
+			if (current().kind == TokenType::EOF_TOK) {
 				SyntaxError("Unterminated vector literal", current().lineNo);
 			}
 
@@ -336,23 +340,23 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 			advance();
 
-			if (current().kind == "CLOSE_BRACKET")
+			if (current().kind == TokenType::CLOSE_BRACKET)
 				break;
 
-			expect("COMMA");
+			expect(TokenType::COMMA);
 
 			advance();
 		}
 		
 		left = std::make_unique<VecLiteral>(std::move(elems));
-	} else if (token.kind == "IDENT") {
-		if (peek().kind == "OPEN_PAREN") {
+	} else if (token.kind == TokenType::IDENT) {
+		if (peek().kind == TokenType::OPEN_PAREN) {
 			advance(2);
 
 			std::vector<ASTPtr> params;
 
-			while (current().kind != "CLOSE_PAREN") {
-				if (current().kind == "EOF") {
+			while (current().kind != TokenType::CLOSE_PAREN) {
+				if (current().kind == TokenType::EOF_TOK) {
 					SyntaxError("Closing parenthesis required for function call", current().lineNo);
 				}
 
@@ -361,11 +365,11 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 				advance();
 
-				if (current().kind == "CLOSE_PAREN") {
+				if (current().kind == TokenType::CLOSE_PAREN) {
 					break;
 				}
 
-				expect("COMMA");
+				expect(TokenType::COMMA);
 				advance();
 			}
 
@@ -375,20 +379,20 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		} else {
 			left = std::make_unique<Variable>(token.text);
 		}
-	} else if (token.kind == "OPEN_PAREN") {
+	} else if (token.kind == TokenType::OPEN_PAREN) {
 		advance();
 		left = parse_expression(0);
 		advance();
-		expect("CLOSE_PAREN");
+		expect(TokenType::CLOSE_PAREN);
 	} else {
-		SyntaxError("Unexpected token in expression: " + token.kind + 
+		SyntaxError("Unexpected token in expression: " + std::to_string((uint16_t)token.kind) + 
 			(token.text.empty() ? "" : (", '" + token.text + "'")), token.lineNo);
 	}
 
 	while (true) {
 		Token nextToken = peek();
 
-		if (nextToken.kind == "INCREMENT" || nextToken.kind == "DECREMENT") {
+		if (nextToken.kind == TokenType::INCREMENT || nextToken.kind == TokenType::DECREMENT) {
 			advance();
 
 			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left));
@@ -411,10 +415,6 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 		advance();
 
-		auto isRightAssoc = [](const std::string& op) {
-			return (op.find("ASSIGN") != std::string::npos || op == "POW");
-		};
-		
 		ASTPtr right = parse_expression(isRightAssoc(op.kind) ? bp : bp+1);
 		left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right));
 	}

@@ -38,7 +38,8 @@ int32_t main(int32_t argc, char **argv) {
 		program = deserializeAST(binFile);
 	} else if (SRC_FILENAME.find(".nlc") != std::string::npos) {
 		VM vm;
-		auto bytecode = vm.loadFile(SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
+		//std::cout << "beginning virtual machine execution\n";
+		auto bytecode = vm.loadFile(SRC_FILENAME);
 		vm.run(bytecode);
 		exit(0);
 	} else {

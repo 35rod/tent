@@ -2,31 +2,33 @@
 
 #include <iostream>
 #include <map>
+#include "opcodes.hpp"
 #include "token.hpp"
 #include "ast.hpp"
 
 class Parser {
-    std::map<std::string, int> precedence = {
-	    {"POW", 16},
-        {"NOT", 15}, {"BIT_NOT", 15},
-        {"INCREMENT", 15}, {"DECREMENT", 15},
-        {"INDEX", 14},
-	    {"MUL", 12}, {"DIV", 12}, {"FLOOR_DIV", 12}, {"MOD", 12},
-	    {"ADD", 11}, {"SUB", 11},
+    std::map<TokenType, int> precedence = {
+	    {TokenType::POW, 16},
+        {TokenType::NOT, 15}, {TokenType::BIT_NOT, 15},
+        {TokenType::INCREMENT, 15}, {TokenType::DECREMENT, 15},
+        {TokenType::INDEX, 14},
+	    {TokenType::MUL, 12}, {TokenType::DIV, 12}, {TokenType::FLOOR_DIV, 12}, {TokenType::MOD, 12},
+	    {TokenType::ADD, 11}, {TokenType::SUB, 11},
 
-	    {"LSHIFT", 10}, {"RSHIFT", 10},
+	    {TokenType::LSHIFT, 10}, {TokenType::RSHIFT, 10},
 
-	    {"LESS", 9}, {"LESSEQ", 9}, {"GREATER", 9}, {"GREATEREQ", 9},
-	    {"EQEQ", 8}, {"NOTEQ", 8},
+	    {TokenType::LESS, 9}, {TokenType::LESSEQ, 9}, {TokenType::GREATER, 9}, {TokenType::GREATEREQ, 9},
+	    {TokenType::EQEQ, 8}, {TokenType::NOTEQ, 8},
 
-	    {"BIT_AND", 7}, {"BIT_XOR", 6}, {"BIT_OR", 5},
-	    {"AND", 4}, {"OR", 3},
+	    {TokenType::BIT_AND, 7}, {TokenType::BIT_XOR, 6}, {TokenType::BIT_OR, 5},
+	    {TokenType::AND, 4}, {TokenType::OR, 3},
 
-        {"ASSIGN", 1}, {"MOD_ASSIGN", 1}, {"POW_ASSIGN", 1},
-        {"ADD_ASSIGN", 1}, {"SUB_ASSIGN", 1}, {"MUL_ASSIGN", 1}, {"DIV_ASSIGN", 1},
-        {"FLOOR_DIV_ASSIGN", 1}, {"AND_ASSIGN", 1}, {"OR_ASSIGN", 1},
-        {"BIT_AND_ASSIGN", 1}, {"BIT_XOR_ASSIGN", 1}, {"BIT_OR_ASSIGN", 1},
-        {"LSHIFT_ASSIGN", 1}, {"RSHIFT_ASSIGN", 1},
+        {TokenType::ASSIGN, 1}, {TokenType::MOD_ASSIGN, 1}, {TokenType::POW_ASSIGN, 1},
+        {TokenType::ADD_ASSIGN, 1}, {TokenType::SUB_ASSIGN, 1}, {TokenType::MUL_ASSIGN, 1},
+        {TokenType::DIV_ASSIGN, 1},
+        {TokenType::FLOOR_DIV_ASSIGN, 1}, {TokenType::AND_ASSIGN, 1}, {TokenType::OR_ASSIGN, 1},
+        {TokenType::BIT_AND_ASSIGN, 1}, {TokenType::BIT_XOR_ASSIGN, 1}, {TokenType::BIT_OR_ASSIGN, 1},
+        {TokenType::LSHIFT_ASSIGN, 1}, {TokenType::RSHIFT_ASSIGN, 1},
     };
     std::vector<Token> tokens;
     std::vector<Token>::size_type pos = 0;
@@ -37,7 +39,7 @@ class Parser {
     Token peek(int num=1);
     /* returns the current token, then advances (like i++ vs ++i) */
     Token advance(int num=1);
-    Token expect(std::string ttype);
+    Token expect(TokenType ttype);
     std::vector<ExpressionStmt> parse_block();
     ExpressionStmt parse_statement();
     ASTPtr parse_expression(int minBp);

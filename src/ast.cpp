@@ -38,25 +38,25 @@ ASTPtr deserializeAST(std::istream& in) {
 
 	switch (type) {
 		case NodeType::ASTNode: return std::make_unique<ASTNode>();
-        case NodeType::NoOp: return std::make_unique<NoOp>();
-        case NodeType::IntLiteral: return IntLiteral::deserialize(in);
-        case NodeType::FloatLiteral: return FloatLiteral::deserialize(in);
-        case NodeType::StrLiteral: return StrLiteral::deserialize(in);
-        case NodeType::BoolLiteral: return BoolLiteral::deserialize(in);
-        case NodeType::VecLiteral: return VecLiteral::deserialize(in);
-        case NodeType::Variable: return Variable::deserialize(in);
-        case NodeType::UnaryOp: return UnaryOp::deserialize(in);
-        case NodeType::BinaryOp: return BinaryOp::deserialize(in);
-        case NodeType::IfLiteral: return IfLiteral::deserialize(in);
-        case NodeType::WhileLiteral: return WhileLiteral::deserialize(in);
-        case NodeType::FunctionCall: return FunctionCall::deserialize(in);
-        case NodeType::ReturnLiteral: return ReturnLiteral::deserialize(in);
-        case NodeType::FunctionLiteral: return FunctionLiteral::deserialize(in);
-        case NodeType::ExpressionStmt: return ExpressionStmt::deserialize(in);
-        case NodeType::Program: return Program::deserialize(in);
-        default:
-            throw std::runtime_error("Unknown NodeType during deserialization");
-    }
+		case NodeType::NoOp: return std::make_unique<NoOp>();
+		case NodeType::IntLiteral: return IntLiteral::deserialize(in);
+		case NodeType::FloatLiteral: return FloatLiteral::deserialize(in);
+		case NodeType::StrLiteral: return StrLiteral::deserialize(in);
+		case NodeType::BoolLiteral: return BoolLiteral::deserialize(in);
+		case NodeType::VecLiteral: return VecLiteral::deserialize(in);
+		case NodeType::Variable: return Variable::deserialize(in);
+		case NodeType::UnaryOp: return UnaryOp::deserialize(in);
+		case NodeType::BinaryOp: return BinaryOp::deserialize(in);
+		case NodeType::IfLiteral: return IfLiteral::deserialize(in);
+		case NodeType::WhileLiteral: return WhileLiteral::deserialize(in);
+		case NodeType::FunctionCall: return FunctionCall::deserialize(in);
+		case NodeType::ReturnLiteral: return ReturnLiteral::deserialize(in);
+		case NodeType::FunctionLiteral: return FunctionLiteral::deserialize(in);
+		case NodeType::ExpressionStmt: return ExpressionStmt::deserialize(in);
+		case NodeType::Program: return Program::deserialize(in);
+		default:
+			throw std::runtime_error("Unknown NodeType during deserialization");
+	}
 }
 
 void ASTNode::print(int indent) {
@@ -247,12 +247,12 @@ ASTPtr Variable::deserialize(std::istream& in) {
 	return std::make_unique<Variable>(name, std::move(val));
 }
 
-UnaryOp::UnaryOp(std::string opOp, ASTPtr opOperand)
+UnaryOp::UnaryOp(TokenType opOp, ASTPtr opOperand)
 : ASTNode(), op(opOp), operand(std::move(opOperand)) {}
 
 void UnaryOp::print(int indent) {
 	printIndent(indent);
-	std::cout << "UnaryOp(op=\"" << op << "\")\n";
+	std::cout << "UnaryOp(op=\"" << (uint16_t)op << "\")\n";
 	printIndent(indent);
 	std::cout << "Operand:\n";
 
@@ -266,23 +266,23 @@ void UnaryOp::print(int indent) {
 
 void UnaryOp::serialize(std::ostream& out) {
 	writeBinary<NodeType>(out, NodeType::UnaryOp);
-	writeText(out, op);
+	writeBinary<TokenType>(out, op);
 	operand->serialize(out);
 }
 
 ASTPtr UnaryOp::deserialize(std::istream& in) {
-	std::string op = readText(in);
+	TokenType op = readBinary<TokenType>(in);
 	ASTPtr operand = deserializeAST(in);
 
 	return std::make_unique<UnaryOp>(op, std::move(operand));
 }
 
-BinaryOp::BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight) :
+BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight) :
 ASTNode(), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 
 void BinaryOp::print(int indent) {
 	printIndent(indent);
-	std::cout << "BinaryOp(op=\"" << op << "\")" << std::endl;
+	std::cout << "BinaryOp(op=\"" << (uint16_t)op << "\")" << std::endl;
 	printIndent(indent+2);
 	std::cout << "Left:\n";
 	
@@ -306,13 +306,13 @@ void BinaryOp::print(int indent) {
 
 void BinaryOp::serialize(std::ostream& out) {
 	writeBinary<NodeType>(out, NodeType::BinaryOp);
-	writeText(out, op);
+	writeBinary<TokenType>(out, op);
 	left->serialize(out);
 	right->serialize(out);
 }
 
 ASTPtr BinaryOp::deserialize(std::istream& in) {
-	std::string op = readText(in);
+	TokenType op = readBinary<TokenType>(in);
 	ASTPtr left = deserializeAST(in);
 	ASTPtr right = deserializeAST(in);
 

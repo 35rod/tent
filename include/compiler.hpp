@@ -1,49 +1,23 @@
 #pragma once
 
-#include <fstream>
-#include <stdexcept>
 #include "ast.hpp"
 #include "evaluator.hpp"
+#include "opcodes.hpp"
 
-enum class Opcode : uint8_t {
-	PUSH_INT,
-	PUSH_FLOAT,
-	PUSH_STRING,
-	PUSH_BOOL,
-	POW,
-	NOT, BIT_NOT,
-	INCREMENT, DECREMENT,
-	INDEX,
-	MUL, DIV, FLOOR_DIV, MOD,
-	ADD, SUB,
-	LSHIFT, RSHIFT,
-	LESS, LESSEQ, GREATER, GREATEREQ,
-	EQEQ, NOTEQ,
-	BIT_AND, BIT_XOR, BIT_OR,
-	AND, OR,
-	ASSIGN, MOD_ASSIGN, POW_ASSIGN,
-	ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
-	FLOOR_DIV_ASSIGN, AND_ASSIGN, OR_ASSIGN,
-	BIT_AND_ASSIGN, BIT_XOR_ASSIGN, BIT_OR_ASSIGN,
-	LSHIFT_ASSIGN, RSHIFT_ASSIGN,
-	PRINT,
-	PRINTLN,
-};
-
-Opcode opcodeForBinaryOp(const std::string& opName);
-Opcode opcodeForUnaryOp(const std::string& opName);
+TokenType opcodeForBinaryOp(const std::string& opName);
+TokenType opcodeForUnaryOp(const std::string& opName);
 
 class Instruction {
 	public:
-		Opcode op;
+		TokenType op;
 		EvalExpr operand;
 
 		Instruction() = default;
-		Instruction(Opcode opcode) : op(opcode) {}
-		Instruction(Opcode opcode, nl_int_t val) : op(opcode), operand(val) {}
-		Instruction(Opcode opcode, nl_dec_t val) : op(opcode), operand(val) {}
-		Instruction(Opcode opcode, std::string val) : op(opcode), operand(val) {}
-		Instruction(Opcode opcode, bool val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode) : op(opcode) {}
+		Instruction(TokenType opcode, nl_int_t val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode, nl_dec_t val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode, std::string val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode, bool val) : op(opcode), operand(val) {}
 };
 
 class Compiler {

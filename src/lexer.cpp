@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "errors.hpp"
+#include "opcodes.hpp"
 
 void Lexer::nextChar(int num) {
 	curPos += num;
@@ -26,7 +27,7 @@ void Lexer::skipWhitespace() {
 }
 
 void Lexer::skipComment() {
-	if (curChar == '`') {
+	if (curChar == '~') {
 		while (curChar != '\n') {
 			nextChar();
 		}
@@ -39,153 +40,153 @@ Token Lexer::getToken() {
 	skipWhitespace();
 	skipComment();
 
-	Token token("", "", lineNo);
+	Token token("", TokenType::INVALID_TOKEN, lineNo);
 
 	if (curChar == '+') {
 		if (peek() == '+') {
 			nextChar();
-			token = Token("++", "INCREMENT", lineNo);
+			token = Token("++", TokenType::INCREMENT, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("+=", "ADD_ASSIGN", lineNo);
+			token = Token("+=", TokenType::ADD_ASSIGN, lineNo);
 		} else {
-			token = Token("+", "ADD", lineNo);
+			token = Token("+", TokenType::ADD, lineNo);
 		}
 	} else if (curChar == '-') {
 		if (peek() == '-') {
 			nextChar();
-			token = Token("--", "DECREMENT", lineNo);
+			token = Token("--", TokenType::DECREMENT, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("-=", "SUB_ASSIGN", lineNo);
+			token = Token("-=", TokenType::SUB_ASSIGN, lineNo);
 		} else {
-			token = Token("-", "SUB", lineNo);
+			token = Token("-", TokenType::SUB, lineNo);
 		}
 	} else if (curChar == '*') {
 		if (peek() == '*') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token("**=", "POW_ASSIGN", lineNo);
+				token = Token("**=", TokenType::POW_ASSIGN, lineNo);
 			} else
-				token = Token("**", "POW", lineNo);
+				token = Token("**", TokenType::POW, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("*=", "MUL_ASSIGN", lineNo);
+			token = Token("*=", TokenType::MUL_ASSIGN, lineNo);
 		} else {
-			token = Token("*", "MUL", lineNo);
+			token = Token("*", TokenType::MUL, lineNo);
 		}
 	} else if (curChar == '/') {
 		if (peek() == '/') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token("//=", "FLOOR_DIV_ASSIGN", lineNo);
+				token = Token("//=", TokenType::FLOOR_DIV_ASSIGN, lineNo);
 			} else
-				token = Token("//", "FLOOR_DIV", lineNo);
+				token = Token("//", TokenType::FLOOR_DIV, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("/=", "DIV_ASSIGN", lineNo);
+			token = Token("/=", TokenType::DIV_ASSIGN, lineNo);
 		} else {
-			token = Token("/", "DIV", lineNo);
+			token = Token("/", TokenType::DIV, lineNo);
 		}
 	} else if (curChar == '%') {
 		if (peek() == '=') {
 			nextChar();
-			token = Token("%=", "MOD_ASSIGN", lineNo);
+			token = Token("%=", TokenType::MOD_ASSIGN, lineNo);
 		} else
-			token = Token("%", "MOD", lineNo);
+			token = Token("%", TokenType::MOD, lineNo);
 	} else if (curChar == '&') {
 		if (peek() == '&') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token("&&=", "AND_ASSIGN", lineNo);
+				token = Token("&&=", TokenType::AND_ASSIGN, lineNo);
 			} else
-				token = Token("&&", "AND", lineNo);
+				token = Token("&&", TokenType::AND, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("&=", "BIT_AND_ASSIGN", lineNo);
+			token = Token("&=", TokenType::BIT_AND_ASSIGN, lineNo);
 		} else
-			token = Token("&", "BIT_AND", lineNo);
+			token = Token("&", TokenType::BIT_AND, lineNo);
 	} else if (curChar == '@') {
-		token = Token("@", "INDEX", lineNo);
+		token = Token("@", TokenType::INDEX, lineNo);
 	} else if (curChar == '^') {
 		if (peek() == '=') {
 			nextChar();
-			token = Token("^=", "BIT_XOR_ASSIGN", lineNo);
+			token = Token("^=", TokenType::BIT_XOR_ASSIGN, lineNo);
 		} else
-			token = Token("^", "BIT_XOR", lineNo);
+			token = Token("^", TokenType::BIT_XOR, lineNo);
 	} else if (curChar == '|') {
 		if (peek() == '|') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token("||=", "OR_ASSIGN", lineNo);
+				token = Token("||=", TokenType::OR_ASSIGN, lineNo);
 			} else
-				token = Token("||", "OR", lineNo);
+				token = Token("||", TokenType::OR, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("|=", "BIT_OR_ASSIGN", lineNo);
+			token = Token("|=", TokenType::BIT_OR_ASSIGN, lineNo);
 		} else
-			token = Token("|", "BIT_OR", lineNo);
+			token = Token("|", TokenType::BIT_OR, lineNo);
 	} else if (curChar == '<') {
 		char peekChar = peek();
 		if (peekChar == '<') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token("<<=", "LSHIFT_ASSIGN", lineNo);
+				token = Token("<<=", TokenType::LSHIFT_ASSIGN, lineNo);
 			} else
-				token = Token("<<", "LSHIFT", lineNo);
+				token = Token("<<", TokenType::LSHIFT, lineNo);
 		} else if (peekChar == '=') {
 			nextChar();
-			token = Token("<=", "LESSEQ", lineNo);
+			token = Token("<=", TokenType::LESSEQ, lineNo);
 		} else
-			token = Token("<", "LESS", lineNo);
+			token = Token("<", TokenType::LESS, lineNo);
 	} else if (curChar == '>') {
 		char peekChar = peek();
 		if (peekChar == '>') {
 			nextChar();
 			if (peek() == '=') {
 				nextChar();
-				token = Token(">>=", "RSHIFT_ASSIGN", lineNo);
+				token = Token(">>=", TokenType::RSHIFT_ASSIGN, lineNo);
 			} else
-				token = Token(">>", "RSHIFT", lineNo);
+				token = Token(">>", TokenType::RSHIFT, lineNo);
 		} else if (peekChar == '=') {
 			nextChar();
-			token = Token(">=", "GREATEREQ", lineNo);
+			token = Token(">=", TokenType::GREATEREQ, lineNo);
 		} else
-			token = Token(">", "GREATER", lineNo);
+			token = Token(">", TokenType::GREATER, lineNo);
 	} else if (curChar == '(') {
-		token = Token("(", "OPEN_PAREN", lineNo);
+		token = Token("(", TokenType::OPEN_PAREN, lineNo);
 	} else if (curChar == ')') {
-		token = Token(")", "CLOSE_PAREN", lineNo);
+		token = Token(")", TokenType::CLOSE_PAREN, lineNo);
 	} else if (curChar == '{') {
-		token = Token("{", "OPEN_BRAC", lineNo);
+		token = Token("{", TokenType::OPEN_BRAC, lineNo);
 	} else if (curChar == '}') {
-		token = Token("}", "CLOSE_BRAC", lineNo);
+		token = Token("}", TokenType::CLOSE_BRAC, lineNo);
 	} else if (curChar == ',') {
-		token = Token(",", "COMMA", lineNo);
+		token = Token(",", TokenType::COMMA, lineNo);
 	} else if (curChar == '[') {
-		token = Token("[", "OPEN_BRACKET", lineNo);
+		token = Token("[", TokenType::OPEN_BRACKET, lineNo);
 	} else if (curChar == ']') {
-		token = Token("]", "CLOSE_BRACKET", lineNo);
+		token = Token("]", TokenType::CLOSE_BRACKET, lineNo);
 	} else if (curChar == '!') {
 		if (peek() == '!') {
 			nextChar();
-			token = Token("!!", "BIT_NOT", lineNo);
+			token = Token("!!", TokenType::BIT_NOT, lineNo);
 		} else if (peek() == '=') {
 			nextChar();
-			token = Token("!=", "NOTEQ", lineNo);
+			token = Token("!=", TokenType::NOTEQ, lineNo);
 		} else
-			token = Token("!", "NOT", lineNo);
+			token = Token("!", TokenType::NOT, lineNo);
 	} else if (curChar == '=') {
 		if (peek() == '=') {
 			nextChar();
-			token = Token("==", "EQEQ", lineNo);
+			token = Token("==", TokenType::EQEQ, lineNo);
 		} else {
-			token = Token("=", "ASSIGN", lineNo);
+			token = Token("=", TokenType::ASSIGN, lineNo);
 		}
 	} else if (curChar == '\"') {
 		nextChar();
@@ -197,7 +198,7 @@ Token Lexer::getToken() {
 		if (curChar == '\0')
 			MissingTerminatorError("Unterminated string literal", lineNo);
 
-		token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
+		token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo);
 	} else if (curChar == '\'') {
 		nextChar();
 
@@ -209,9 +210,9 @@ Token Lexer::getToken() {
 			MissingTerminatorError("Unterminated string literal", lineNo);
 
 		if (curPos - startPos == 1)
-			token = Token(source.substr(startPos, 1), "CHR", lineNo);
+			token = Token(source.substr(startPos, 1), TokenType::CHR, lineNo);
 		else 
-			token = Token(source.substr(startPos, curPos-startPos), "STR", lineNo);
+			token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo);
 	} else if (isalpha(curChar) || curChar == '_') {
 		int startPos = curPos;
 
@@ -222,30 +223,30 @@ Token Lexer::getToken() {
 
 		std::string text = source.substr(startPos, curPos-startPos+1);
 
-		std::string kind;
+		TokenType kind;
 
 		if (text == "load") {
-			kind = "LOAD";
+			kind = TokenType::LOAD;
 		} else if (text == "set") {
-			kind = "SET";
+			kind = TokenType::SET;
 		} else if (text == "form") {
-			kind = "FORM";
+			kind = TokenType::FORM;
 		} else if (text == "return") {
-			kind = "RETURN";
+			kind = TokenType::RETURN;
 		} else if (text == "if") {
-			kind = "IF";
+			kind = TokenType::IF;
 		} else if (text == "else") {
-			kind = "ELSE";
+			kind = TokenType::ELSE;
 		} else if (text == "while") {
-			kind = "WHILE";
+			kind = TokenType::WHILE;
 		} else if (text == "break") {
-			kind = "BREAK";
+			kind = TokenType::BREAK;
 		} else if (text == "continue") {
-			kind = "CONTINUE";
+			kind = TokenType::CONTINUE;
 		} else if (text == "true" || text == "false") {
-			kind = "BOOL";
+			kind = TokenType::BOOL;
 		} else {
-			kind = "IDENT";
+			kind = TokenType::IDENT;
 		}
 
 		token = Token(text, kind, lineNo);
@@ -291,25 +292,25 @@ Token Lexer::getToken() {
 				nextChar();
 			}
 
-			token = Token(source.substr(startPos, curPos+1), "FLOAT", lineNo);
+			token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, lineNo);
 		} else {
-			std::string intlit_type = "INT_DEC";
+			TokenType intlit_type = TokenType::INT_DEC;
 			if (is_digit_func == is_hex_digit)
-				intlit_type = "INT_HEX";
+				intlit_type = TokenType::INT_HEX;
 			else if (is_digit_func == is_oct_digit)
-				intlit_type = "INT_OCT";
+				intlit_type = TokenType::INT_OCT;
 			else if (is_digit_func == is_bin_digit)
-				intlit_type = "INT_BIN";
+				intlit_type = TokenType::INT_BIN;
 			token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo);
 		}
 	} else if (curChar == ';') {
-		token = Token(";", "SEM", lineNo);
+		token = Token(";", TokenType::SEM, lineNo);
 	} else if (curChar == '\n') {
 		lineNo++;
 
-		token = Token("\\n", "NEWLINE", lineNo);
+		token = Token("\\n", TokenType::NEWLINE, lineNo);
 	} else if (curChar == '\0') {
-		token = Token("", "EOF", lineNo);
+		token = Token("", TokenType::EOF_TOK, lineNo);
 	}
 
 	nextChar();
@@ -321,10 +322,10 @@ void Lexer::getTokens() {
 	while (true) {
 		Token token = getToken();
 
-		if (token.kind != "NEWLINE" && token.kind != "EOF") {
+		if (token.kind != TokenType::NEWLINE && token.kind != TokenType::EOF_TOK) {
 			tokens.push_back(token);
 		} else {
-			if (token.kind == "EOF") {
+			if (token.kind == TokenType::EOF_TOK) {
 				break;
 			}
 		}

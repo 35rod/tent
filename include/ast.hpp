@@ -2,10 +2,10 @@
 
 #include <string>
 #include <vector>
-#include <cstdio>
 #include <ostream>
 #include <memory>
 #include "misc.hpp"
+#include "opcodes.hpp"
 
 enum class NodeType : uint8_t {
 	Program = 0xC0,
@@ -136,19 +136,19 @@ class Variable : public ASTNode {
 
 class UnaryOp : public ASTNode {
 	public:
-		std::string op;
+		TokenType op;
 		ASTPtr operand;
 
 		void print(int indent) override;
 		void serialize(std::ostream& out) override;
 		static ASTPtr deserialize(std::istream& in);
 
-		UnaryOp(std::string opOp, ASTPtr opOperand);
+		UnaryOp(TokenType opOp, ASTPtr opOperand);
 };
 
 class BinaryOp : public ASTNode {
 	public:
-		std::string op;
+		TokenType op;
 		ASTPtr left;
 		ASTPtr right;
 
@@ -156,7 +156,7 @@ class BinaryOp : public ASTNode {
 		void serialize(std::ostream& out) override;
 		static ASTPtr deserialize(std::istream& in);
 
-		BinaryOp(std::string opOp, ASTPtr opLeft, ASTPtr opRight);
+		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight);
 };
 
 class ExpressionStmt : public ASTNode {
