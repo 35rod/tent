@@ -15,25 +15,33 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 		fileHandle.read(reinterpret_cast<char*>(&op), sizeof(op));
 		bytecode[i].op = static_cast<TokenType>(op);
 
-		if (bytecode[i].op == TokenType::PUSH_INT) {
-			nl_int_t val;
-			fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
-			bytecode[i].operand = val;
-		} else if (bytecode[i].op == TokenType::PUSH_FLOAT) {
-			nl_dec_t val;
-			fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
-			bytecode[i].operand = val;
-		} else if (bytecode[i].op == TokenType::PUSH_STRING) {
-			uint64_t len;
-			fileHandle.read(reinterpret_cast<char*>(&len), sizeof(len));
-			std::string s;
-			s.resize(len);
-			if (len) fileHandle.read(&s[0], static_cast<std::streamsize>(len));
-			bytecode[i].operand = s;
-		} else if (bytecode[i].op == TokenType::PUSH_BOOL) {
-			uint8_t b;
-			fileHandle.read(reinterpret_cast<char*>(&b), sizeof(b));
-			bytecode[i].operand = nl_bool_t(b != 0);
+		switch(bytecode[i].op) {
+			case TokenType::PUSH_INT: {
+				nl_int_t val;
+				fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
+				bytecode[i].operand = val;
+				break;
+			} case TokenType::PUSH_FLOAT: {
+				nl_dec_t val;
+				fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
+				bytecode[i].operand = val;
+				break;
+			} case TokenType::PUSH_STRING:
+			case TokenType::VAR:
+			case TokenType::ASSIGN: {
+				uint64_t len;
+				fileHandle.read(reinterpret_cast<char*>(&len), sizeof(len));
+				std::string s(len, '\0');
+				if (len) fileHandle.read(&s[0], static_cast<std::streamsize>(len));
+				bytecode[i].operand = s;
+				break;
+			} case TokenType::PUSH_BOOL: {
+				uint8_t b;
+				fileHandle.read(reinterpret_cast<char*>(&b), sizeof(b));
+				bytecode[i].operand = nl_bool_t(b != 0);
+				break;
+			} default:
+				break;
 		}
 	}
 
@@ -41,7 +49,19 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 }
 
 void VM::run(const std::vector<Instruction>& bytecode) {
+	std::unordered_map<std::string, EvalExpr> variables;
+
 	for (const auto& instr : bytecode) {
+		if (instr.op == TokenType::ASSIGN) {
+			if (stack.empty()) throw std::runtime_error("Stack overflow on ASSIGN");
+			EvalExpr val = stack.back(); stack.pop_back();
+
+			std::string name = std::get<std::string>(instr.operand);
+			variables[name] = val;
+			stack.push_back(val);
+			continue;
+		}
+
 		if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {
 			if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
 			EvalExpr b = stack.back(); stack.pop_back();
@@ -76,6 +96,15 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 			} case TokenType::PUSH_BOOL: {
 				bool val = std::get<bool>(instr.operand);
 				stack.push_back(val);
+				break;
+			} case TokenType::VAR: {
+				std::string name = std::get<std::string>(instr.operand);
+				
+				if (variables.find(name) == variables.end()) {
+					throw std::runtime_error("Undefined variable: " + name);
+				}
+
+				stack.push_back(variables[name]);
 				break;
 			} case TokenType::PRINTLN:
 			case TokenType::PRINT: {

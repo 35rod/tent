@@ -37,15 +37,16 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				nl_dec_t val = std::get<nl_dec_t>(instr.operand);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
-			} case TokenType::PUSH_STRING: {
+			} case TokenType::PUSH_STRING:
+			case TokenType::VAR:
+			case TokenType::ASSIGN: {
 				std::string val = std::get<std::string>(instr.operand);
 				uint64_t len = static_cast<uint64_t>(val.size());
 				out.write(reinterpret_cast<const char*>(&len), sizeof(len));
 				if (len) out.write(val.data(), static_cast<std::streamsize>(len));
 				break;
 			} case TokenType::PUSH_BOOL: {
-				nl_bool_t val = std::get<bool>(instr.operand);
-				uint8_t b = val == 1;
+				uint8_t b = std::get<bool>(instr.operand) ? 1 : 0;
 				out.write(reinterpret_cast<const char*>(&b), sizeof(b));
 				break;
 			} default:
@@ -75,6 +76,8 @@ void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 		} else {
 			throw std::runtime_error("Only 'print' or 'println' function is supported");
 		}
+	} else {
+		compileExpr(node, bytecode);
 	}
 }
 
@@ -89,6 +92,13 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		bytecode.push_back(Instruction(TokenType::PUSH_STRING, sl->value));
 	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
 		bytecode.push_back(Instruction(TokenType::PUSH_BOOL, bl->value));
+	} else if (auto v = dynamic_cast<Variable*>(node)) {
+		if (v->value) {
+			compileExpr(v->value.get(), bytecode);
+			bytecode.push_back(Instruction(TokenType::ASSIGN, v->name));
+		} else {
+			bytecode.push_back(Instruction(TokenType::VAR, v->name));
+		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		compileExpr(un->operand.get(), bytecode);
 		bytecode.push_back(Instruction(un->op));
@@ -96,9 +106,8 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		if (isRightAssoc(bin->op)) {
 			if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
 				compileExpr(bin->right.get(), bytecode);
-
-				throw std::runtime_error("Variables are not implemented yet...");
-				//VARIABLES ARE NOT IMPLEMENTED YET
+				bytecode.push_back(Instruction(bin->op, varNode->name));
+				return;
 			}
 		}
 

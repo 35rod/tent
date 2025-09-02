@@ -1,1 +1,4 @@
-println((-3) ** 5); ~ tests correctly!
+set x = 10;
+println(x);
+x = 3;
+println(x);
