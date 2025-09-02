@@ -60,7 +60,38 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 	if (!node) return;
 
-	if (auto fc = dynamic_cast<FunctionCall*>(node)) {
+	compileExpr(node, bytecode);
+}
+
+void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
+	if (!node) return;
+
+	if (auto il = dynamic_cast<IntLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, il->value));
+	} else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::PUSH_FLOAT, fl->value));
+	} else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::PUSH_STRING, sl->value));
+	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::PUSH_BOOL, bl->value));
+	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
+		compileExpr(ifl->condition.get(), bytecode);
+		bytecode.push_back(Instruction(TokenType::IF));
+
+		for (auto& stmt : ifl->thenClauseStmts) {
+			compileStmt(stmt.expr.get(), bytecode);
+		}
+
+		if (!ifl->elseClauseStmts.empty()) {
+			bytecode.push_back(Instruction(TokenType::ELSE));
+
+			for (auto& stmt : ifl->elseClauseStmts) {
+				compileStmt(stmt.expr.get(), bytecode);
+			}
+		}
+
+		bytecode.push_back(Instruction(TokenType::END_IF));
+	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		if (fc->name == "print") {
 			for (auto& param : fc->params) {
 				compileExpr(param.get(), bytecode);
@@ -76,22 +107,6 @@ void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 		} else {
 			throw std::runtime_error("Only 'print' or 'println' function is supported");
 		}
-	} else {
-		compileExpr(node, bytecode);
-	}
-}
-
-void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
-	if (!node) return;
-
-	if (auto il = dynamic_cast<IntLiteral*>(node)) {
-		bytecode.push_back(Instruction(TokenType::PUSH_INT, il->value));
-	} else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
-		bytecode.push_back(Instruction(TokenType::PUSH_FLOAT, fl->value));
-	} else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
-		bytecode.push_back(Instruction(TokenType::PUSH_STRING, sl->value));
-	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
-		bytecode.push_back(Instruction(TokenType::PUSH_BOOL, bl->value));
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
 		if (v->value) {
 			compileExpr(v->value.get(), bytecode);

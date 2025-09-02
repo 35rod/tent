@@ -7,7 +7,7 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 
 	uint64_t count64 = 0;
 	fileHandle.read(reinterpret_cast<char*>(&count64), sizeof(count64));
-
+	
 	std::vector<Instruction> bytecode(count64);
 
 	for (size_t i = 0; i < count64; i++) {
@@ -50,8 +50,22 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 
 void VM::run(const std::vector<Instruction>& bytecode) {
 	std::unordered_map<std::string, EvalExpr> variables;
+	int nested = 0;
+	bool skip = false;
 
 	for (const auto& instr : bytecode) {
+		if (skip) {
+			if (instr.op == TokenType::IF) nested++;
+			else if (instr.op == TokenType::END_IF) {
+				if (nested == 0) skip = false;
+				else nested--;
+			} else if (instr.op == TokenType::ELSE && nested == 0) {
+				skip = false;
+			}
+
+			continue;
+		}
+
 		if (instr.op == TokenType::ASSIGN) {
 			if (stack.empty()) throw std::runtime_error("Stack overflow on ASSIGN");
 			EvalExpr val = stack.back(); stack.pop_back();
@@ -105,6 +119,24 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				}
 
 				stack.push_back(variables[name]);
+				break;
+			} case TokenType::IF: {
+				if (stack.empty()) throw std::runtime_error("Stack underflow on IF condition");
+				
+				EvalExpr cond = stack.back(); stack.pop_back();
+
+				bool condTrue = std::visit([](auto&& v) -> bool {
+					using T = std::decay_t<decltype(v)>;
+					if constexpr (std::is_same_v<T, nl_bool_t>) return v;
+					if constexpr (std::is_same_v<T, nl_int_t>) return v != 0;
+					if constexpr (std::is_same_v<T, nl_dec_t>) return v != 0.0;
+					return true;
+				}, cond);
+
+				if (!condTrue) skip = true;
+				break;
+			} case TokenType::ELSE:
+			case TokenType::END_IF: {
 				break;
 			} case TokenType::PRINTLN:
 			case TokenType::PRINT: {

@@ -63,5 +63,7 @@ enum class TokenType: TokenTypeSize {
 	INVALID_TOKEN,
 	EOF_TOK,
 
-	VAR
+	VAR,
+
+	END_IF
 };
