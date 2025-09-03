@@ -65,5 +65,5 @@ enum class TokenType: TokenTypeSize {
 
 	VAR,
 
-	END_IF
+	END_IF,
 };

@@ -1,4 +1,4 @@
-set x = 0;
+set x = 1;
 
 if x == 0 {
 	println("Yay!");

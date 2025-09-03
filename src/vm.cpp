@@ -48,23 +48,38 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 	return bytecode;
 }
 
+enum WillSkipReason {
+	WillNotSkip,
+	WillSkipThen,
+	WillSkipElse,
+};
+
 void VM::run(const std::vector<Instruction>& bytecode) {
 	std::unordered_map<std::string, EvalExpr> variables;
 	int nested = 0;
 	bool skip = false;
+	WillSkipReason will_skip = WillNotSkip;
 
 	for (const auto& instr : bytecode) {
-		if (skip) {
+		if (will_skip != WillNotSkip) {
 			if (instr.op == TokenType::IF) nested++;
 			else if (instr.op == TokenType::END_IF) {
-				if (nested == 0) skip = false;
-				else nested--;
-			} else if (instr.op == TokenType::ELSE && nested == 0) {
+				if (nested == 0) {
+					skip = false;
+					will_skip = WillNotSkip;
+				} else nested--;
+			} else if (instr.op == TokenType::ELSE && nested == 0 && will_skip == WillSkipThen) {
 				skip = false;
+				will_skip = WillNotSkip;
+			} else if (instr.op == TokenType::ELSE && nested == 0 && will_skip == WillSkipElse) {
+				skip = true;
+			} else if (will_skip == WillSkipThen) {
+				skip = true;
 			}
-
-			continue;
 		}
+
+		if (skip)
+			continue;
 
 		if (instr.op == TokenType::ASSIGN) {
 			if (stack.empty()) throw std::runtime_error("Stack overflow on ASSIGN");
@@ -133,7 +148,8 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					return true;
 				}, cond);
 
-				if (!condTrue) skip = true;
+				if (!condTrue) will_skip = WillSkipThen;
+				else           will_skip = WillSkipElse;
 				break;
 			} case TokenType::ELSE:
 			case TokenType::END_IF: {
