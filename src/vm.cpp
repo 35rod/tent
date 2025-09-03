@@ -40,6 +40,12 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 				fileHandle.read(reinterpret_cast<char*>(&b), sizeof(b));
 				bytecode[i].operand = nl_bool_t(b != 0);
 				break;
+			} case TokenType::JUMP_IF_FALSE:
+			case TokenType::JUMP: {
+				nl_int_t addr;
+				fileHandle.read(reinterpret_cast<char*>(&addr), sizeof(addr));
+				bytecode[i].operand = addr;
+				break;
 			} default:
 				break;
 		}
@@ -48,66 +54,12 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 	return bytecode;
 }
 
-enum WillSkipReason {
-	WillNotSkip,
-	WillSkipThen,
-	WillSkipElse,
-};
-
 void VM::run(const std::vector<Instruction>& bytecode) {
 	std::unordered_map<std::string, EvalExpr> variables;
-	int nested = 0;
-	bool skip = false;
-	WillSkipReason will_skip = WillNotSkip;
+	size_t ip = 0;
 
-	for (const auto& instr : bytecode) {
-		if (will_skip != WillNotSkip) {
-			if (instr.op == TokenType::IF) nested++;
-			else if (instr.op == TokenType::END_IF) {
-				if (nested == 0) {
-					skip = false;
-					will_skip = WillNotSkip;
-				} else nested--;
-			} else if (instr.op == TokenType::ELSE && nested == 0 && will_skip == WillSkipThen) {
-				skip = false;
-				will_skip = WillNotSkip;
-			} else if (instr.op == TokenType::ELSE && nested == 0 && will_skip == WillSkipElse) {
-				skip = true;
-			} else if (will_skip == WillSkipThen) {
-				skip = true;
-			}
-		}
-
-		if (skip)
-			continue;
-
-		if (instr.op == TokenType::ASSIGN) {
-			if (stack.empty()) throw std::runtime_error("Stack overflow on ASSIGN");
-			EvalExpr val = stack.back(); stack.pop_back();
-
-			std::string name = std::get<std::string>(instr.operand);
-			variables[name] = val;
-			stack.push_back(val);
-			continue;
-		}
-
-		if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {
-			if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
-			EvalExpr b = stack.back(); stack.pop_back();
-			//std::cout << "popped element 1 for binary operator\n";
-			EvalExpr a = stack.back(); stack.pop_back();
-			//std::cout << "popped element 2 for binary operator\n";
-			stack.push_back(Evaluator::evalBinaryOp(a, b, instr.op));
-			//std::cout << "pushed element for binary operator\n";
-			continue;
-		} else if (instr.op >= TokenType::NOT && instr.op <= TokenType::NEGATE) {
-			if (stack.size() < 1) throw std::runtime_error("Stack underflow for unary op");
-			EvalExpr a = stack.back(); stack.pop_back();
-			//std::cout << "popped element for unary operator\n";
-			stack.push_back(Evaluator::evalUnaryOp(a, instr.op));
-			//std::cout << "pushed element for unary operator\n";
-			continue;
-		}
+	while (ip < bytecode.size()) {
+		const Instruction& instr = bytecode[ip];
 
 		switch(instr.op) {
 			case TokenType::PUSH_INT: {
@@ -135,9 +87,17 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				stack.push_back(variables[name]);
 				break;
-			} case TokenType::IF: {
-				if (stack.empty()) throw std::runtime_error("Stack underflow on IF condition");
+			} case TokenType::ASSIGN: {
+				if (stack.empty()) throw std::runtime_error("Stack underflow on ASSIGN");
 				
+				EvalExpr val = stack.back(); stack.pop_back();
+				std::string name = std::get<std::string>(instr.operand);
+				variables[name] = val;
+				stack.push_back(val);
+				break;
+			} case TokenType::JUMP_IF_FALSE: {
+				if (stack.empty()) throw std::runtime_error("Stack underflow on JUMP_IF_FALSE");
+
 				EvalExpr cond = stack.back(); stack.pop_back();
 
 				bool condTrue = std::visit([](auto&& v) -> bool {
@@ -148,11 +108,10 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					return true;
 				}, cond);
 
-				if (!condTrue) will_skip = WillSkipThen;
-				else           will_skip = WillSkipElse;
+				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand)) - 1;
 				break;
-			} case TokenType::ELSE:
-			case TokenType::END_IF: {
+			} case TokenType::JUMP: {
+				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand)) - 1;
 				break;
 			} case TokenType::PRINTLN:
 			case TokenType::PRINT: {
@@ -187,8 +146,22 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				std::cout.flush();
 				break;
 			} default:
-				std::cerr << "Unknown opcode\n";
+				if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {
+					if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
+					EvalExpr b = stack.back(); stack.pop_back();
+					EvalExpr a = stack.back(); stack.pop_back();
+					stack.push_back(Evaluator::evalBinaryOp(a, b, instr.op));
+				} else if (instr.op >= TokenType::NOT && instr.op <= TokenType::NEGATE) {
+					if (stack.empty()) throw std::runtime_error("Stack underflow for unary op");
+					EvalExpr a = stack.back(); stack.pop_back();
+					stack.push_back(Evaluator::evalUnaryOp(a, instr.op));
+				} else {
+					std::cerr << "Unknown opcode\n";
+				}
+				
 				break;
 		}
+
+		ip++;
 	}
 }

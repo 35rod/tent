@@ -49,6 +49,11 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				uint8_t b = std::get<bool>(instr.operand) ? 1 : 0;
 				out.write(reinterpret_cast<const char*>(&b), sizeof(b));
 				break;
+			} case TokenType::JUMP_IF_FALSE:
+			case TokenType::JUMP: {
+				nl_int_t addr = std::get<nl_int_t>(instr.operand);
+				out.write(reinterpret_cast<const char*>(&addr), sizeof(addr));
+				break;
 			} default:
 				break;
 		}
@@ -76,21 +81,28 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		bytecode.push_back(Instruction(TokenType::PUSH_BOOL, bl->value));
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
 		compileExpr(ifl->condition.get(), bytecode);
-		bytecode.push_back(Instruction(TokenType::IF));
+		
+		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE));
+		size_t jumpIfFalseIndex = bytecode.size() - 1;
 
 		for (auto& stmt : ifl->thenClauseStmts) {
 			compileStmt(stmt.expr.get(), bytecode);
 		}
 
 		if (!ifl->elseClauseStmts.empty()) {
-			bytecode.push_back(Instruction(TokenType::ELSE));
+			bytecode.push_back(Instruction(TokenType::JUMP));
+			size_t jumpOverElseIndex = bytecode.size() - 1;
+
+			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
 
 			for (auto& stmt : ifl->elseClauseStmts) {
 				compileStmt(stmt.expr.get(), bytecode);
 			}
-		}
 
-		bytecode.push_back(Instruction(TokenType::END_IF));
+			bytecode[jumpOverElseIndex].operand = static_cast<nl_int_t>(bytecode.size());
+		} else {
+			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
+		}
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		if (fc->name == "print") {
 			for (auto& param : fc->params) {
