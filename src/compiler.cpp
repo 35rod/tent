@@ -103,6 +103,35 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		} else {
 			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
 		}
+	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
+		size_t condStart = bytecode.size();
+		compileExpr(wl->condition.get(), bytecode);
+
+		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, nl_int_t(-1)));
+		size_t jumpIfFalseIndex = bytecode.size() - 1;
+
+		for (auto& stmt : wl->stmts) {
+			if (stmt.isBreak) {
+				bytecode.push_back(Instruction(TokenType::JUMP, nl_int_t(-1)));
+			} else if (stmt.isContinue) {
+				bytecode.push_back(Instruction(TokenType::JUMP, static_cast<nl_int_t>(condStart)));
+			} else {
+				compileStmt(stmt.expr.get(), bytecode);
+			}
+		}
+
+		bytecode.push_back(Instruction(TokenType::JUMP, static_cast<nl_int_t>(condStart)));
+		
+		size_t loopEnd = bytecode.size();
+		bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(loopEnd);
+
+		for (size_t i = jumpIfFalseIndex + 1; i < loopEnd; i++) {
+			if (bytecode[i].op == TokenType::JUMP) {
+				if (std::holds_alternative<nl_int_t>(bytecode[i].operand) && std::get<nl_int_t>(bytecode[i].operand) == -1) {
+					bytecode[i].operand = static_cast<nl_int_t>(loopEnd);
+				}
+			}
+		}
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		if (fc->name == "print") {
 			for (auto& param : fc->params) {
