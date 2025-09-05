@@ -65,6 +65,8 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
 	if (!node) return;
 
+	if (dynamic_cast<NoOp*>(node)) return;
+
 	compileExpr(node, bytecode);
 }
 

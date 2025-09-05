@@ -1,3 +1,5 @@
-while true {
-	println("Hello World!");
+set i = 0;
+
+while x < 5 {
+	println(i);
 }
