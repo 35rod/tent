@@ -28,7 +28,9 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 				break;
 			} case TokenType::PUSH_STRING:
 			case TokenType::VAR:
-			case TokenType::ASSIGN: {
+			case TokenType::ASSIGN: 
+			case TokenType::INCREMENT:
+			case TokenType::DECREMENT: {
 				uint64_t len;
 				fileHandle.read(reinterpret_cast<char*>(&len), sizeof(len));
 				std::string s(len, '\0');
@@ -94,6 +96,22 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				std::string name = std::get<std::string>(instr.operand);
 				variables[name] = val;
 				stack.push_back(val);
+				break;
+			} case TokenType::INCREMENT:
+			case TokenType::DECREMENT: {
+				std::string name = std::get<std::string>(instr.operand);
+
+				if (variables.find(name) == variables.end()) {
+					throw std::runtime_error("Undefined variable: " + name);
+				}
+
+				if (std::holds_alternative<nl_int_t>(variables[name])) {
+					variables[name] = std::get<nl_int_t>(variables[name]) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				} else if (std::holds_alternative<nl_dec_t>(variables[name])) {
+					variables[name] = std::get<nl_dec_t>(variables[name]) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				}
+
+				stack.push_back(variables[name]);
 				break;
 			} case TokenType::JUMP_IF_FALSE: {
 				if (stack.empty()) throw std::runtime_error("Stack underflow on JUMP_IF_FALSE");

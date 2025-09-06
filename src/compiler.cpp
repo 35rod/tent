@@ -39,7 +39,9 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				break;
 			} case TokenType::PUSH_STRING:
 			case TokenType::VAR:
-			case TokenType::ASSIGN: {
+			case TokenType::ASSIGN: 
+			case TokenType::INCREMENT:
+			case TokenType::DECREMENT: {
 				std::string val = std::get<std::string>(instr.operand);
 				uint64_t len = static_cast<uint64_t>(val.size());
 				out.write(reinterpret_cast<const char*>(&len), sizeof(len));
@@ -158,8 +160,16 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 			bytecode.push_back(Instruction(TokenType::VAR, v->name));
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
-		compileExpr(un->operand.get(), bytecode);
-		bytecode.push_back(Instruction(un->op));
+		if (un->op == TokenType::INCREMENT || un->op == TokenType::DECREMENT) {
+			if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
+				bytecode.push_back(Instruction(un->op, var->name));
+			} else {
+				throw std::runtime_error("Increment/decrement operator only valid for integer or float types: " + var->name);
+			}
+		} else {
+			compileExpr(un->operand.get(), bytecode);
+			bytecode.push_back(Instruction(un->op));
+		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
 		if (isRightAssoc(bin->op)) {
 			if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {

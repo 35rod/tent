@@ -444,6 +444,7 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 			if (variables.count(var->name) != 1) {
 				SyntaxError("Undefined variable: " + var->name, -1);
 			}
+			
 			if (std::holds_alternative<nl_int_t>(variables[var->name])) {
 				if (un->op == TokenType::INCREMENT) {
 					return variables[var->name] = std::get<nl_int_t>(variables[var->name]) + 1;
@@ -463,10 +464,10 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 					return variables[varNode->name] = right;
 				else
 					return variables[varNode->name] = evalBinaryOp(
-							variables[varNode->name], right,
-							(TokenType)((uint16_t)bin->op -
-								((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN))
-							);
+						variables[varNode->name], right,
+						(TokenType)((uint16_t)bin->op -
+						((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN))
+					);
 			}
 		}
 
