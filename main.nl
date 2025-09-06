@@ -1,16 +1,3 @@
-set i = 0;
-
-while i < 1000 {
-	if i == 55 {
-		i++;
-		continue;
-	} else if i > 90 {
-		if i == 99 {
-			i++;
-			continue;
-		}
-	}
-
+for i $ [1, 2, 3] {
 	println(i);
-	i++;
 }

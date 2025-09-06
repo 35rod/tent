@@ -49,6 +49,7 @@ ASTPtr deserializeAST(std::istream& in) {
 		case NodeType::BinaryOp: return BinaryOp::deserialize(in);
 		case NodeType::IfLiteral: return IfLiteral::deserialize(in);
 		case NodeType::WhileLiteral: return WhileLiteral::deserialize(in);
+		case NodeType::ForLiteral: return ForLiteral::deserialize(in);
 		case NodeType::FunctionCall: return FunctionCall::deserialize(in);
 		case NodeType::ReturnLiteral: return ReturnLiteral::deserialize(in);
 		case NodeType::FunctionLiteral: return FunctionLiteral::deserialize(in);
@@ -383,7 +384,8 @@ ASTPtr IfLiteral::deserialize(std::istream& in) {
 	return std::make_unique<IfLiteral>(std::move(cond), std::move(thenStmts), std::move(elseStmts));
 }
 
-WhileLiteral::WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
+WhileLiteral::WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : 
+ASTNode(), condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
 
 void WhileLiteral::print(int indent) {
 	printIndent(indent);
@@ -423,6 +425,54 @@ ASTPtr WhileLiteral::deserialize(std::istream& in) {
 	}
 
 	return std::make_unique<WhileLiteral>(std::move(cond), std::move(statements));
+}
+
+ForLiteral::ForLiteral(ASTPtr literalVar, ASTPtr literalIter, std::vector<ExpressionStmt> literalStmts)  : 
+ASTNode(), var(std::move(literalVar)), iter(std::move(literalIter)), stmts(std::move(literalStmts)) {}
+
+void ForLiteral::print(int indent) {
+	printIndent(indent);
+	std::cout << "ForLiteral(statements=" << stmts.size() << ")\n";
+	printIndent(indent+2);
+	std::cout << "Var:\n";
+	var->print(indent+4);
+	printIndent(indent+2);
+	std::cout << "Iter:\n";
+	iter->print(indent+4);
+	printIndent(indent+2);
+	std::cout << "Statements:\n";
+
+	for (ExpressionStmt& stmt : stmts) {
+		stmt.print(indent+4);
+	}
+}
+
+void ForLiteral::serialize(std::ostream& out) {
+	writeBinary<NodeType>(out, NodeType::ForLiteral);
+	var->serialize(out);
+	iter->serialize(out);
+
+	uint32_t stmt_count = stmts.size();
+	writeBinary<uint32_t>(out, stmt_count);
+
+	for (ExpressionStmt& stmt : stmts) {
+		stmt.serialize(out);
+	}
+}
+
+ASTPtr ForLiteral::deserialize(std::istream& in) {
+	ASTPtr var = deserializeAST(in);
+	ASTPtr iter = deserializeAST(in);
+
+	uint32_t stmt_count = readBinary<uint32_t>(in);
+	std::vector<ExpressionStmt> statements;
+	statements.reserve(stmt_count);
+
+	for (uint32_t i = 0; i < stmt_count; i++) {
+		statements.push_back(std::move(*dynamic_cast<ExpressionStmt*>(deserializeAST(in).release())));
+	}
+
+	return std::make_unique<ForLiteral>(std::move(var), std::move(iter), std::move(statements));
 }
 
 FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams)

@@ -212,23 +212,44 @@ ExpressionStmt Parser::parse_statement() {
 		return ExpressionStmt(std::move(returnLiteral));
 	} else if (token.kind == TokenType::WHILE) {
 		advance();
-
 		ASTPtr condition = parse_expression(0);
+		advance();
 
 		std::vector<ExpressionStmt> stmts;
-
-		advance();
 
 		if (current().kind != TokenType::OPEN_BRAC) {
 			stmts.push_back(parse_statement());
 		} else {
 			stmts = parse_block();
 		}
+
 		advance();
 
 		ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
 
 		return ExpressionStmt(std::move(whileLiteral));
+	} else if (token.kind == TokenType::FOR) {
+		advance();
+		ASTPtr var = parse_expression(0);
+		advance();
+		expect(TokenType::ITER);
+		advance();
+		ASTPtr iter = parse_expression(0);
+		advance();
+
+		std::vector<ExpressionStmt> stmts;
+
+		if (current().kind != TokenType::OPEN_BRAC) {
+			stmts.push_back(parse_statement());
+		} else {
+			stmts = parse_block();
+		}
+
+		advance();
+
+		ASTPtr forLiteral = std::make_unique<ForLiteral>(std::move(var), std::move(iter), std::move(stmts));
+
+		return ExpressionStmt(std::move(forLiteral));
 	} else if (token.kind == TokenType::IF) {
 		advance();
 

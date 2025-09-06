@@ -20,6 +20,7 @@ enum class NodeType : uint8_t {
 	BinaryOp,
 	IfLiteral,
 	WhileLiteral,
+	ForLiteral,
 	FunctionCall,
 	ReturnLiteral,
 	FunctionLiteral,
@@ -98,7 +99,7 @@ class BoolLiteral : public ASTNode {
 		void serialize(std::ostream& out) override;
 		static ASTPtr deserialize(std::istream& in);
 
-		BoolLiteral(bool literalValue);
+		BoolLiteral(nl_bool_t literalValue);
 };
 
 class VecLiteral : public ASTNode {
@@ -200,6 +201,19 @@ class WhileLiteral : public ASTNode {
 		static ASTPtr deserialize(std::istream& in);
 
 		WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
+};
+
+class ForLiteral : public ASTNode {
+	public:
+		ASTPtr var;
+		ASTPtr iter;
+		std::vector<ExpressionStmt> stmts;
+
+		void print(int indent) override;
+		void serialize(std::ostream& out) override;
+		static ASTPtr deserialize(std::istream& in);
+
+		ForLiteral(ASTPtr literalVar, ASTPtr literalIter, std::vector<ExpressionStmt> literalStmts);
 };
 
 class FunctionCall : public ASTNode {

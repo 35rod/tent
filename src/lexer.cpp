@@ -111,6 +111,8 @@ Token Lexer::getToken() {
 			token = Token("&", TokenType::BIT_AND, lineNo);
 	} else if (curChar == '@') {
 		token = Token("@", TokenType::INDEX, lineNo);
+	} else if (curChar == '$') {
+		token = Token("$", TokenType::ITER, lineNo);
 	} else if (curChar == '^') {
 		if (peek() == '=') {
 			nextChar();
@@ -239,6 +241,8 @@ Token Lexer::getToken() {
 			kind = TokenType::ELSE;
 		} else if (text == "while") {
 			kind = TokenType::WHILE;
+		} else if (text == "for") {
+			kind = TokenType::FOR;
 		} else if (text == "break") {
 			kind = TokenType::BREAK;
 		} else if (text == "continue") {
