@@ -109,6 +109,8 @@ Token Lexer::getToken() {
 			token = Token("&=", TokenType::BIT_AND_ASSIGN, lineNo);
 		} else
 			token = Token("&", TokenType::BIT_AND, lineNo);
+	} else if (curChar == '.') {
+		token = Token(".", TokenType::DOT, lineNo);
 	} else if (curChar == '@') {
 		token = Token("@", TokenType::INDEX, lineNo);
 	} else if (curChar == '$') {

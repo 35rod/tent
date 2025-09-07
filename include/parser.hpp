@@ -8,6 +8,7 @@
 
 class Parser {
     std::map<TokenType, int> precedence = {
+        {TokenType::DOT, 90},
 	    {TokenType::POW, 16},
         {TokenType::NOT, 15}, {TokenType::BIT_NOT, 15},
         {TokenType::INCREMENT, 15}, {TokenType::DECREMENT, 15},

@@ -21,6 +21,7 @@ class Evaluator {
 	std::map<std::string, EvalExpr> variables;
 	std::vector<FunctionLiteral*> functions;
 	std::unordered_map<std::string, std::function<EvalExpr(const std::vector<EvalExpr>&)>> nativeFunctions;
+	std::unordered_map<std::string, std::unordered_map<std::string, std::function<EvalExpr(const EvalExpr&, const std::vector<EvalExpr>&)>>> nativeMethods;
 
 	static EvalExpr evalBinaryOp(const EvalExpr& left, const EvalExpr& right, TokenType op);
 	static EvalExpr evalUnaryOp(const EvalExpr& operand, TokenType op);

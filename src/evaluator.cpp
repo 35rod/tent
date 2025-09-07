@@ -226,6 +226,20 @@ Evaluator::Evaluator() {
 
 		return buf;
 	};
+
+	nativeMethods["str"]["toUpperCase"] = [](const EvalExpr& lhs, const std::vector<EvalExpr>&) {
+		std::string str = std::get<std::string>(lhs);
+		for (char& c : str) c = toupper(c);
+
+		return EvalExpr(str);
+	};
+
+	nativeMethods["str"]["toLowerCase"] = [](const EvalExpr& lhs, const std::vector<EvalExpr>&) {
+		std::string str = std::get<std::string>(lhs);
+		for (char& c : str) c = tolower(c);
+
+		return EvalExpr(str);
+	};
 }
 
 EvalExpr Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args) {
@@ -468,6 +482,39 @@ EvalExpr Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_v
 						(TokenType)((uint16_t)bin->op -
 						((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN))
 					);
+			}
+		} else if (bin->op == TokenType::DOT) {
+			EvalExpr lhs = evalExpr(bin->left.get(), local_vars);
+
+			if (auto fc = dynamic_cast<FunctionCall*>(bin->right.get())) {
+				std::string methodName = fc->name;
+				std::vector<EvalExpr> args;
+
+				for (const ASTPtr& param : fc->params) {
+					args.push_back(evalExpr(param.get(), local_vars));
+				}
+
+				if (auto strPtr = std::get_if<std::string>(&lhs)) {
+					if (nativeMethods["str"].count(methodName)) {
+						return nativeMethods["str"][methodName](*strPtr, args);
+					} else {
+						TypeError("Unknown string method: " + methodName, -1);
+					}
+				} else {
+					TypeError("Method call not supported on this type", -1);
+				}
+			} else if (auto var = dynamic_cast<Variable*>(bin->right.get())) {
+				std::string propName = var->name;
+
+				if (auto strPtr = std::get_if<std::string>(&lhs)) {
+					if (propName == "length") {
+						return nl_int_t(strPtr->length());
+					} else {
+						TypeError("Unknown string property: " + propName, -1);
+					}
+				} else {
+					TypeError("Property access not supported on this type", -1);
+				}
 			}
 		}
 

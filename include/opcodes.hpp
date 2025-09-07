@@ -67,5 +67,7 @@ enum class TokenType: TokenTypeSize {
 
 	JUMP_IF_FALSE, JUMP,
 
-	FOR, ITER
+	FOR, ITER,
+
+	DOT
 };
