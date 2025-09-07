@@ -33,10 +33,7 @@ int32_t main(int32_t argc, char **argv) {
 
 	ASTPtr program = nullptr;
 
-	if (static_cast<uint8_t>(output[0]) == 0xC0) {
-		std::ifstream binFile(SRC_FILENAME, std::ios::binary);
-		program = deserializeAST(binFile);
-	} else if (SRC_FILENAME.find(".nlc") != std::string::npos) {
+	if (SRC_FILENAME.find(".nlc") != std::string::npos) {
 		VM vm;
 		auto bytecode = vm.loadFile(SRC_FILENAME);
 		vm.run(bytecode);

@@ -91,6 +91,8 @@ std::vector<ExpressionStmt> Parser::parse_block() {
 			stmts.push_back(std::move(stmt));
 		}
 	}
+	
+	advance();
 
 	return stmts;
 }
