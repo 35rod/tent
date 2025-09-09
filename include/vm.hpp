@@ -1,10 +1,12 @@
 #pragma once
 
+#include <iostream>
+#include <fstream>
 #include "compiler.hpp"
 #include "evaluator.hpp"
 
 class VM {
-	std::vector<EvalExpr> stack;
+	std::vector<Value> stack;
 
 	public:
 		VM() {}

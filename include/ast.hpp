@@ -4,8 +4,8 @@
 #include <vector>
 #include <ostream>
 #include <memory>
-#include "misc.hpp"
 #include "opcodes.hpp"
+#include "types.hpp"
 
 enum class NodeType : uint8_t {
 	Program = 0xC0,
@@ -28,23 +28,7 @@ enum class NodeType : uint8_t {
 	ASTNode
 };
 
-std::string readText(std::istream& in);
-
-class ASTNode {
-	public:
-		virtual void print(int indent);
-		
-		virtual ~ASTNode() {}
-};
-
 using ASTPtr = std::unique_ptr<ASTNode>;
-
-ASTPtr deserializeAST(std::istream& in);
-
-class NoOp : public ASTNode {
-	public:
-		void print(int indent) override;
-};
 
 class IntLiteral : public ASTNode {
 	public:
@@ -91,16 +75,6 @@ class VecLiteral : public ASTNode {
 		void print(int indent) override;
 
 		VecLiteral(std::vector<ASTPtr> literalValue);
-};
-
-class VecValue: public ASTNode {
-	public:
-		std::vector<NonVecEvalExpr> elems;
-
-		static std::string to_str(std::vector<NonVecEvalExpr> val);
-		void print(int indent) override;
-
-		VecValue(std::vector<NonVecEvalExpr> literalValue);
 };
 
 class Variable : public ASTNode {

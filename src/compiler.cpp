@@ -1,6 +1,5 @@
 #include <fstream>
 #include "compiler.hpp"
-#include "ast.hpp"
 
 std::vector<Instruction> Compiler::compileProgram(ASTPtr program) {
 	std::vector<Instruction> bytecode;
@@ -30,11 +29,11 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 
 		switch(instr.op) {
 			case TokenType::PUSH_INT: {
-				nl_int_t val = std::get<nl_int_t>(instr.operand);
+				nl_int_t val = std::get<nl_int_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
 			} case TokenType::PUSH_FLOAT: {
-				nl_dec_t val = std::get<nl_dec_t>(instr.operand);
+				nl_dec_t val = std::get<nl_dec_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
 			} case TokenType::PUSH_STRING:
@@ -42,18 +41,18 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 			case TokenType::ASSIGN: 
 			case TokenType::INCREMENT:
 			case TokenType::DECREMENT: {
-				std::string val = std::get<std::string>(instr.operand);
+				std::string val = std::get<std::string>(instr.operand.v);
 				uint64_t len = static_cast<uint64_t>(val.size());
 				out.write(reinterpret_cast<const char*>(&len), sizeof(len));
 				if (len) out.write(val.data(), static_cast<std::streamsize>(len));
 				break;
 			} case TokenType::PUSH_BOOL: {
-				uint8_t b = std::get<bool>(instr.operand) ? 1 : 0;
+				uint8_t b = std::get<bool>(instr.operand.v) ? 1 : 0;
 				out.write(reinterpret_cast<const char*>(&b), sizeof(b));
 				break;
 			} case TokenType::JUMP_IF_FALSE:
 			case TokenType::JUMP: {
-				nl_int_t addr = std::get<nl_int_t>(instr.operand);
+				nl_int_t addr = std::get<nl_int_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&addr), sizeof(addr));
 				break;
 			} default:
@@ -131,7 +130,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 
 		for (size_t i = jumpIfFalseIndex + 1; i < loopEnd; i++) {
 			if (bytecode[i].op == TokenType::JUMP) {
-				if (std::holds_alternative<nl_int_t>(bytecode[i].operand) && std::get<nl_int_t>(bytecode[i].operand) == -1) {
+				if (std::holds_alternative<nl_int_t>(bytecode[i].operand.v) && std::get<nl_int_t>(bytecode[i].operand.v) == -1) {
 					bytecode[i].operand = static_cast<nl_int_t>(loopEnd);
 				}
 			}

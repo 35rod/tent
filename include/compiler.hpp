@@ -10,7 +10,7 @@ TokenType opcodeForUnaryOp(const std::string& opName);
 class Instruction {
 	public:
 		TokenType op;
-		EvalExpr operand;
+		Value operand;
 
 		Instruction() = default;
 		Instruction(TokenType opcode) : op(opcode) {}

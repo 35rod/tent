@@ -63,33 +63,6 @@ void VecLiteral::print(int indent) {
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
-VecValue::VecValue(std::vector<NonVecEvalExpr> literalValue) : ASTNode(), elems(literalValue) {}
-
-std::string VecValue::to_str(std::vector<NonVecEvalExpr> val) {
-	std::string buf = "[";
-	const size_t val_len = val.size();
-
-	for (size_t i = 0; i < val_len; ++i) {
-		if (std::holds_alternative<nl_int_t>(val[i]))
-			buf += std::to_string(std::get<nl_int_t>(val[i]));
-		else if (std::holds_alternative<nl_dec_t>(val[i]))
-			buf += FloatLiteral::to_str(std::get<nl_dec_t>(val[i]));
-		else if (std::holds_alternative<nl_bool_t>(val[i]))
-			buf += BoolLiteral::to_str(std::get<nl_bool_t>(val[i]));
-		else if (std::holds_alternative<std::string>(val[i]))
-			buf += std::get<std::string>(val[i]);
-		if (i < val_len - 1)
-			buf += ", ";
-	}
-
-	return buf + "]";
-}
-
-void VecValue::print(int indent) {
-	printIndent(indent);
-	std::cout << "VecValue(value=" + to_str(elems) + ")\n";
-}
-
 Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
 
 void Variable::print(int indent) {

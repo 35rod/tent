@@ -1,6 +1,4 @@
-load "../add.nl";
-
-set name1 = "John";
-set name2 = "Doe";
-
-println(add(name1.toUpperCase(), name2));
+set nums = [1, 2, 3, 4, 5];
+println(nums@3);
+nums@3 = 10;
+println(nums@3);

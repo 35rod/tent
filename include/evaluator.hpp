@@ -6,7 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include "ast.hpp"
-#include "misc.hpp"
+#include "types.hpp"
 #include "opcodes.hpp"
 
 class Evaluator {

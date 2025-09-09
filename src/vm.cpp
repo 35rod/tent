@@ -1,5 +1,3 @@
-#include <iostream>
-#include <fstream>
 #include "vm.hpp"
 
 std::vector<Instruction> VM::loadFile(const std::string& filename) {
@@ -57,7 +55,7 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 }
 
 void VM::run(const std::vector<Instruction>& bytecode) {
-	std::unordered_map<std::string, EvalExpr> variables;
+	std::unordered_map<std::string, Value> variables;
 	size_t ip = 0;
 
 	while (ip < bytecode.size()) {
@@ -65,23 +63,23 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 		switch(instr.op) {
 			case TokenType::PUSH_INT: {
-				nl_int_t val = std::get<nl_int_t>(instr.operand);
+				nl_int_t val = std::get<nl_int_t>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::PUSH_FLOAT: {
-				nl_dec_t val = std::get<nl_dec_t>(instr.operand);
+				nl_dec_t val = std::get<nl_dec_t>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::PUSH_STRING: {
-				std::string val = std::get<std::string>(instr.operand);
+				std::string val = std::get<std::string>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::PUSH_BOOL: {
-				bool val = std::get<bool>(instr.operand);
+				bool val = std::get<bool>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::VAR: {
-				std::string name = std::get<std::string>(instr.operand);
+				std::string name = std::get<std::string>(instr.operand.v);
 				
 				if (variables.find(name) == variables.end()) {
 					throw std::runtime_error("Undefined variable: " + name);
@@ -92,23 +90,23 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 			} case TokenType::ASSIGN: {
 				if (stack.empty()) throw std::runtime_error("Stack underflow on ASSIGN");
 				
-				EvalExpr val = stack.back(); stack.pop_back();
-				std::string name = std::get<std::string>(instr.operand);
+				Value val = stack.back(); stack.pop_back();
+				std::string name = std::get<std::string>(instr.operand.v);
 				variables[name] = val;
 				stack.push_back(val);
 				break;
 			} case TokenType::INCREMENT:
 			case TokenType::DECREMENT: {
-				std::string name = std::get<std::string>(instr.operand);
+				std::string name = std::get<std::string>(instr.operand.v);
 
 				if (variables.find(name) == variables.end()) {
 					throw std::runtime_error("Undefined variable: " + name);
 				}
 
-				if (std::holds_alternative<nl_int_t>(variables[name])) {
-					variables[name] = std::get<nl_int_t>(variables[name]) + (instr.op == TokenType::INCREMENT ? 1 : -1);
-				} else if (std::holds_alternative<nl_dec_t>(variables[name])) {
-					variables[name] = std::get<nl_dec_t>(variables[name]) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				if (std::holds_alternative<nl_int_t>(variables[name].v)) {
+					variables[name] = std::get<nl_int_t>(variables[name].v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				} else if (std::holds_alternative<nl_dec_t>(variables[name].v)) {
+					variables[name] = std::get<nl_dec_t>(variables[name].v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
 				}
 
 				stack.push_back(variables[name]);
@@ -116,20 +114,20 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 			} case TokenType::JUMP_IF_FALSE: {
 				if (stack.empty()) throw std::runtime_error("Stack underflow on JUMP_IF_FALSE");
 
-				EvalExpr cond = stack.back(); stack.pop_back();
+				Value cond = stack.back(); stack.pop_back();
 
-				bool condTrue = std::visit([](auto&& v) -> bool {
-					using T = std::decay_t<decltype(v)>;
-					if constexpr (std::is_same_v<T, nl_bool_t>) return v;
-					if constexpr (std::is_same_v<T, nl_int_t>) return v != 0;
-					if constexpr (std::is_same_v<T, nl_dec_t>) return v != 0.0;
+				bool condTrue = std::visit([&cond]() -> nl_bool_t {
+					using T = std::decay_t<decltype(cond.v)>;
+					if constexpr (std::is_same_v<T, nl_bool_t>) return std::get<bool>(cond.v);
+					if constexpr (std::is_same_v<T, nl_int_t>) return std::get<nl_bool_t>(cond.v) != 0;
+					if constexpr (std::is_same_v<T, nl_dec_t>) return std::get<nl_bool_t>(cond.v) != 0.0;
 					return true;
-				}, cond);
+				});
 
-				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand)) - 1;
+				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
 				break;
 			} case TokenType::JUMP: {
-				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand)) - 1;
+				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
 				break;
 			} case TokenType::PRINTLN:
 			case TokenType::PRINT: {
@@ -138,25 +136,23 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					break;
 				}
 
-				EvalExpr val = stack.back();
+				Value val = stack.back();
 				stack.pop_back();
 				//std::cout << "popped element for PRINT/PRINTLN\n";
 
-				std::visit([](auto&& v){
-					using T = std::decay_t<decltype(v)>;
+				std::visit([&val]() {
+					using T = std::decay_t<decltype(val.v)>;
 					if constexpr (std::is_same_v<T, nl_int_t>)
-						std::cout << v;
+						std::cout << std::get<nl_int_t>(val.v);
 					else if constexpr (std::is_same_v<T, nl_dec_t>)
-						std::cout << FloatLiteral::to_str(v);
+						std::cout << FloatLiteral::to_str(std::get<nl_dec_t>(val.v));
 					else if constexpr (std::is_same_v<T, nl_bool_t>)
-						std::cout << BoolLiteral::to_str(v);
+						std::cout << BoolLiteral::to_str(std::get<nl_bool_t>(val.v));
 					else if constexpr (std::is_same_v<T, std::string>)
-						std::cout << v;
-					else if constexpr (std::is_same_v<T, std::vector<NonVecEvalExpr>>)
-						std::cout << VecValue::to_str(v);
+						std::cout << std::get<std::string>(val.v);
 					else
 						std::cout << "(null)";
-				}, val);
+				});
 
 				if (instr.op == TokenType::PRINTLN)
 					std::cout << std::endl;
@@ -166,12 +162,12 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 			} default:
 				if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {
 					if (stack.size() < 2) throw std::runtime_error("Stack underflow for binary op");
-					EvalExpr b = stack.back(); stack.pop_back();
-					EvalExpr a = stack.back(); stack.pop_back();
+					Value b = stack.back(); stack.pop_back();
+					Value a = stack.back(); stack.pop_back();
 					stack.push_back(Evaluator::evalBinaryOp(a, b, instr.op));
 				} else if (instr.op >= TokenType::NOT && instr.op <= TokenType::NEGATE) {
 					if (stack.empty()) throw std::runtime_error("Stack underflow for unary op");
-					EvalExpr a = stack.back(); stack.pop_back();
+					Value a = stack.back(); stack.pop_back();
 					stack.push_back(Evaluator::evalUnaryOp(a, instr.op));
 				} else {
 					std::cerr << "Unknown opcode\n";
