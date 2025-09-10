@@ -15,7 +15,6 @@ class Evaluator {
 
 	std::map<std::string, Value> variables;
 	std::vector<FunctionLiteral*> functions;
-	std::unordered_map<std::string, std::function<Value(const std::vector<Value>&)>> nativeFunctions;
 	std::unordered_map<std::string, std::unordered_map<std::string, std::function<Value(const Value&, const std::vector<Value>&)>>> nativeMethods;
 
 	static Value evalBinaryOp(const Value& left, const Value& right, TokenType op);
@@ -26,6 +25,7 @@ class Evaluator {
 	friend class VM;
 
 	public:
+		bool load(const std::string& path);
 		Value evalProgram(ASTPtr program, const std::vector<std::string> args={});
 
 		Evaluator();

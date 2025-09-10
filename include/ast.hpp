@@ -43,7 +43,6 @@ class FloatLiteral : public ASTNode {
 	public:
 		nl_dec_t value;
 
-		static std::string to_str(nl_dec_t val, int prec=6);
 		void print(int indent) override;
 
 		FloatLiteral(nl_dec_t literalValue);
@@ -61,8 +60,7 @@ class StrLiteral : public ASTNode {
 class BoolLiteral : public ASTNode {
 	public:
 		nl_bool_t value;
-
-		static std::string to_str(nl_bool_t val);
+		
 		void print(int indent) override;
 
 		BoolLiteral(nl_bool_t literalValue);

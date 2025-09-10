@@ -3,36 +3,9 @@
 #include "ast.hpp"
 #include <cmath>
 #include <cstdio>
+#include <dlfcn.h>
 #include <fstream>
-
-static std::string vec_to_string(const Value::VecT& vecPtr) {
-	std::string out = "[";
-
-	if (vecPtr) {
-		for (size_t i = 0; i < vecPtr->size(); i++) {
-			const Value& elem = (*vecPtr)[i];
-
-			if (std::holds_alternative<nl_int_t>(elem.v))
-				out += std::to_string(std::get<nl_int_t>(elem.v));
-			else if (std::holds_alternative<nl_dec_t>(elem.v))
-				out += FloatLiteral::to_str(std::get<nl_dec_t>(elem.v));
-			else if (std::holds_alternative<nl_bool_t>(elem.v))
-				out += BoolLiteral::to_str(std::get<nl_bool_t>(elem.v));
-			else if (std::holds_alternative<std::string>(elem.v))
-				out += std::get<std::string>(elem.v);
-			else if (std::holds_alternative<Value::VecT>(elem.v))
-				out += vec_to_string(std::get<Value::VecT>(elem.v));
-			else
-				out += "(null)";
-			
-			if ((i + 1) < vecPtr->size()) out += ", ";
-		}
-	}
-
-	out += "]";
-
-	return out;
-}
+#include "native.hpp"
 
 static ASTPtr convertValue(const Value& v) {
 	if (std::holds_alternative<nl_int_t>(v.v)) {
@@ -62,142 +35,108 @@ static ASTPtr convertValue(const Value& v) {
 }
 
 Evaluator::Evaluator() {
-	nativeFunctions["print"] = [](const std::vector<Value>& args) {
-		std::string total;
+	// nativeFunctions["input"] = [](const std::vector<Value>& args) {
+	// 	if (!std::holds_alternative<std::string>(args[0].v)) {
+	// 		TypeError("Passed non-string argument to first parameter of input", -1);
+	// 	}
 
-		for (const Value& e : args) {
-			if (std::holds_alternative<nl_int_t>(e.v))
-				total += std::to_string(std::get<nl_int_t>(e.v));
-			else if (std::holds_alternative<nl_dec_t>(e.v))
-				total += FloatLiteral::to_str(std::get<nl_dec_t>(e.v));
-			else if (std::holds_alternative<nl_bool_t>(e.v))
-				total += BoolLiteral::to_str(std::get<nl_bool_t>(e.v));
-			else if (std::holds_alternative<std::string>(e.v))
-				total += std::get<std::string>(e.v);
-			else if (std::holds_alternative<Value::VecT>(e.v))
-				total += vec_to_string(std::get<Value::VecT>(e.v));
-			else
-				total += "(null)";
-		}
+	// 	std::string prompt = std::get<std::string>(args[0].v);
+	// 	std::string input;
 
-		std::cout << total;
+	// 	std::cout << prompt;
+	// 	std::cin >> input;
 
-		return Value((nl_int_t)total.size());
-	};
+	// 	return Value(input);
+	// };
 
-	nativeFunctions["println"] = [this](const std::vector<Value>& args) {
-		Value res = this->nativeFunctions["print"](args);
-		std::cout << std::endl;
-		
-		if (std::holds_alternative<nl_int_t>(res.v)) {
-			return Value(std::get<nl_int_t>(res.v) + 1);
-		}
+	// nativeFunctions["log"] = [](const std::vector<Value>& args) {
+	// 	if (std::holds_alternative<nl_int_t>(args[0].v)) {
+	// 		return Value(nl_int_t(std::log10(std::get<nl_int_t>(args[0].v))));
+	// 	} else if (std::holds_alternative<nl_dec_t>(args[0].v)) {
+	// 		return Value(nl_dec_t(std::log10(std::get<nl_dec_t>(args[0].v))));
+	// 	} else {
+	// 		TypeError("Passed non-numeric argument to first parameter of log", -1);
+	// 	}
 
-		return Value(nl_int_t(1));
-	};
+	// 	return Value();
+	// };
 
-	nativeFunctions["input"] = [](const std::vector<Value>& args) {
-		if (!std::holds_alternative<std::string>(args[0].v)) {
-			TypeError("Passed non-string argument to first parameter of input", -1);
-		}
+	// nativeFunctions["exit"] = [this](const std::vector<Value>&) {
+	// 	program_should_terminate = true;
 
-		std::string prompt = std::get<std::string>(args[0].v);
-		std::string input;
+	// 	return Value();
+	// };
 
-		std::cout << prompt;
-		std::cin >> input;
+	// nativeFunctions["stoll"] = [](const std::vector<Value>& args) {
+	// 	if (!std::holds_alternative<std::string>(args[0].v))
+	// 		TypeError("passed non-string argument to first parameter of `stoll`", -1);
 
-		return Value(input);
-	};
+	// 	size_t base = 10;
 
-	nativeFunctions["log"] = [](const std::vector<Value>& args) {
-		if (std::holds_alternative<nl_int_t>(args[0].v)) {
-			return Value(nl_int_t(std::log10(std::get<nl_int_t>(args[0].v))));
-		} else if (std::holds_alternative<nl_dec_t>(args[0].v)) {
-			return Value(nl_dec_t(std::log10(std::get<nl_dec_t>(args[0].v))));
-		} else {
-			TypeError("Passed non-numeric argument to first parameter of log", -1);
-		}
-
-		return Value();
-	};
-
-	nativeFunctions["exit"] = [this](const std::vector<Value>&) {
-		program_should_terminate = true;
-
-		return Value();
-	};
-
-	nativeFunctions["stoll"] = [](const std::vector<Value>& args) {
-		if (!std::holds_alternative<std::string>(args[0].v))
-			TypeError("passed non-string argument to first parameter of `stoll`", -1);
-
-		size_t base = 10;
-
-		if (args.size() > 1) {
-			if (!std::holds_alternative<nl_int_t>(args[1].v))
-				TypeError("passed non-integer argument to first parameter of `stoll`", -1);
+	// 	if (args.size() > 1) {
+	// 		if (!std::holds_alternative<nl_int_t>(args[1].v))
+	// 			TypeError("passed non-integer argument to first parameter of `stoll`", -1);
 			
-			base = (size_t) std::get<nl_int_t>(args[1].v);
-		}
+	// 		base = (size_t) std::get<nl_int_t>(args[1].v);
+	// 	}
 
-		try {
-			nl_int_t val = (nl_int_t) std::stoll(std::get<std::string>(args[0].v), nullptr, base);
-			return Value(val);
-		} catch (std::exception& e) {
-			Error("stoll: failed to convert string to integer", -1);
-			return Value((nl_int_t(0)));
-		}
-	};
+	// 	try {
+	// 		nl_int_t val = (nl_int_t) std::stoll(std::get<std::string>(args[0].v), nullptr, base);
+	// 		return Value(val);
+	// 	} catch (std::exception& e) {
+	// 		Error("stoll: failed to convert string to integer", -1);
+	// 		return Value((nl_int_t(0)));
+	// 	}
+	// };
 
-	nativeFunctions["vec_from_size"] = [](const std::vector<Value>& args) {
-		if (args.empty() || !std::holds_alternative<nl_int_t>(args[0].v)) {
-			TypeError("passed non-integer argument to vec_from_size(size)", -1);
-		}
+	// nativeFunctions["vec_from_size"] = [](const std::vector<Value>& args) {
+	// 	if (args.empty() || !std::holds_alternative<nl_int_t>(args[0].v)) {
+	// 		TypeError("passed non-integer argument to vec_from_size(size)", -1);
+	// 	}
 
-		size_t size = (size_t)std::get<nl_int_t>(args[0].v);
-		auto vec = std::make_shared<std::vector<Value>>(size, Value(nl_int_t(0)));
+	// 	size_t size = (size_t)std::get<nl_int_t>(args[0].v);
+	// 	auto vec = std::make_shared<std::vector<Value>>(size, Value(nl_int_t(0)));
 
-		return Value(vec);
-	};
+	// 	return Value(vec);
+	// };
 
-	nativeFunctions["len"] = [](const std::vector<Value>& args) {
-		if (args.size() != 1) {
-			Error("len takes exactly 1 argument, but " + std::to_string(args.size()) + " were given", -1);
-		}
+	// nativeFunctions["len"] = [](const std::vector<Value>& args) {
+	// 	if (args.size() != 1) {
+	// 		Error("len takes exactly 1 argument, but " + std::to_string(args.size()) + " were given", -1);
+	// 	}
 
-		if (std::holds_alternative<Value::VecT>(args[0].v)) {
-			return Value(nl_int_t(std::get<Value::VecT>(args[0].v)->size()));
-		} else if (std::holds_alternative<std::string>(args[0].v)) {
-			return Value(nl_int_t(std::get<std::string>(args[0].v).length()));
-		}
+	// 	if (std::holds_alternative<Value::VecT>(args[0].v)) {
+	// 		return Value(nl_int_t(std::get<Value::VecT>(args[0].v)->size()));
+	// 	} else if (std::holds_alternative<std::string>(args[0].v)) {
+	// 		return Value(nl_int_t(std::get<std::string>(args[0].v).length()));
+	// 	}
 
-		return Value(nl_int_t(-1));
-	};
+	// 	return Value(nl_int_t(-1));
+	// };
 
-	nativeFunctions["ord"] = [](const std::vector<Value>& args) {
-		if (args.size() != 1)
-			Error("`ord` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
+	// nativeFunctions["ord"] = [](const std::vector<Value>& args) {
+	// 	if (args.size() != 1)
+	// 		Error("`ord` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
 
-		if (const auto *s = std::get_if<std::string>(&args[0].v))
-			return Value(nl_int_t((*s)[0]));
-		else
-			TypeError("passed non-string value to first parameter of `ord`", -1);
+	// 	if (const auto *s = std::get_if<std::string>(&args[0].v))
+	// 		return Value(nl_int_t((*s)[0]));
+	// 	else
+	// 		TypeError("passed non-string value to first parameter of `ord`", -1);
 
-		return Value(nl_int_t(-1));
-	};
+	// 	return Value(nl_int_t(-1));
+	// };
 
-	nativeFunctions["chr"] = [](const std::vector<Value>& args) {
-		if (args.size() != 1)
-			Error("`chr` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
+	// nativeFunctions["chr"] = [](const std::vector<Value>& args) {
+	// 	if (args.size() != 1)
+	// 		Error("`chr` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
 
-		if (const auto *i = std::get_if<nl_int_t>(&args[0].v))
-			return Value(std::string(1, *i));
-		else
-			TypeError("passed non-integer value to first parameter of `chr`", -1);
+	// 	if (const auto *i = std::get_if<nl_int_t>(&args[0].v))
+	// 		return Value(std::string(1, *i));
+	// 	else
+	// 		TypeError("passed non-integer value to first parameter of `chr`", -1);
 
-		return Value("");
-	};
+	// 	return Value("");
+	// };
 
 	// nativeFunctions["vecpush"] = [this](const std::vector<EvalExpr>& args) {
 	// 	if (args.size() != 2)
@@ -251,63 +190,63 @@ Evaluator::Evaluator() {
 	// 	return EvalExpr(NoOp());
 	// };
 
-	nativeFunctions["getc"] = [](const std::vector<Value>&) {
-		return Value((nl_int_t)fgetc(stdin));
-	};
-	nativeFunctions["read_in"] = [this](const std::vector<Value>& args) {
-		nl_int_t n = 1;
-		if (args.size() < 1 || args.size() > 2)
-			TypeError("builtin functino `read_in` takes 1 or 2 arguments, but "
-					+ std::to_string(args.size()) + " were provided", -1);
-		if (!std::holds_alternative<std::string>(args[0].v))
-			TypeError("passed non-string value to first parameter of `read_in`, 'buf_name'", -1);
-		if (args.size() == 2 && std::holds_alternative<nl_int_t>(args[1].v))
-			n = std::get<nl_int_t>(args[1].v);
-		else if (args.size() == 2)
-			TypeError("passed non-integer value to second parameter of `read_in`, 'n'", -1);
+	// nativeFunctions["getc"] = [](const std::vector<Value>&) {
+	// 	return Value((nl_int_t)fgetc(stdin));
+	// };
+	// nativeFunctions["read_in"] = [this](const std::vector<Value>& args) {
+	// 	nl_int_t n = 1;
+	// 	if (args.size() < 1 || args.size() > 2)
+	// 		TypeError("builtin functino `read_in` takes 1 or 2 arguments, but "
+	// 				+ std::to_string(args.size()) + " were provided", -1);
+	// 	if (!std::holds_alternative<std::string>(args[0].v))
+	// 		TypeError("passed non-string value to first parameter of `read_in`, 'buf_name'", -1);
+	// 	if (args.size() == 2 && std::holds_alternative<nl_int_t>(args[1].v))
+	// 		n = std::get<nl_int_t>(args[1].v);
+	// 	else if (args.size() == 2)
+	// 		TypeError("passed non-integer value to second parameter of `read_in`, 'n'", -1);
 
-		static uint8_t *buf;
-		buf = (uint8_t *)calloc(n+1, 1);
-		if (auto *s = std::get_if<std::string>(&variables[std::get<std::string>(args[0].v)].v)) {
-			nl_int_t nread = fread(buf, 1, n, stdin);
-			*s = std::string((char *)buf);
-			return Value(nread);
-		}
+	// 	static uint8_t *buf;
+	// 	buf = (uint8_t *)calloc(n+1, 1);
+	// 	if (auto *s = std::get_if<std::string>(&variables[std::get<std::string>(args[0].v)].v)) {
+	// 		nl_int_t nread = fread(buf, 1, n, stdin);
+	// 		*s = std::string((char *)buf);
+	// 		return Value(nread);
+	// 	}
 			
-		return Value((nl_int_t)-1);
-	};
+	// 	return Value((nl_int_t)-1);
+	// };
 
-	nativeFunctions["read_file"] = [](const std::vector<Value>& args) {
-		if (!std::holds_alternative<std::string>(args[0].v))
-			TypeError("passed non-string value to first parameter of `read_file`, `file_name`", -1);
+	// nativeFunctions["read_file"] = [](const std::vector<Value>& args) {
+	// 	if (!std::holds_alternative<std::string>(args[0].v))
+	// 		TypeError("passed non-string value to first parameter of `read_file`, `file_name`", -1);
 
-		const std::string& FILENAME = std::get<std::string>(args[0].v);
-		std::ifstream fileHandle(FILENAME);
-		if (!fileHandle.is_open())
-			Error("failed to open file '" + FILENAME + "'.", -1);
+	// 	const std::string& FILENAME = std::get<std::string>(args[0].v);
+	// 	std::ifstream fileHandle(FILENAME);
+	// 	if (!fileHandle.is_open())
+	// 		Error("failed to open file '" + FILENAME + "'.", -1);
 
-		std::string buf, line;
-		while (std::getline(fileHandle, line)) {
-			buf += line;
-			buf.push_back('\n');
-		}
+	// 	std::string buf, line;
+	// 	while (std::getline(fileHandle, line)) {
+	// 		buf += line;
+	// 		buf.push_back('\n');
+	// 	}
 
-		return Value(buf);
-	};
+	// 	return Value(buf);
+	// };
 
-	nativeMethods["str"]["toUpperCase"] = [](const Value& lhs, const std::vector<Value>&) {
-		std::string str = std::get<std::string>(lhs.v);
-		for (char& c : str) c = toupper(c);
+	// nativeMethods["str"]["toUpperCase"] = [](const Value& lhs, const std::vector<Value>&) {
+	// 	std::string str = std::get<std::string>(lhs.v);
+	// 	for (char& c : str) c = toupper(c);
 
-		return Value(str);
-	};
+	// 	return Value(str);
+	// };
 
-	nativeMethods["str"]["toLowerCase"] = [](const Value& lhs, const std::vector<Value>&) {
-		std::string str = std::get<std::string>(lhs.v);
-		for (char& c : str) c = tolower(c);
+	// nativeMethods["str"]["toLowerCase"] = [](const Value& lhs, const std::vector<Value>&) {
+	// 	std::string str = std::get<std::string>(lhs.v);
+	// 	for (char& c : str) c = tolower(c);
 
-		return Value(str);
-	};
+	// 	return Value(str);
+	// };
 }
 
 Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args) {

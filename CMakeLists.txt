@@ -8,7 +8,8 @@ include_directories(include)
 
 set(SOURCE_FILES
     src/main.cpp
-    src/misc.cpp
+    src/types.cpp
+    src/native.cpp
     src/ast.cpp
     src/args.cpp
     src/lexer.cpp

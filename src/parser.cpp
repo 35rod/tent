@@ -1,6 +1,7 @@
 #include <fstream>
-
+#include <dlfcn.h>
 #include "parser.hpp"
+#include "native.hpp"
 #include "lexer.hpp"
 #include "errors.hpp"
 #include "esc_codes.hpp"
@@ -110,34 +111,66 @@ ExpressionStmt Parser::parse_statement() {
 			MissingTerminatorError("Missing statement terminator after load statement", current().lineNo);
 		}
 
-		std::ifstream fileHandle(filename.text);
-		for (std::string search_dir : file_search_dirs) {
-			if (fileHandle.is_open()) break;
+		if (filename.text.size() >= 3 && filename.text.substr(filename.text.size() - 3) == ".nl") {
+			std::ifstream fileHandle(filename.text);
 
-			fileHandle = std::ifstream(search_dir + "/" + filename.text);
+			for (std::string search_dir : file_search_dirs) {
+				if (fileHandle.is_open()) break;
+
+				fileHandle = std::ifstream(search_dir + "/" + filename.text);
+			}
+
+			if (!fileHandle.is_open())
+				std::cerr << "File error: could not find file '" << filename.text << "'." << std::endl;
+			
+			std::string output;
+			std::string line;
+
+			while (std::getline(fileHandle, line)) {
+				output += line;
+				output.push_back('\n');
+			}
+
+			Lexer lexer(output);
+
+			lexer.nextChar();
+			lexer.getTokens();
+
+			Parser parser(lexer.tokens, file_search_dirs);
+			
+			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
+
+			return ExpressionStmt(std::move(imported_program));
+		} else {
+			std::string name;
+
+			if (filename.text.size() >= 3 && filename.text.substr(filename.text.size() - 3) == ".so") {
+				name = filename.text;
+			} else {
+				name = "../lib/" + filename.text + ".so";
+			}
+
+			void* handle = dlopen(name.c_str(), RTLD_LAZY);
+
+			if (!handle) {
+				std::cerr << "Failed to load library: " << dlerror() << std::endl;
+				return ExpressionStmt(std::make_unique<NoOp>(), true);
+			}
+
+			using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
+			
+			RegisterFn reg = (RegisterFn)dlsym(handle, "registerFunctions");
+
+			if (!reg) {
+				std::cerr << "Library missing registerFunctions symbol" << std::endl;
+				dlclose(handle);
+				return ExpressionStmt(std::make_unique<NoOp>());
+			}
+
+			reg(nativeFunctions);
+			
+			return ExpressionStmt(std::make_unique<NoOp>(), true);
 		}
-
-		if (!fileHandle.is_open())
-			std::cerr << "File error: could not find file '" << filename.text << "'." << std::endl;
-		
-		std::string output;
-		std::string line;
-
-		while (std::getline(fileHandle, line)) {
-			output += line;
-			output.push_back('\n');
-		}
-
-		Lexer lexer(output);
-
-		lexer.nextChar();
-		lexer.getTokens();
-
-		Parser parser(lexer.tokens, file_search_dirs);
-		
-		ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
-
-		return ExpressionStmt(std::move(imported_program));
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 

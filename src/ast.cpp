@@ -25,17 +25,9 @@ void IntLiteral::print(int indent) {
 
 FloatLiteral::FloatLiteral(nl_dec_t literalValue) : ASTNode(), value(literalValue) {}
 
-#define MAX_DEC_LEN 50
-std::string FloatLiteral::to_str(nl_dec_t val, int prec) {
-	static char str_buf[MAX_DEC_LEN + 1];
-	std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", prec, val); 
-
-	return std::string(str_buf);
-}
-
 void FloatLiteral::print(int indent) {
 	printIndent(indent);
-	std::cout << "FloatLiteral(value=" << to_str(value) << ")\n";
+	std::cout << "FloatLiteral(value=" << value << ")\n";
 }
 
 StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
@@ -47,13 +39,9 @@ void StrLiteral::print(int indent) {
 
 BoolLiteral::BoolLiteral(nl_bool_t literalValue) : ASTNode(), value(literalValue) {}
 
-std::string BoolLiteral::to_str(nl_bool_t val) {
-	return (val) ? "true" : "false";
-}
-
 void BoolLiteral::print(int indent) {
 	printIndent(indent);
-	std::cout << "BoolLiteral(value=" << to_str(value) << ")\n";
+	std::cout << "BoolLiteral(value=" << (value ? "true" : "false") << ")\n";
 }
 
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue) : ASTNode(), elems(std::move(literalValue)) {}

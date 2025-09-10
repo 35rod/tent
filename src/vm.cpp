@@ -140,19 +140,19 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				stack.pop_back();
 				//std::cout << "popped element for PRINT/PRINTLN\n";
 
-				std::visit([&val]() {
-					using T = std::decay_t<decltype(val.v)>;
-					if constexpr (std::is_same_v<T, nl_int_t>)
-						std::cout << std::get<nl_int_t>(val.v);
-					else if constexpr (std::is_same_v<T, nl_dec_t>)
-						std::cout << FloatLiteral::to_str(std::get<nl_dec_t>(val.v));
-					else if constexpr (std::is_same_v<T, nl_bool_t>)
-						std::cout << BoolLiteral::to_str(std::get<nl_bool_t>(val.v));
-					else if constexpr (std::is_same_v<T, std::string>)
-						std::cout << std::get<std::string>(val.v);
-					else
-						std::cout << "(null)";
-				});
+				// std::visit([&val]() {
+				// 	using T = std::decay_t<decltype(val.v)>;
+				// 	if constexpr (std::is_same_v<T, nl_int_t>)
+				// 		std::cout << std::get<nl_int_t>(val.v);
+				// 	else if constexpr (std::is_same_v<T, nl_dec_t>)
+				// 		std::cout << FloatLiteral::to_str(std::get<nl_dec_t>(val.v));
+				// 	else if constexpr (std::is_same_v<T, nl_bool_t>)
+				// 		std::cout << BoolLiteral::to_str(std::get<nl_bool_t>(val.v));
+				// 	else if constexpr (std::is_same_v<T, std::string>)
+				// 		std::cout << std::get<std::string>(val.v);
+				// 	else
+				// 		std::cout << "(null)";
+				// });
 
 				if (instr.op == TokenType::PRINTLN)
 					std::cout << std::endl;

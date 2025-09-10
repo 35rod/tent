@@ -1,6 +1,6 @@
 #include <cstdint>
 
-#include "misc.hpp"
+#include "types.hpp"
 #include "opcodes.hpp"
 
 int64_t ipow(int64_t base, uint8_t exp) {
@@ -85,8 +85,7 @@ int64_t ipow(int64_t base, uint8_t exp) {
     }
 }
 
-bool isRightAssoc(const TokenType& op)
-{
+bool isRightAssoc(const TokenType& op) {
 	return ((op >= TokenType::ASSIGN && op <= TokenType::RSHIFT_ASSIGN)
 		|| op == TokenType::POW);
-};
+}
