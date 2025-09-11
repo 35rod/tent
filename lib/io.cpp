@@ -70,7 +70,22 @@ Value println(const std::vector<Value>& args) {
 	return Value(nl_int_t(1));
 }
 
+Value input(const std::vector<Value>& args) {
+	if (!std::holds_alternative<std::string>(args[0].v)) {
+		std::cerr << "Passed non-string argument to first parameter of input" << std::endl;
+	}
+
+	std::string prompt = std::get<std::string>(args[0].v);
+	std::string input;
+
+	std::cout << prompt;
+	std::cin >> input;
+
+	return Value(input);
+}
+
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {
 	table["print"] = print;
 	table["println"] = println;
+	table["input"] = input;
 }

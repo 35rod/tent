@@ -116,7 +116,7 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				Value cond = stack.back(); stack.pop_back();
 
-				bool condTrue = std::visit([&cond]() -> nl_bool_t {
+				bool condTrue = std::visit([&]() -> nl_bool_t {
 					using T = std::decay_t<decltype(cond.v)>;
 					if constexpr (std::is_same_v<T, nl_bool_t>) return std::get<bool>(cond.v);
 					if constexpr (std::is_same_v<T, nl_int_t>) return std::get<nl_bool_t>(cond.v) != 0;

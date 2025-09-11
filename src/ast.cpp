@@ -2,20 +2,6 @@
 #include "ast.hpp"
 #include "misc.hpp"
 
-static void printIndent(int indent) {
-	printf("%*s", indent, " ");
-}
-
-void ASTNode::print(int indent) {
-	printIndent(indent);
-	std::cout << "ASTNode()" << std::endl;
-}
-
-void NoOp::print(int ident) {
-	printIndent(ident);
-	std::cout << "NoOp()\n";
-}
-
 IntLiteral::IntLiteral(nl_int_t literalValue) : ASTNode(), value(literalValue) {}
 
 void IntLiteral::print(int indent) {

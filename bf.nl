@@ -1,4 +1,4 @@
-` an implementation of a brainf*ck interpreter, in newLang
+~ an implementation of a brainf*ck interpreter, in newLang
 
 if ARG_COUNT < 1 {
 	println("usage: bf <filename>");
@@ -6,11 +6,11 @@ if ARG_COUNT < 1 {
 }
 set DATA_SIZE = 32768;
 
-set instr = read_file(ARGS@0);	` instructions
-set instr_pos = 0;			` instruction pointer
+set instr = read_file(ARGS@0);	~ instructions
+set instr_pos = 0;			~ instruction pointer
 
-set data = vec_from_size(DATA_SIZE);` data
-set data_pos = 0;				` data pointer
+set data = vec_from_size(DATA_SIZE); ~ data
+set data_pos = 0;				~ data pointer
 
 set n_nested = 0;
 set save_nested = n_nested;

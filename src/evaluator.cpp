@@ -35,32 +35,6 @@ static ASTPtr convertValue(const Value& v) {
 }
 
 Evaluator::Evaluator() {
-	// nativeFunctions["input"] = [](const std::vector<Value>& args) {
-	// 	if (!std::holds_alternative<std::string>(args[0].v)) {
-	// 		TypeError("Passed non-string argument to first parameter of input", -1);
-	// 	}
-
-	// 	std::string prompt = std::get<std::string>(args[0].v);
-	// 	std::string input;
-
-	// 	std::cout << prompt;
-	// 	std::cin >> input;
-
-	// 	return Value(input);
-	// };
-
-	// nativeFunctions["log"] = [](const std::vector<Value>& args) {
-	// 	if (std::holds_alternative<nl_int_t>(args[0].v)) {
-	// 		return Value(nl_int_t(std::log10(std::get<nl_int_t>(args[0].v))));
-	// 	} else if (std::holds_alternative<nl_dec_t>(args[0].v)) {
-	// 		return Value(nl_dec_t(std::log10(std::get<nl_dec_t>(args[0].v))));
-	// 	} else {
-	// 		TypeError("Passed non-numeric argument to first parameter of log", -1);
-	// 	}
-
-	// 	return Value();
-	// };
-
 	// nativeFunctions["exit"] = [this](const std::vector<Value>&) {
 	// 	program_should_terminate = true;
 
