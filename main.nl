@@ -3,4 +3,4 @@ load "math";
 
 set name = input("Enter your name: ");
 println(name + " is awesome!");
-println(log(10));
+println(log2(32767));
