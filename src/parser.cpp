@@ -264,8 +264,6 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		advance();
-
 		ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
 
 		return ExpressionStmt(std::move(whileLiteral));
@@ -285,8 +283,6 @@ ExpressionStmt Parser::parse_statement() {
 		} else {
 			stmts = parse_block();
 		}
-
-		advance();
 
 		ASTPtr forLiteral = std::make_unique<ForLiteral>(std::move(var), std::move(iter), std::move(stmts));
 
@@ -318,7 +314,6 @@ ExpressionStmt Parser::parse_statement() {
 			elseStmts.push_back(parse_statement());
 		} else {
 			elseStmts = parse_block();
-			advance();
 		}
 
 		ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts), std::move(elseStmts));

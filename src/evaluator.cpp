@@ -308,7 +308,47 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		v.isReturn = true;
 
 		return v;
+	} else if (auto cl = dynamic_cast<ClassLiteral*>(node)) {
+		classes[cl->name] = cl;
+
+		return Value();
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
+		if (classes.count(fc->name)) {
+			ClassLiteral* classDef = classes[fc->name];
+			
+			Value::ClassInstance instance;
+			instance.name = classDef->name;
+
+			CallFrame frame;
+
+			for (size_t i = 0; i < fc->params.size(); i++) {
+				Variable* paramVar = dynamic_cast<Variable*>(classDef->params[i].get());
+				Value argVal = evalExpr(fc->params[i].get());
+				instance.fields[paramVar->name] = argVal;
+				frame.locals[paramVar->name] = argVal;
+			}
+
+			callStack.push_back(std::move(frame));
+
+			for (ExpressionStmt& stmt : classDef->stmts) {
+				if (auto fn = dynamic_cast<FunctionLiteral*>(stmt.expr.get())) {
+					instance.methods[fn->name] = fn;
+				} else if (auto bin = dynamic_cast<BinaryOp*>(stmt.expr.get())) {
+					if (auto var = dynamic_cast<Variable*>(bin->left.get())) {
+						instance.fields[var->name] = evalExpr(bin->right.get());
+					}
+				} else if (auto varStmt = dynamic_cast<Variable*>(stmt.expr.get())) {
+					instance.fields[varStmt->name] = Value();
+				} else {
+					evalStmt(stmt);
+				}
+			}
+
+			callStack.pop_back();
+
+			return Value(instance);
+		}
+
 		FunctionLiteral* func = nullptr;
 
 		for (FunctionLiteral* f : functions) {
@@ -453,18 +493,62 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			Value lhs = evalExpr(bin->left.get());
 
 			if (auto fc = dynamic_cast<FunctionCall*>(bin->right.get())) {
-				std::string methodName = fc->name;
-				std::vector<Value> args;
+				std::string name = fc->name;
 
-				for (const ASTPtr& param : fc->params) {
-					args.push_back(evalExpr(param.get()));
-				}
+				if (auto inst = std::get_if<Value::ClassInstance>(&lhs.v)) {
+					auto it = inst->methods.find(name);
 
-				if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
-					if (nativeMethods["str"].count(methodName)) {
-						return nativeMethods["str"][methodName](*strPtr, args);
+					if (it != inst->methods.end()) {
+						FunctionLiteral* method = it->second;
+
+						CallFrame frame;
+
+						for (auto&[fieldName, fieldVal] : inst->fields) {
+							frame.locals[fieldName] = fieldVal;
+						}
+
+						for (size_t i = 0; i < method->params.size(); i++) {
+							Variable* formalParam = dynamic_cast<Variable*>(method->params[i].get());
+							frame.locals[formalParam->name] = evalExpr(fc->params[i].get());
+						}
+
+						callStack.push_back(std::move(frame));
+						Value result;
+
+						for (ExpressionStmt& stmt : method->stmts) {
+							result = evalStmt(stmt);
+
+							if (result.isReturn) {
+								result.isReturn = false;
+
+								for (auto&[k, v] : callStack.back().locals) {
+									inst->fields[k] = v;
+								}
+
+								callStack.pop_back();
+
+								return result;
+							}
+						}
+
+						for (auto&[k, v] : callStack.back().locals) {
+							inst->fields[k] = v;
+						}
+
+						callStack.pop_back();
+
+						return result;
 					} else {
-						TypeError("Unknown string method: " + methodName, -1);
+						TypeError("Unknown method '" + name + "' for class '" + inst->name + "'", -1);
+					}
+				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
+					if (nativeMethods["str"].count(name)) {
+						std::vector<Value> args;
+						for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
+
+						return nativeMethods["str"][name](*strPtr, args);
+					} else {
+						TypeError("Unknown string method: " + name, -1);
 					}
 				} else {
 					TypeError("Method call not supported on this type", -1);
@@ -472,12 +556,18 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			} else if (auto var = dynamic_cast<Variable*>(bin->right.get())) {
 				std::string propName = var->name;
 
-				if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
-					if (propName == "length") {
-						return nl_int_t(strPtr->length());
-					} else {
-						TypeError("Unknown string property: " + propName, -1);
+				if (auto inst = std::get_if<Value::ClassInstance>(&lhs.v)) {
+					auto fieldIt = inst->fields.find(propName);
+
+					if (fieldIt != inst->fields.end()) {
+						return fieldIt->second;
 					}
+
+					TypeError("Unknown property '" + propName + "' for class '" + inst->name + "'", -1);
+				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
+					if (propName == "length") return nl_int_t(strPtr->length());
+
+					TypeError("Unknown string poperty: " + propName, -1);
 				} else {
 					TypeError("Property access not supported on this type", -1);
 				}
