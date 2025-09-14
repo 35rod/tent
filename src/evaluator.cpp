@@ -7,33 +7,6 @@
 #include <fstream>
 #include "native.hpp"
 
-static ASTPtr convertValue(const Value& v) {
-	if (std::holds_alternative<nl_int_t>(v.v)) {
-		return std::make_unique<IntLiteral>(std::get<nl_int_t>(v.v));
-	} else if (std::holds_alternative<nl_dec_t>(v.v)) {
-		return std::make_unique<FloatLiteral>(std::get<nl_dec_t>(v.v));
-	} else if (std::holds_alternative<nl_bool_t>(v.v)) {
-		return std::make_unique<BoolLiteral>(std::get<nl_bool_t>(v.v));
-	} else if (std::holds_alternative<std::string>(v.v)) {
-		return std::make_unique<StrLiteral>(std::get<std::string>(v.v));
-	} else if (std::holds_alternative<Value::VecT>(v.v)) {
-		auto vecPtr = std::get<Value::VecT>(v.v);
-		std::vector<ASTPtr> elemsAst;
-
-		if (vecPtr && !vecPtr->empty()) {
-			elemsAst.reserve(vecPtr->size());
-			
-			for (const auto& elem : *vecPtr) {
-				elemsAst.push_back(convertValue(elem));
-			}
-		}
-
-		return std::make_unique<VecLiteral>(std::move(elemsAst));
-	} else {
-		return std::make_unique<NoOp>();
-	}
-}
-
 Evaluator::Evaluator() {
 	// nativeFunctions["exit"] = [this](const std::vector<Value>&) {
 	// 	program_should_terminate = true;

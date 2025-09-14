@@ -196,7 +196,7 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr assign = std::make_unique<BinaryOp>(TokenType::ASSIGN, std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
 
 		return ExpressionStmt(std::move(assign));
-	} else if (token.kind == TokenType::FORM) {
+	} else if (token.kind == TokenType::FORM || token.kind == TokenType::CLASS) {
 		advance();
 		Token name = expect(TokenType::IDENT);
 		advance();
@@ -207,7 +207,7 @@ ExpressionStmt Parser::parse_statement() {
 
 		while (current().kind != TokenType::CLOSE_PAREN) {
 			if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError("Closing parentheses required for function definition", current().lineNo);
+				SyntaxError("Closing parentheses required for function/class definition", current().lineNo);
 			}
 
 			Token param = expect(TokenType::IDENT);
@@ -228,9 +228,15 @@ ExpressionStmt Parser::parse_statement() {
 		advance();
 		std::vector<ExpressionStmt> stmts = parse_block();
 
-		ASTPtr form = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
+		ASTPtr res = nullptr;
 
-		return ExpressionStmt(std::move(form));
+		if (token.kind == TokenType::FORM) {
+			res = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
+		} else {
+			res = std::make_unique<ClassLiteral>(name.text, std::move(params), std::move(stmts));
+		}
+
+		return ExpressionStmt(std::move(res));
 	} else if (token.kind == TokenType::RETURN) {
 		advance();
 

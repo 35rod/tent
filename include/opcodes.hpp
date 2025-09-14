@@ -69,5 +69,7 @@ enum class TokenType: TokenTypeSize {
 
 	FOR, ITER,
 
-	DOT
+	DOT,
+
+	CLASS
 };

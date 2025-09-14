@@ -1,12 +1,14 @@
 load "io";
 
-form nth_fib(n) {
-	if n <= 1 {
-		return n;
-	}
+class Car(brand, model, year) {
+	println(brand);
+	println(model);
+	println(year);
 
-	return nth_fib(n-1) + nth_fib(n-2);
+	form to_str() {
+		return brand + ", " + model + ", " + year;
+	}
 }
 
-set n = 6;
-println(nth_fib(n));
+set car = Car("Honda", "Accord", "2006");
+println(car.to_str());

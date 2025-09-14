@@ -237,6 +237,8 @@ Token Lexer::getToken() {
 			kind = TokenType::FORM;
 		} else if (text == "return") {
 			kind = TokenType::RETURN;
+		} else if (text == "class") {
+			kind = TokenType::CLASS;
 		} else if (text == "if") {
 			kind = TokenType::IF;
 		} else if (text == "else") {
