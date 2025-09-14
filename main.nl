@@ -1,14 +1,6 @@
-load "io";
+load "../gui.nl";
 
-class Car(brand, model, year) {
-	println(brand);
-	println(model);
-	println(year);
-
-	form to_str() {
-		return brand + ", " + model + ", " + year;
-	}
-}
-
-set car = Car("Honda", "Accord", "2006");
-println(car.to_str());
+set window = Window(300, 200, "Hello FLTK!");
+set button = Button(100, 100, 100, 40, "Click Me!");
+window.show();
+run();
