@@ -1,6 +1,12 @@
 load "io";
-load "math";
 
-set name = input("Enter your name: ");
-println(name + " is awesome!");
-println(log(10));
+form nth_fib(n) {
+	if n <= 1 {
+		return n;
+	}
+
+	return nth_fib(n-1) + nth_fib(n-2);
+}
+
+set n = 6;
+println(nth_fib(n));

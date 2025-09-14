@@ -1,4 +1,4 @@
-#include "../include/native.hpp"
+#include "native.hpp"
 #include <iostream>
 
 #define MAX_DEC_LEN 50

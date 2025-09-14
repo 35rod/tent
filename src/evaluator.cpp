@@ -246,15 +246,15 @@ Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args
 	return last;
 }
 
-Value Evaluator::evalStmt(ExpressionStmt& stmt, const std::vector<Variable>& local_vars) {
+Value Evaluator::evalStmt(ExpressionStmt& stmt) {
 	ASTNode* expr = stmt.expr.get();
 	
 	if (!expr) throw std::runtime_error("Invalid expression");
 
-	return evalExpr(expr, local_vars);
+	return evalExpr(expr);
 }
 
-Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars) {
+Value Evaluator::evalExpr(ASTNode* node) {
 	if (!node) throw std::runtime_error("Null AST node in evaluator");
 
 	if (auto il = dynamic_cast<IntLiteral*>(node)) {
@@ -270,12 +270,12 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 		elems.reserve(vl->elems.size());
 
 		for (auto& elem : vl->elems) {
-			elems.push_back(evalExpr(elem.get(), local_vars));
+			elems.push_back(evalExpr(elem.get()));
 		}
 
 		return Value(std::make_shared<std::vector<Value>>(elems));
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
-		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get(), local_vars).v);
+		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get()).v);
 		Value cur_res;
 
 		if (condition) {
@@ -284,9 +284,11 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 					break;
 				} 
 
-				cur_res = evalStmt(stmt, local_vars);
+				cur_res = evalStmt(stmt);
 
-				if (returning) return cur_res;
+				if (cur_res.isReturn) {
+					return cur_res;
+				}
 			}
 		} else {
 			for (ExpressionStmt& stmt : ifl->elseClauseStmts) {
@@ -294,9 +296,11 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 					break;
 				} 
 
-				cur_res = evalStmt(stmt, local_vars);
+				cur_res = evalStmt(stmt);
 
-				if (returning) return cur_res;
+				if (cur_res.isReturn) {
+					return cur_res;
+				}
 			}
 		}
 
@@ -304,7 +308,7 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
 		bool break_while_loop = false;
 
-		while (std::get<nl_bool_t>(evalExpr(wl->condition.get(), local_vars).v) == true && !break_while_loop) {
+		while (std::get<nl_bool_t>(evalExpr(wl->condition.get()).v) == true && !break_while_loop) {
 			for (ExpressionStmt& stmt : wl->stmts) {
 				if (stmt.isBreak) {
 					break_while_loop = true;
@@ -313,9 +317,11 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 					break;
 				}
 
-				Value res = evalStmt(stmt, local_vars);
+				Value res = evalStmt(stmt);
 
-				if (returning) return res;
+				if (res.isReturn) {
+					return res;
+				}
 			}
 		}
 
@@ -325,97 +331,87 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 
 		return Value();
 	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
-		returning = true;
+		Value v = evalExpr(rl->value.get());
+		v.isReturn = true;
 
-		return evalExpr(rl->value.get(), local_vars);
+		return v;
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
-		std::vector<Value> evalArgs;
-		evalArgs.reserve(fc->params.size());
-
-		for (const ASTPtr& paramPtr : fc->params) {
-			if (!paramPtr) throw std::runtime_error("Null parameter AST Node");
-			evalArgs.push_back(evalExpr(paramPtr.get(), local_vars));
-		}
-
-		auto nit = nativeFunctions.find(fc->name);
-
-		if (nit != nativeFunctions.end()) {
-			return nit->second(evalArgs);
-		}
-
 		FunctionLiteral* func = nullptr;
 
-		for (FunctionLiteral* form : functions) {
-			if (form->name == fc->name) {
-				func = form;
+		for (FunctionLiteral* f : functions) {
+			if (f->name == fc->name) {
+				func = f;
 				break;
 			}
 		}
 
-		if (func) {
-			if (fc->params.size() > func->params.size()) {
-				throw std::runtime_error("Too many parameters in function call");
-			} else if (fc->params.size() < func->params.size()) {
-				throw std::runtime_error("Too few parameters in function call");
-			}
+		if (!func) {
+			auto nit = nativeFunctions.find(fc->name);
 
-			std::vector<Variable> lvars;
-			std::vector<Value> evalParams;
+			if (nit != nativeFunctions.end()) {
+				std::vector<Value> evalArgs;
+				evalArgs.reserve(fc->params.size());
 
-			for (size_t i = 0; i < func->params.size(); i++) {
-				Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
-				ASTNode* paramNode = fc->params[i].get();
-
-				Value evalValue = evalExpr(std::move(paramNode), local_vars);
-
-				ASTPtr paramNodeEval;
-
-				if (std::holds_alternative<nl_int_t>(evalValue.v)) {
-					paramNodeEval = std::make_unique<IntLiteral>(std::get<nl_int_t>(evalValue.v));
-				} else if (std::holds_alternative<nl_dec_t>(evalValue.v)) {
-					paramNodeEval = std::make_unique<FloatLiteral>(std::get<nl_dec_t>(evalValue.v));
-				} else if (std::holds_alternative<nl_bool_t>(evalValue.v)) {
-					paramNodeEval = std::make_unique<BoolLiteral>(std::get<nl_bool_t>(evalValue.v));
-				} else if (std::holds_alternative<std::string>(evalValue.v)) {
-					paramNodeEval = std::make_unique<StrLiteral>(std::get<std::string>(evalValue.v));
-				} else if (std::holds_alternative<Value::VecT>(evalValue.v)) {
-					ASTPtr vecAst = convertValue(evalValue);
-					paramNodeEval = std::move(vecAst);
-				} else {
-					throw std::runtime_error("Unsupported parameter type");
+				for (const auto& param : fc->params) {
+					if (!param) throw std::runtime_error("Null parameter AST Node");
+					evalArgs.push_back(evalExpr(param.get()));
 				}
-				
-				Variable newVar(formalParam->name, std::move(paramNodeEval));
-				lvars.push_back(std::move(newVar));
+
+				return nit->second(evalArgs);
+			} else {
+				throw std::runtime_error("Undefined function: " + fc->name);
 			}
-
-			for (ExpressionStmt& stmt : func->stmts) {
-				Value res = evalStmt(stmt, lvars);
-
-				if (returning) {
-					returning = false;
-
-					return res;
-				}
-			}
-
-			return Value();
 		}
+
+		if (fc->params.size() != func->params.size()) {
+			throw std::runtime_error("Parameter count mismatch in function call to " + fc->name);
+		}
+
+		CallFrame frame;
+
+		for (size_t i = 0; i < func->params.size(); i++) {
+			Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
+			if (!formalParam) throw std::runtime_error("Function parameter is not a variable");
+			
+			Value evalValue = evalExpr(fc->params[i].get());
+			frame.locals[formalParam->name] = evalValue;
+		}
+
+		callStack.push_back(std::move(frame));
+
+		Value result;
+
+		for (ExpressionStmt& stmt : func->stmts) {
+			result = evalStmt(stmt);
+
+			if (result.isReturn) {
+				result.isReturn = false;
+				callStack.pop_back();
+
+				return result;
+			}
+		}
+
+		callStack.pop_back();
+
+		return result;
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
-		for (const Variable& var : local_vars) {
-			if (var.name == v->name) {
-				return evalExpr(var.value.get(), local_vars);
+		for (auto it = callStack.rbegin(); it != callStack.rend(); it++) {
+			auto found = it->locals.find(v->name);
+
+			if (found != it->locals.end()) {
+				return found->second;
 			}
 		}
 
-		if (variables.count(v->name) == 1) {
+		if (variables.count(v->name)) {
 			return variables[v->name];
 		} else {
 			SyntaxError("Undefined variable: " + v->name, -1);
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {
-			return evalUnaryOp(evalExpr(un->operand.get(), local_vars), un->op);
+			return evalUnaryOp(evalExpr(un->operand.get()), un->op);
 		}
 		if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
 			if (variables.count(var->name) != 1) {
@@ -443,14 +439,14 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 						auto vecPtr = std::get<Value::VecT>(holder.v);
 						if (!vecPtr) Error("null vector", -1);
 
-						Value idxVal = evalExpr(leftIndex->right.get(), local_vars);
+						Value idxVal = evalExpr(leftIndex->right.get());
 						if (!std::holds_alternative<nl_int_t>(idxVal.v)) TypeError("index must be integer", -1);
 						nl_int_t idx = std::get<nl_int_t>(idxVal.v);
 
 						if (idx < 0 || (size_t)idx >= vecPtr->size())
 							Error("index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()) + ".", -1);
 
-						Value rhs = evalExpr(bin->right.get(), local_vars);
+						Value rhs = evalExpr(bin->right.get());
 						(*vecPtr)[(size_t)idx] = rhs;
 
 						return rhs;
@@ -459,26 +455,36 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 					}
 				}
 			} else if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
-				Value right = evalExpr(bin->right.get(), local_vars);
+				Value right = evalExpr(bin->right.get());
 
-				if (bin->op == TokenType::ASSIGN)
-					return variables[varNode->name] = right;
-				else
-					return variables[varNode->name] = evalBinaryOp(
-						variables[varNode->name], right,
-						(TokenType)((uint16_t)bin->op -
-						((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN))
-					);
+				if (bin->op == TokenType::ASSIGN) {
+					if (!callStack.empty()) {
+						auto& frame = callStack.back();
+						frame.locals[varNode->name] = right;
+
+						return right;
+					} else {
+						return variables[varNode->name] = right;
+					}
+				} else {
+					Value& target = (!callStack.empty() && callStack.back().locals.count(varNode->name))
+					? callStack.back().locals[varNode->name]
+					: variables[varNode->name];
+
+					target = evalBinaryOp(target, right, (TokenType)((uint16_t)bin->op - ((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN)));
+
+					return target;
+				}
 			}
 		} else if (bin->op == TokenType::DOT) {
-			Value lhs = evalExpr(bin->left.get(), local_vars);
+			Value lhs = evalExpr(bin->left.get());
 
 			if (auto fc = dynamic_cast<FunctionCall*>(bin->right.get())) {
 				std::string methodName = fc->name;
 				std::vector<Value> args;
 
 				for (const ASTPtr& param : fc->params) {
-					args.push_back(evalExpr(param.get(), local_vars));
+					args.push_back(evalExpr(param.get()));
 				}
 
 				if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
@@ -505,8 +511,8 @@ Value Evaluator::evalExpr(ASTNode* node, const std::vector<Variable>& local_vars
 			}
 		}
 
-		Value left = evalExpr(bin->left.get(), local_vars);
-		Value right = evalExpr(bin->right.get(), local_vars);
+		Value left = evalExpr(bin->left.get());
+		Value right = evalExpr(bin->right.get());
 		
 		return evalBinaryOp(std::move(left), std::move(right), bin->op);
 	} else {
