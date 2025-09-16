@@ -1,4 +1,4 @@
-load "gui";
+load "gui.dylib";
 
 form run() {
 	runGUI();

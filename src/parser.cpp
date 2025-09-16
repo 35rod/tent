@@ -1,10 +1,15 @@
 #include <fstream>
-#include <dlfcn.h>
 #include "parser.hpp"
 #include "native.hpp"
 #include "lexer.hpp"
 #include "errors.hpp"
 #include "esc_codes.hpp"
+
+#if defined(_WIN32) || defined(_WIN64)
+	#include <windows.h>
+#else
+	#include <dlfcn.h>
+#endif
 
 Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs)
 	: tokens(parserTokens), file_search_dirs(search_dirs) {}
@@ -111,20 +116,21 @@ ExpressionStmt Parser::parse_statement() {
 			MissingTerminatorError("Missing statement terminator after load statement", current().lineNo);
 		}
 
-		if (filename.text.size() >= 3 && filename.text.substr(filename.text.size() - 3) == ".nl") {
-			std::ifstream fileHandle(filename.text);
+		std::string fname = filename.text;
 
-			for (std::string search_dir : file_search_dirs) {
+		if (fname.size() >= 3 && fname.substr(fname.size() - 3) == ".nl") {
+			std::ifstream fileHandle(fname);
+
+			for (const std::string& dir : file_search_dirs) {
 				if (fileHandle.is_open()) break;
-
-				fileHandle = std::ifstream(search_dir + "/" + filename.text);
+				fileHandle = std::ifstream(dir + "/" + fname);
 			}
 
-			if (!fileHandle.is_open())
-				std::cerr << "File error: could not find file '" << filename.text << "'." << std::endl;
-			
-			std::string output;
-			std::string line;
+			if (!fileHandle.is_open()) {
+				std::cerr << "File error: could not find file'" << fname << "'" << std::endl;
+			}
+
+			std::string output, line;
 
 			while (std::getline(fileHandle, line)) {
 				output += line;
@@ -132,45 +138,65 @@ ExpressionStmt Parser::parse_statement() {
 			}
 
 			Lexer lexer(output);
-
 			lexer.nextChar();
 			lexer.getTokens();
 
 			Parser parser(lexer.tokens, file_search_dirs);
-			
+
 			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
 
 			return ExpressionStmt(std::move(imported_program));
-		} else {
-			std::string name;
+		}
 
-			if (filename.text.size() >= 3 && filename.text.substr(filename.text.size() - 3) == ".so") {
-				name = filename.text;
-			} else {
-				name = "../lib/" + filename.text + ".so";
-			}
-
-			void* handle = dlopen(name.c_str(), RTLD_LAZY);
+		bool is_shared_lib =
+			(fname.size() >= 3 && fname.substr(fname.size() - 3) == ".so") ||
+			(fname.size() >= 4 && fname.substr(fname.size() - 4) == ".dll") ||
+			(fname.size() >= 6 && fname.substr(fname.size() - 6) == ".dylib");
+		
+		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
+		
+		if (is_shared_lib) {
+#if defined(_WIN32) || defined(_WIN64)
+			HMODULE handle = LoadLibraryA(("../lib/lib" + fname).c_str());
 
 			if (!handle) {
-				std::cerr << "Failed to load library: " << dlerror() << std::endl;
+				std::cerr << "Failed to load library: " << fname << std::endl;
 				return ExpressionStmt(std::make_unique<NoOp>(), true);
 			}
 
-			using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
+			RegisterFn reg = reinterpret_cast<RegisterFn>(GetProcAddress(handle, "registerFunctions"));
+
+			if (!reg) {
+				std::cerr << "Library missing registerFunctions symbol" << std::endl;
+				FreeLibrary(handle);
+				return ExpressionStmt(std::make_unique<NoOp>(), true);
+			}
+
+			reg(nativeFunctions);
+#else
+			void* handle = dlopen(("../lib/lib" + fname).c_str(), RTLD_LAZY);
 			
-			RegisterFn reg = (RegisterFn)dlsym(handle, "registerFunctions");
+			if (!handle) {
+				std::cerr << "Failed to load library: " << fname << (dlerror() ? (": " + std::string(dlerror())) : "") << std::endl;
+				return ExpressionStmt(std::make_unique<NoOp>(), true);
+			}
+
+			RegisterFn reg = reinterpret_cast<RegisterFn>(dlsym(handle, "registerFunctions"));
 
 			if (!reg) {
 				std::cerr << "Library missing registerFunctions symbol" << std::endl;
 				dlclose(handle);
-				return ExpressionStmt(std::make_unique<NoOp>());
+				return ExpressionStmt(std::make_unique<NoOp>(), true);
 			}
 
 			reg(nativeFunctions);
-			
+#endif
 			return ExpressionStmt(std::make_unique<NoOp>(), true);
 		}
+
+		std::cerr << "Unsupported file type for LOAD: " << fname << std::endl;
+
+		return ExpressionStmt(std::make_unique<NoOp>(), true);
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 

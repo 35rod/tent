@@ -22,6 +22,8 @@ set(SOURCE_FILES
     src/esc_codes.cpp
 )
 
+add_subdirectory(lib)
+
 add_executable(main ${SOURCE_FILES})
 
 if(MSVC)
