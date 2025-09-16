@@ -299,7 +299,6 @@ ExpressionStmt Parser::parse_statement() {
 			thenStmts.push_back(parse_statement());
 		} else {
 			thenStmts = parse_block();
-			advance();
 		}
 
 		if (current().kind != TokenType::ELSE) {
