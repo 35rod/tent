@@ -8,4 +8,6 @@ tests/*
 !tests/*.c
 !tests/*.sh
 *.nlc
+lib/*.dll
 lib/*.so
+lib/*.dylib
