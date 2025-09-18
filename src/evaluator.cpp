@@ -213,7 +213,7 @@ Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args
 
 	for (ExpressionStmt& stmt : p->statements) {
 		last = evalStmt(stmt);
-		if (program_should_terminate) break;
+		if (last.isExit) break;
 	}
 
 	return last;
@@ -259,7 +259,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				cur_res = evalStmt(stmt);
 
-				if (cur_res.isReturn) {
+				if (cur_res.isReturn || cur_res.isExit) {
 					return cur_res;
 				}
 			}
@@ -271,7 +271,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				cur_res = evalStmt(stmt);
 
-				if (cur_res.isReturn) {
+				if (cur_res.isReturn || cur_res.isExit) {
 					return cur_res;
 				}
 			}
@@ -292,7 +292,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				Value res = evalStmt(stmt);
 
-				if (res.isReturn) {
+				if (res.isReturn || res.isExit) {
 					return res;
 				}
 			}
@@ -314,10 +314,10 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		return Value();
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		if (classes.count(fc->name)) {
+			// class constructor call
 			ClassLiteral* classDef = classes[fc->name];
 			
-			Value::ClassInstance instance;
-			instance.name = classDef->name;
+			Value::ClassInstance instance(classDef->name);
 
 			CallFrame frame;
 
@@ -403,6 +403,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				return result;
 			}
+			if (result.isExit)
+				return result;
 		}
 
 		callStack.pop_back();
@@ -529,6 +531,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 								return result;
 							}
+							if (result.isExit)
+								return result;
 						}
 
 						for (auto&[k, v] : callStack.back().locals) {

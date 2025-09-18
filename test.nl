@@ -1,4 +1,4 @@
-load "io";
+load "io.dylib";
 
 set x = 3;
 
