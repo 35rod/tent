@@ -148,55 +148,71 @@ ExpressionStmt Parser::parse_statement() {
 			return ExpressionStmt(std::move(imported_program));
 		}
 
-		bool is_shared_lib =
+		/*bool is_shared_lib =
 			(fname.size() >= 3 && fname.substr(fname.size() - 3) == ".so") ||
 			(fname.size() >= 4 && fname.substr(fname.size() - 4) == ".dll") ||
-			(fname.size() >= 6 && fname.substr(fname.size() - 6) == ".dylib");
+			(fname.size() >= 6 && fname.substr(fname.size() - 6) == ".dylib");*/
 		
 		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
 		
-		if (is_shared_lib) {
+		//if (is_shared_lib) {
 #if defined(_WIN32) || defined(_WIN64)
-			HMODULE handle = LoadLibraryA(("../lib/lib" + fname).c_str());
+		HMODULE handle = LoadLibraryA(("lib" + fname).c_str());
+		if (!handle) handle = LoadLibraryA(("lib" + fname + ".dll").c_str());
 
-			if (!handle) {
-				std::cerr << "Failed to load library: " << fname << std::endl;
-				return ExpressionStmt(std::make_unique<NoOp>(), true);
+		if (!handle) {
+			for (const std::string& dir : file_search_dirs) {
+				if (handle) break;
+				handle = LoadLibraryA((dir + "/lib" + fname).c_str());
 			}
-
-			RegisterFn reg = reinterpret_cast<RegisterFn>(GetProcAddress(handle, "registerFunctions"));
-
-			if (!reg) {
-				std::cerr << "Library missing registerFunctions symbol" << std::endl;
-				FreeLibrary(handle);
-				return ExpressionStmt(std::make_unique<NoOp>(), true);
-			}
-
-			reg(nativeFunctions);
-#else
-			void* handle = dlopen(("../lib/lib" + fname).c_str(), RTLD_LAZY);
-			
-			if (!handle) {
-				std::cerr << "Failed to load library: " << fname << (dlerror() ? (": " + std::string(dlerror())) : "") << std::endl;
-				return ExpressionStmt(std::make_unique<NoOp>(), true);
-			}
-
-			RegisterFn reg = reinterpret_cast<RegisterFn>(dlsym(handle, "registerFunctions"));
-
-			if (!reg) {
-				std::cerr << "Library missing registerFunctions symbol" << std::endl;
-				dlclose(handle);
-				return ExpressionStmt(std::make_unique<NoOp>(), true);
-			}
-
-			reg(nativeFunctions);
-#endif
-			return ExpressionStmt(std::make_unique<NoOp>(), true);
 		}
 
-		std::cerr << "Unsupported file type for LOAD: " << fname << std::endl;
+		if (!handle) {
+			std::cerr << "Failed to load library: " << fname << std::endl;
+			exit(1);
+		}
 
+		RegisterFn reg = reinterpret_cast<RegisterFn>(GetProcAddress(handle, "registerFunctions"));
+
+		if (!reg) {
+			std::cerr << "Library missing registerFunctions symbol" << std::endl;
+			FreeLibrary(handle);
+			exit(1);
+		}
+
+		reg(nativeFunctions);
+#else
+		void* handle = NULL;
+		for (const std::string& dir : file_search_dirs) {
+			if (handle) break;
+			handle = dlopen((dir + "/lib" + fname).c_str(), RTLD_LAZY);
+			if (!handle) handle = dlopen((dir + "/lib" + fname + ".dylib").c_str(), RTLD_LAZY);
+			if (!handle) handle = dlopen((dir + "/lib" + fname + ".so").c_str(), RTLD_LAZY);
+		}
+		
+		if (!handle) {
+			char *err_str = dlerror();
+			std::cerr << "Failed to load library: " << fname <<
+					(err_str ? (": \n" + std::string(err_str)) : "") << std::endl;
+			exit(1);
+		}
+
+		RegisterFn reg = reinterpret_cast<RegisterFn>(dlsym(handle, "registerFunctions"));
+
+		if (!reg) {
+			std::cerr << "Library missing registerFunctions symbol" << std::endl;
+			dlclose(handle);
+			exit(1);
+		}
+
+		reg(nativeFunctions);
+#endif
 		return ExpressionStmt(std::make_unique<NoOp>(), true);
+		//}
+
+	/*	std::cerr << "Unsupported file type for LOAD: " << fname << std::endl;
+
+		return ExpressionStmt(std::make_unique<NoOp>(), true);*/
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 

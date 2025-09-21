@@ -15,7 +15,11 @@ void parse_args(int32_t argc, char **argv)
 {
 	PROG_NAME = std::string(argv[0]);
 
+	// add some sensible defaults (the '..' ones are for 35rod)
 	search_dirs.push_back(".");
+	search_dirs.push_back("lib");
+	search_dirs.push_back("..");
+	search_dirs.push_back("../lib");
 	bool doing_prog_args = false;
 	for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
 	{

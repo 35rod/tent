@@ -4,6 +4,8 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <memory>
 #include "opcodes.hpp"
 #include "misc.hpp"
 

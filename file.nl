@@ -1,4 +1,4 @@
-load "io.dylib";
+load "io";
 
 class File(filename) {
 	set fi = file__openFile(filename);

@@ -1,8 +1,8 @@
 ~ an implementation of a brainf*ck interpreter, in newLang
 
-load "io.dylib";
-load "stdnl.dylib";
-load "../file.nl";
+load "io";
+load "stdnl";
+load "file.nl";
 
 if ARG_COUNT < 1 {
 	println("usage: bf <filename>");
