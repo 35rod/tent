@@ -1,4 +1,5 @@
 #include "vm.hpp"
+#include <stdexcept>
 
 std::vector<Instruction> VM::loadFile(const std::string& filename) {
 	std::ifstream fileHandle(filename, std::ios::binary);
@@ -132,12 +133,15 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					frame.locals[func.params[numArgs - i - 1]] = arg;
 				}
 
+				const std::vector<CallFrame>::size_type callstack_top_index = callStack.size();
 				callStack.push_back(frame);
 
 				size_t ret_ip = ip;
 				run(func.bytecode);
 
-				callStack.pop_back();
+				if (callStack.size() != callstack_top_index) {
+					throw std::runtime_error("return statement is required prior to the termination of a function ('" + funcName + "').\n");
+				}
 
 				ip = ret_ip;
 

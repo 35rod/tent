@@ -1,6 +1,7 @@
 .vscode/
 compile_commands.json
 .cache/*
+vgcore*
 
 build/*
 tests/*
