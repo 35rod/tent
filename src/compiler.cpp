@@ -37,8 +37,10 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
 			} case TokenType::PUSH_STRING:
+			case TokenType::FORM:
+			case TokenType::CALL:
 			case TokenType::VAR:
-			case TokenType::ASSIGN: 
+			case TokenType::ASSIGN:
 			case TokenType::INCREMENT:
 			case TokenType::DECREMENT: {
 				std::string val = std::get<std::string>(instr.operand.v);
@@ -135,21 +137,40 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 				}
 			}
 		}
+	} else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::FORM, fnl->name));
+
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<nl_int_t>(fnl->params.size())));
+
+		for (auto& param : fnl->params) {
+			auto v = dynamic_cast<Variable*>(param.get());
+			if (!v) throw std::runtime_error("Function parameter is not a variable");
+			bytecode.push_back(Instruction(TokenType::PUSH_STRING, v->name));
+		}
+
+		size_t lengthIndex = bytecode.size();
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, nl_int_t(-1)));
+
+		size_t bodyStart = bytecode.size();
+
+		for (auto& stmt : fnl->stmts) {
+			compileStmt(stmt.expr.get(), bytecode);
+		}
+
+		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
+	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
+		compileExpr(rl->value.get(), bytecode);
+		bytecode.push_back(Instruction(TokenType::RETURN));
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
-		if (fc->name == "print") {
-			for (auto& param : fc->params) {
-				compileExpr(param.get(), bytecode);
-			}
-
-			bytecode.push_back(Instruction(TokenType::PRINT));
-		} else if (fc->name == "println") {
-			for (auto& param : fc->params) {
-				compileExpr(param.get(), bytecode);
-			}
-
+		if (fc->name == "println") {
+			compileExpr(fc->params[0].get(), bytecode);
 			bytecode.push_back(Instruction(TokenType::PRINTLN));
 		} else {
-			throw std::runtime_error("Only 'print' or 'println' function is supported");
+			for (auto& param : fc->params) {
+				compileExpr(param.get(), bytecode);
+			}
+
+			bytecode.push_back(Instruction(TokenType::CALL, fc->name));
 		}
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
 		if (v->value) {

@@ -25,6 +25,8 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 				bytecode[i].operand = val;
 				break;
 			} case TokenType::PUSH_STRING:
+			case TokenType::FORM:
+			case TokenType::CALL:
 			case TokenType::VAR:
 			case TokenType::ASSIGN: 
 			case TokenType::INCREMENT:
@@ -55,7 +57,6 @@ std::vector<Instruction> VM::loadFile(const std::string& filename) {
 }
 
 void VM::run(const std::vector<Instruction>& bytecode) {
-	std::unordered_map<std::string, Value> variables;
 	size_t ip = 0;
 
 	while (ip < bytecode.size()) {
@@ -78,38 +79,137 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				bool val = std::get<bool>(instr.operand.v);
 				stack.push_back(val);
 				break;
-			} case TokenType::VAR: {
-				std::string name = std::get<std::string>(instr.operand.v);
-				
-				if (variables.find(name) == variables.end()) {
-					throw std::runtime_error("Undefined variable: " + name);
+			} case TokenType::FORM: {
+				std::string funcName = std::get<std::string>(instr.operand.v);
+
+				ip++;
+				nl_int_t paramCount = std::get<nl_int_t>(bytecode[ip].operand.v);
+
+				std::vector<std::string> params;
+
+				for (nl_int_t j = 0; j < paramCount; j++) {
+					ip++;
+					params.push_back(std::get<std::string>(bytecode[ip].operand.v));
 				}
 
-				stack.push_back(variables[name]);
+				ip++;
+				nl_int_t funcLength = std::get<nl_int_t>(bytecode[ip].operand.v);
+
+				std::vector<Instruction> funcBytecode;
+
+				for (nl_int_t j = 0; j < funcLength; j++) {
+					ip++;
+					funcBytecode.push_back(bytecode[ip]);
+				}
+
+				functions[funcName] = VMFunc{funcName, params, funcBytecode};
+
+				break;
+			} case TokenType::RETURN: {
+				Value retVal = stack.back();
+				stack.pop_back();
+				callStack.pop_back();
+				stack.push_back(retVal);
+
+				break;
+			} case TokenType::CALL: {
+				std::string funcName = std::get<std::string>(instr.operand.v);
+
+				auto fit = functions.find(funcName);
+				if (fit == functions.end()) throw std::runtime_error("Undefined function: " + funcName);
+
+				VMFunc& func = fit->second;
+				size_t numArgs = func.params.size();
+
+				if (stack.size() < numArgs) {
+					throw std::runtime_error("Not enough arguments for function: " + funcName);
+				}
+
+				CallFrame frame;
+
+				for (size_t i = 0; i < numArgs; i++) {
+					Value arg = stack.back(); stack.pop_back();
+					frame.locals[func.params[numArgs - i - 1]] = arg;
+				}
+
+				callStack.push_back(frame);
+
+				size_t ret_ip = ip;
+				run(func.bytecode);
+
+				callStack.pop_back();
+
+				ip = ret_ip;
+
+				break;
+			} case TokenType::VAR: {
+				std::string name = std::get<std::string>(instr.operand.v);
+				bool found = false;
+
+				for (auto it = callStack.rbegin(); it != callStack.rend(); it++) {
+					auto fit = it->locals.find(name);
+
+					if (fit != it->locals.end()) {
+						stack.push_back(fit->second);
+						found = true;
+						break;
+					}
+				}
+
+				if (!found) {
+					auto gfit = variables.find(name);
+
+					if (gfit != variables.end()) {
+						stack.push_back(gfit->second);
+					} else {
+						throw std::runtime_error("Undefined variable: " + name);
+					}
+				}
+
 				break;
 			} case TokenType::ASSIGN: {
 				if (stack.empty()) throw std::runtime_error("Stack underflow on ASSIGN");
 				
 				Value val = stack.back(); stack.pop_back();
 				std::string name = std::get<std::string>(instr.operand.v);
-				variables[name] = val;
+
+				if (!callStack.empty()) {
+					callStack.back().locals[name] = val;
+				} else {
+					variables[name] = val;
+				}
+
 				stack.push_back(val);
+
 				break;
 			} case TokenType::INCREMENT:
 			case TokenType::DECREMENT: {
 				std::string name = std::get<std::string>(instr.operand.v);
+				Value* target = nullptr;
 
-				if (variables.find(name) == variables.end()) {
-					throw std::runtime_error("Undefined variable: " + name);
+				if (!callStack.empty()) {
+					auto& frame = callStack.back();
+					auto it = frame.locals.find(name);
+					if (it != frame.locals.end()) target = &it->second;
 				}
 
-				if (std::holds_alternative<nl_int_t>(variables[name].v)) {
-					variables[name] = std::get<nl_int_t>(variables[name].v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
-				} else if (std::holds_alternative<nl_dec_t>(variables[name].v)) {
-					variables[name] = std::get<nl_dec_t>(variables[name].v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				if (!target) {
+					auto it = variables.find(name);
+					if (it != variables.end()) target = &it->second;
 				}
 
-				stack.push_back(variables[name]);
+				if (!target) throw std::runtime_error("Undefined variable: " + name);
+
+				if (std::holds_alternative<nl_int_t>(target->v)) {
+					*target = std::get<nl_int_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				} else if (std::holds_alternative<nl_dec_t>(target->v)) {
+					*target = std::get<nl_dec_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				} else {
+					throw std::runtime_error("Increment/decrement applied to non-numeric value");
+				}
+
+				stack.push_back(*target);
+
 				break;
 			} case TokenType::JUMP_IF_FALSE: {
 				if (stack.empty()) throw std::runtime_error("Stack underflow on JUMP_IF_FALSE");
