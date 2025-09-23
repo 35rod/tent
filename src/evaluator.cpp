@@ -8,192 +8,23 @@
 #include "native.hpp"
 
 Evaluator::Evaluator() {
-	// nativeFunctions["exit"] = [this](const std::vector<Value>&) {
-	// 	program_should_terminate = true;
+	nativeMethods["type_int"]["parse"] = [](const Value& lhs, const std::vector<Value>& rhs) {
+		return nl_int_t(std::stoi(std::get<std::string>(rhs[0].v)));
+	};
 
-	// 	return Value();
-	// };
+	nativeMethods["str"]["toUpperCase"] = [](const Value& lhs, const std::vector<Value>&) {
+		std::string str = std::get<std::string>(lhs.v);
+		for (char& c : str) c = toupper(c);
 
-	// nativeFunctions["stoll"] = [](const std::vector<Value>& args) {
-	// 	if (!std::holds_alternative<std::string>(args[0].v))
-	// 		TypeError("passed non-string argument to first parameter of `stoll`", -1);
+		return Value(str);
+	};
 
-	// 	size_t base = 10;
+	nativeMethods["str"]["toLowerCase"] = [](const Value& lhs, const std::vector<Value>&) {
+		std::string str = std::get<std::string>(lhs.v);
+		for (char& c : str) c = tolower(c);
 
-	// 	if (args.size() > 1) {
-	// 		if (!std::holds_alternative<nl_int_t>(args[1].v))
-	// 			TypeError("passed non-integer argument to first parameter of `stoll`", -1);
-			
-	// 		base = (size_t) std::get<nl_int_t>(args[1].v);
-	// 	}
-
-	// 	try {
-	// 		nl_int_t val = (nl_int_t) std::stoll(std::get<std::string>(args[0].v), nullptr, base);
-	// 		return Value(val);
-	// 	} catch (std::exception& e) {
-	// 		Error("stoll: failed to convert string to integer", -1);
-	// 		return Value((nl_int_t(0)));
-	// 	}
-	// };
-
-	// nativeFunctions["vec_from_size"] = [](const std::vector<Value>& args) {
-	// 	if (args.empty() || !std::holds_alternative<nl_int_t>(args[0].v)) {
-	// 		TypeError("passed non-integer argument to vec_from_size(size)", -1);
-	// 	}
-
-	// 	size_t size = (size_t)std::get<nl_int_t>(args[0].v);
-	// 	auto vec = std::make_shared<std::vector<Value>>(size, Value(nl_int_t(0)));
-
-	// 	return Value(vec);
-	// };
-
-	// nativeFunctions["len"] = [](const std::vector<Value>& args) {
-	// 	if (args.size() != 1) {
-	// 		Error("len takes exactly 1 argument, but " + std::to_string(args.size()) + " were given", -1);
-	// 	}
-
-	// 	if (std::holds_alternative<Value::VecT>(args[0].v)) {
-	// 		return Value(nl_int_t(std::get<Value::VecT>(args[0].v)->size()));
-	// 	} else if (std::holds_alternative<std::string>(args[0].v)) {
-	// 		return Value(nl_int_t(std::get<std::string>(args[0].v).length()));
-	// 	}
-
-	// 	return Value(nl_int_t(-1));
-	// };
-
-	// nativeFunctions["ord"] = [](const std::vector<Value>& args) {
-	// 	if (args.size() != 1)
-	// 		Error("`ord` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
-
-	// 	if (const auto *s = std::get_if<std::string>(&args[0].v))
-	// 		return Value(nl_int_t((*s)[0]));
-	// 	else
-	// 		TypeError("passed non-string value to first parameter of `ord`", -1);
-
-	// 	return Value(nl_int_t(-1));
-	// };
-
-	// nativeFunctions["chr"] = [](const std::vector<Value>& args) {
-	// 	if (args.size() != 1)
-	// 		Error("`chr` takes exactly 1 argument, but " + std::to_string(args.size()) + " were given.", -1);
-
-	// 	if (const auto *i = std::get_if<nl_int_t>(&args[0].v))
-	// 		return Value(std::string(1, *i));
-	// 	else
-	// 		TypeError("passed non-integer value to first parameter of `chr`", -1);
-
-	// 	return Value("");
-	// };
-
-	// nativeFunctions["vecpush"] = [this](const std::vector<EvalExpr>& args) {
-	// 	if (args.size() != 2)
-	// 		Error("`vecpush` takes exactly 2 arguments, but " + std::to_string(args.size()) + " were given.", -1);
-
-	// 	if (!std::holds_alternative<std::string>(args[0]))
-	// 		TypeError("passed non-string value to first parameter of `vecpush`", -1);
-	// 	if (auto* vec = std::get_if<std::vector<NonVecEvalExpr>>(&variables[std::get<std::string>(args[0])])) {
-	// 		if (const auto *s = std::get_if<nl_int_t>(&args[1]))
-	// 			vec->push_back(*s);
-	// 		else if (const auto *s = std::get_if<nl_dec_t>(&args[1]))
-	// 			vec->push_back(*s);
-	// 		else if (const auto *s = std::get_if<nl_bool_t>(&args[1]))
-	// 			vec->push_back(*s);
-	// 		else if (const auto *s = std::get_if<std::string>(&args[1]))
-	// 			vec->push_back(*s);
-	// 		else
-	// 			TypeError("Invalid type of argument 1 of `vecpush`", -1);
-	// 	} else
-	// 		TypeError("Couldn't find vector '" + std::get<std::string>(args[0]) + "'", -1);
-
-	// 	return EvalExpr(NoOp());
-	// };
-
-	// nativeFunctions["vecassign"] = [this](const std::vector<EvalExpr>& args) {
-	// 	if (!std::holds_alternative<nl_int_t>(args[0])) {
-	// 		TypeError("passed non-integer value to first parameter of `vecassign`", -1);
-	// 	}
-
-	// 	if (auto* vec = std::get_if<std::vector<NonVecEvalExpr>>(&variables[std::get<std::string>(args[1])])) {
-	// 		nl_int_t index = std::get<nl_int_t>(args[0]);
-
-	// 		if (index < 0 || (std::vector<NonVecEvalExpr>::size_type) index >= vec->size()) {
-	// 			Error("index " + std::to_string(index) + " is out of bounds for vector of size " + std::to_string(vec->size()) + ".", -1);
-	// 		}
-
-	// 		if (const auto *s = std::get_if<nl_int_t>(&args[2]))
-	// 			(*vec)[index] = *s;
-	// 		else if (const auto *s = std::get_if<nl_dec_t>(&args[2]))
-	// 			(*vec)[index] = *s;
-	// 		else if (const auto *s = std::get_if<nl_bool_t>(&args[2]))
-	// 			(*vec)[index] = *s;
-	// 		else if (const auto *s = std::get_if<std::string>(&args[2]))
-	// 			(*vec)[index] = *s;
-	// 		else
-	// 			TypeError("Invalid type of argument 2 of `vecassign`", -1);
-	// 	} else {
-	// 		TypeError("Couldn't find vector '" + std::get<std::string>(args[1]) + "'", -1);
-	// 	}
-
-	// 	return EvalExpr(NoOp());
-	// };
-
-	// nativeFunctions["getc"] = [](const std::vector<Value>&) {
-	// 	return Value((nl_int_t)fgetc(stdin));
-	// };
-	// nativeFunctions["read_in"] = [this](const std::vector<Value>& args) {
-	// 	nl_int_t n = 1;
-	// 	if (args.size() < 1 || args.size() > 2)
-	// 		TypeError("builtin functino `read_in` takes 1 or 2 arguments, but "
-	// 				+ std::to_string(args.size()) + " were provided", -1);
-	// 	if (!std::holds_alternative<std::string>(args[0].v))
-	// 		TypeError("passed non-string value to first parameter of `read_in`, 'buf_name'", -1);
-	// 	if (args.size() == 2 && std::holds_alternative<nl_int_t>(args[1].v))
-	// 		n = std::get<nl_int_t>(args[1].v);
-	// 	else if (args.size() == 2)
-	// 		TypeError("passed non-integer value to second parameter of `read_in`, 'n'", -1);
-
-	// 	static uint8_t *buf;
-	// 	buf = (uint8_t *)calloc(n+1, 1);
-	// 	if (auto *s = std::get_if<std::string>(&variables[std::get<std::string>(args[0].v)].v)) {
-	// 		nl_int_t nread = fread(buf, 1, n, stdin);
-	// 		*s = std::string((char *)buf);
-	// 		return Value(nread);
-	// 	}
-			
-	// 	return Value((nl_int_t)-1);
-	// };
-
-	// nativeFunctions["read_file"] = [](const std::vector<Value>& args) {
-	// 	if (!std::holds_alternative<std::string>(args[0].v))
-	// 		TypeError("passed non-string value to first parameter of `read_file`, `file_name`", -1);
-
-	// 	const std::string& FILENAME = std::get<std::string>(args[0].v);
-	// 	std::ifstream fileHandle(FILENAME);
-	// 	if (!fileHandle.is_open())
-	// 		Error("failed to open file '" + FILENAME + "'.", -1);
-
-	// 	std::string buf, line;
-	// 	while (std::getline(fileHandle, line)) {
-	// 		buf += line;
-	// 		buf.push_back('\n');
-	// 	}
-
-	// 	return Value(buf);
-	// };
-
-	// nativeMethods["str"]["toUpperCase"] = [](const Value& lhs, const std::vector<Value>&) {
-	// 	std::string str = std::get<std::string>(lhs.v);
-	// 	for (char& c : str) c = toupper(c);
-
-	// 	return Value(str);
-	// };
-
-	// nativeMethods["str"]["toLowerCase"] = [](const Value& lhs, const std::vector<Value>&) {
-	// 	std::string str = std::get<std::string>(lhs.v);
-	// 	for (char& c : str) c = tolower(c);
-
-	// 	return Value(str);
-	// };
+		return Value(str);
+	};
 }
 
 Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args) {
@@ -247,6 +78,26 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return Value(std::make_shared<std::vector<Value>>(elems));
+	} else if (auto ti = dynamic_cast<TypeInt*>(node)) {
+        Value res;
+        res.typeInt = true;
+        return res;
+	} else if (auto tf = dynamic_cast<TypeFloat*>(node)) {
+		Value res;
+		res.typeFloat = true;
+		return res;
+	} else if (auto ts = dynamic_cast<TypeStr*>(node)) {
+		Value res;
+		res.typeStr = true;
+		return res;
+	} else if (auto tb = dynamic_cast<TypeBool*>(node)) {
+		Value res;
+		res.typeBool = true;
+		return res;
+	} else if (auto tv = dynamic_cast<TypeVec*>(node)) {
+		Value res;
+		res.typeVec = true;
+		return res;
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
 		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get()).v);
 		Value cur_res;
@@ -553,6 +404,15 @@ Value Evaluator::evalExpr(ASTNode* node) {
 						return nativeMethods["str"][name](*strPtr, args);
 					} else {
 						TypeError("Unknown string method: " + name, -1);
+					}
+				} else if (auto tPtr = std::get_if<NoOp>(&lhs.v)) {
+					if (lhs.typeInt) {
+						if (nativeMethods["type_int"].count(name)) {
+							std::vector<Value> args;
+							for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
+
+							return nativeMethods["type_int"][name](*tPtr, args);
+						}
 					}
 				} else {
 					TypeError("Method call not supported on this type", -1);

@@ -229,10 +229,18 @@ Token Lexer::getToken() {
 
 		TokenType kind;
 
-		if (text == "load") {
+		if (text == "int") {
+			kind = TokenType::TYPE_INT;
+		} else if (text == "str") {
+			kind = TokenType::TYPE_STR;
+		} else if (text == "float") {
+			kind = TokenType::TYPE_FLOAT;
+		} else if (text == "bool") {
+			kind = TokenType::TYPE_BOOL;
+		} else if (text == "vec") {
+			kind = TokenType::TYPE_VEC;
+		} else if (text == "load") {
 			kind = TokenType::LOAD;
-		} else if (text == "set") {
-			kind = TokenType::SET;
 		} else if (text == "form") {
 			kind = TokenType::FORM;
 		} else if (text == "return") {

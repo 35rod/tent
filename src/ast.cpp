@@ -37,6 +37,41 @@ void VecLiteral::print(int indent) {
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
+TypeInt::TypeInt() : ASTNode() {}
+
+void TypeInt::print(int indent) {
+	printIndent(indent);
+	std::cout << "TypeInt()" << std::endl;
+}
+
+TypeFloat::TypeFloat() : ASTNode() {}
+
+void TypeFloat::print(int indent) {
+	printIndent(indent);
+	std::cout << "TypeFloat()" << std::endl;
+}
+
+TypeStr::TypeStr() : ASTNode() {}
+
+void TypeStr::print(int indent) {
+	printIndent(indent);
+	std::cout << "TypeStr()" << std::endl;
+}
+
+TypeBool::TypeBool() : ASTNode() {}
+
+void TypeBool::print(int indent) {
+	printIndent(indent);
+	std::cout << "TypeBool()" << std::endl;
+}
+
+TypeVec::TypeVec() : ASTNode() {}
+
+void TypeVec::print(int indent) {
+	printIndent(indent);
+	std::cout << "TypeVec()" << std::endl;
+}
+
 Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
 
 void Variable::print(int indent) {

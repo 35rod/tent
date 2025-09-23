@@ -154,8 +154,7 @@ ExpressionStmt Parser::parse_statement() {
 			(fname.size() >= 6 && fname.substr(fname.size() - 6) == ".dylib");*/
 		
 		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
-		
-		//if (is_shared_lib) {
+
 #if defined(_WIN32) || defined(_WIN64)
 		HMODULE handle = LoadLibraryA(("lib" + fname).c_str());
 		if (!handle) handle = LoadLibraryA(("lib" + fname + ".dll").c_str());
@@ -220,24 +219,6 @@ ExpressionStmt Parser::parse_statement() {
 		ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
 		return expressionStmt;
-	} else if (token.kind == TokenType::SET) {
-		advance();
-		Token nameToken = expect(TokenType::IDENT);
-		advance();
-		expect(TokenType::ASSIGN);
-		advance();
-
-		ASTPtr value = parse_expression(0);
-
-		if (peek().kind == TokenType::SEM) {
-			advance();
-		} else {
-			MissingTerminatorError("Missing statement terminator after variable assignment", current().lineNo);
-		}
-
-		ASTPtr assign = std::make_unique<BinaryOp>(TokenType::ASSIGN, std::make_unique<Variable>(nameToken.text, nullptr), std::move(value));
-
-		return ExpressionStmt(std::move(assign));
 	} else if (token.kind == TokenType::FORM || token.kind == TokenType::CLASS) {
 		advance();
 		Token name = expect(TokenType::IDENT);
@@ -417,6 +398,16 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
 	} else if (token.kind == TokenType::STR) {
 		left = std::make_unique<StrLiteral>(read_escape(token.text));
+	} else if (token.kind == TokenType::TYPE_INT) {
+		left = std::make_unique<TypeInt>();
+	} else if (token.kind == TokenType::TYPE_FLOAT) {
+		left = std::make_unique<TypeFloat>();
+	} else if (token.kind == TokenType::TYPE_STR) {
+		left = std::make_unique<TypeStr>();
+	} else if (token.kind == TokenType::TYPE_BOOL) {
+		left = std::make_unique<TypeBool>();
+	} else if (token.kind == TokenType::TYPE_VEC) {
+		left = std::make_unique<TypeVec>();
 	} else if (token.kind == TokenType::CHR) {
 		char c = 0;
 		get_escape(token.text, &c);

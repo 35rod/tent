@@ -27,6 +27,11 @@ struct Value {
 
     using VecT = std::shared_ptr<std::vector<Value>>;
     std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, ClassInstance, NoOp> v;
+    bool typeInt = false;
+    bool typeFloat = false;
+    bool typeStr = false;
+    bool typeBool = false;
+    bool typeVec = false;
     bool isReturn = false;
     bool isExit = false;
 

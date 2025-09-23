@@ -15,6 +15,11 @@ enum class NodeType : uint8_t {
 	StrLiteral,
 	BoolLiteral,
 	VecLiteral,
+	TypeInt,
+	TypeFloat,
+	TypeStr,
+	TypeBool,
+	TypeVec,
 	Variable,
 	UnaryOp,
 	BinaryOp,
@@ -73,6 +78,41 @@ class VecLiteral : public ASTNode {
 		void print(int indent) override;
 
 		VecLiteral(std::vector<ASTPtr> literalValue);
+};
+
+class TypeInt : public ASTNode {
+	public:
+		void print(int indent) override;
+
+		TypeInt();
+};
+
+class TypeFloat : public ASTNode {
+	public:
+		void print(int indent) override;
+
+		TypeFloat();
+};
+
+class TypeStr : public ASTNode {
+	public:
+		void print(int indent) override;
+
+		TypeStr();
+};
+
+class TypeBool : public ASTNode {
+	public:
+		void print(int indent) override;
+
+		TypeBool();
+};
+
+class TypeVec : public ASTNode {
+	public:
+		void print(int indent) override;
+
+		TypeVec();
 };
 
 class Variable : public ASTNode {

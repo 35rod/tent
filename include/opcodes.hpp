@@ -73,5 +73,11 @@ enum class TokenType: TokenTypeSize {
 
 	DOT,
 
-	CLASS
+	CLASS,
+
+	TYPE_INT,
+	TYPE_STR,
+	TYPE_FLOAT,
+	TYPE_BOOL,
+	TYPE_VEC
 };

@@ -1,5 +1,5 @@
-form add(a, b) {
-	return a + b;
-}
+load "io";
 
-println(add(3, 5));
+x = int.parse("123");
+println(x * 5);
+println("Yay!");
