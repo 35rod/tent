@@ -1,8 +1,8 @@
 .vscode/
+.idea/
 compile_commands.json
 .cache/*
 vgcore*
-
 build/*
 tests/*
 !tests/*.nl

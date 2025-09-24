@@ -1,5 +1,6 @@
 load "io";
 
-x = int.parse("123");
-println(x * 5);
-println("Yay!");
+nums = vec.fill(5, 1);
+println(nums);
+names = vec.fill(7, "John");
+println(names);

@@ -8,8 +8,32 @@
 #include "native.hpp"
 
 Evaluator::Evaluator() {
-	nativeMethods["type_int"]["parse"] = [](const Value& lhs, const std::vector<Value>& rhs) {
+	nativeMethods["type_int"]["parse"] = [](const Value&, const std::vector<Value>& rhs) {
 		return nl_int_t(std::stoi(std::get<std::string>(rhs[0].v)));
+	};
+
+	nativeMethods["type_vec"]["fill"] = [](const Value&, const std::vector<Value>& rhs) {
+		Value::VecT ret = std::make_shared<std::vector<Value>>((std::vector<Value>::size_type) std::get<nl_int_t>(rhs[0].v));
+
+		if (rhs.size() > 1) {
+			for (size_t i = 0; i < ret->size(); i++) {
+				if (std::holds_alternative<nl_int_t>(rhs[1].v)) {
+					ret->at(i) = Value(std::get<nl_int_t>(rhs[1].v));
+				} else if (std::holds_alternative<nl_dec_t>(rhs[1].v)) {
+					ret->at(i) = Value(std::get<nl_dec_t>(rhs[1].v));
+				} else if (std::holds_alternative<std::string>(rhs[1].v)) {
+					ret->at(i) = Value(std::get<std::string>(rhs[1].v));
+				} else if (std::holds_alternative<nl_bool_t>(rhs[1].v)) {
+					ret->at(i) = Value(std::get<nl_bool_t>(rhs[1].v));
+				} else if (std::holds_alternative<Value::VecT>(rhs[1].v)) {
+					ret->at(i) = Value(std::get<Value::VecT>(rhs[1].v));
+				} else {
+					throw std::runtime_error("Invalid second argument for `fill`");
+				}
+			}
+		}
+
+		return Value(ret);
 	};
 
 	nativeMethods["str"]["toUpperCase"] = [](const Value& lhs, const std::vector<Value>&) {
@@ -24,6 +48,16 @@ Evaluator::Evaluator() {
 		for (char& c : str) c = tolower(c);
 
 		return Value(str);
+	};
+
+	nativeMethods["vec"]["push"] = [](const Value& lhs, const std::vector<Value>& rhs) {
+		Value::VecT vec = std::get<Value::VecT>(lhs.v);
+
+		if (auto ip = std::get_if<nl_int_t>(&rhs[0].v)) {
+			vec->push_back(*ip);
+		}
+
+		return Value();
 	};
 }
 
@@ -78,23 +112,23 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return Value(std::make_shared<std::vector<Value>>(elems));
-	} else if (auto ti = dynamic_cast<TypeInt*>(node)) {
+	} else if (dynamic_cast<TypeInt*>(node)) {
         Value res;
         res.typeInt = true;
         return res;
-	} else if (auto tf = dynamic_cast<TypeFloat*>(node)) {
+	} else if (dynamic_cast<TypeFloat*>(node)) {
 		Value res;
 		res.typeFloat = true;
 		return res;
-	} else if (auto ts = dynamic_cast<TypeStr*>(node)) {
+	} else if (dynamic_cast<TypeStr*>(node)) {
 		Value res;
 		res.typeStr = true;
 		return res;
-	} else if (auto tb = dynamic_cast<TypeBool*>(node)) {
+	} else if (dynamic_cast<TypeBool*>(node)) {
 		Value res;
 		res.typeBool = true;
 		return res;
-	} else if (auto tv = dynamic_cast<TypeVec*>(node)) {
+	} else if (dynamic_cast<TypeVec*>(node)) {
 		Value res;
 		res.typeVec = true;
 		return res;
@@ -405,6 +439,15 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					} else {
 						TypeError("Unknown string method: " + name, -1);
 					}
+				} else if (auto vecPtr = std::get_if<Value::VecT>(&lhs.v)) {
+					if (nativeMethods["vec"].count(name)) {
+						std::vector<Value> args;
+						for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
+
+						return nativeMethods["vec"][name](*vecPtr, args);
+					} else {
+						TypeError("Unknown vector method: " + name, -1);
+					}
 				} else if (auto tPtr = std::get_if<NoOp>(&lhs.v)) {
 					if (lhs.typeInt) {
 						if (nativeMethods["type_int"].count(name)) {
@@ -412,6 +455,13 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
 
 							return nativeMethods["type_int"][name](*tPtr, args);
+						}
+					} else if (lhs.typeVec) {
+						if (nativeMethods["type_vec"].count(name)) {
+							std::vector<Value> args;
+							for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
+
+							return nativeMethods["type_vec"][name](*tPtr, args);
 						}
 					}
 				} else {
