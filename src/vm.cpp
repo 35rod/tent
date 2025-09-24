@@ -111,8 +111,7 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				stack.pop_back();
 				callStack.pop_back();
 				stack.push_back(retVal);
-
-				break;
+				return;
 			} case TokenType::CALL: {
 				std::string funcName = std::get<std::string>(instr.operand.v);
 
@@ -221,14 +220,13 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				Value cond = stack.back(); stack.pop_back();
 
 				bool condTrue = std::visit([&]() -> nl_bool_t {
-					using T = std::decay_t<decltype(cond.v)>;
-					if constexpr (std::is_same_v<T, nl_bool_t>) return std::get<bool>(cond.v);
-					if constexpr (std::is_same_v<T, nl_int_t>) return std::get<nl_bool_t>(cond.v) != 0;
-					if constexpr (std::is_same_v<T, nl_dec_t>) return std::get<nl_bool_t>(cond.v) != 0.0;
+					if (std::holds_alternative<nl_bool_t>(cond.v)) return std::get<nl_bool_t>(cond.v);
+					if (std::holds_alternative<nl_int_t>(cond.v)) return std::get<nl_bool_t>(cond.v) != 0;
+					if (std::holds_alternative<nl_dec_t>(cond.v)) return std::get<nl_bool_t>(cond.v) != 0.0;
 					return true;
 				});
 
-				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
+				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 5;
 				break;
 			} case TokenType::JUMP: {
 				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;

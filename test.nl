@@ -1,6 +1,12 @@
-load "io";
+form test(num) {
+    if false {
+        println("Hello World!");
+        return num;
+    }
 
-nums = vec.fill(5, 1);
-println(nums);
-names = vec.fill(7, "John");
-println(names);
+    println("This is also executed!");
+
+    return num;
+}
+
+println(test(5));

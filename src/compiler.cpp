@@ -87,7 +87,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
 		compileExpr(ifl->condition.get(), bytecode);
 		
-		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE));
+		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, nl_int_t(-1)));
 		size_t jumpIfFalseIndex = bytecode.size() - 1;
 
 		for (auto& stmt : ifl->thenClauseStmts) {
