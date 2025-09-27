@@ -1,12 +1,9 @@
-form test(num) {
-    if false {
-        println("Hello World!");
-        return num;
+form nth_fib(n) {
+    if n <= 1 {
+        return n;
     }
 
-    println("This is also executed!");
-
-    return num;
+    return nth_fib(n-1) + nth_fib(n-2);
 }
 
-println(test(5));
+println(nth_fib(6));

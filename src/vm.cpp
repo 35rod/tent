@@ -97,10 +97,18 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				nl_int_t funcLength = std::get<nl_int_t>(bytecode[ip].operand.v);
 
 				std::vector<Instruction> funcBytecode;
+				size_t funcBodyGlobalStart = ip + 1;
 
 				for (nl_int_t j = 0; j < funcLength; j++) {
 					ip++;
 					funcBytecode.push_back(bytecode[ip]);
+				}
+
+				for (Instruction& finstr : funcBytecode) {
+					if (finstr.op == TokenType::JUMP_IF_FALSE || finstr.op == TokenType::JUMP) {
+						nl_int_t globalAddr = std::get<nl_int_t>(finstr.operand.v);
+						finstr.operand = globalAddr - static_cast<nl_int_t>(funcBodyGlobalStart);
+					}
 				}
 
 				functions[funcName] = VMFunc{funcName, params, funcBytecode};
@@ -226,7 +234,7 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					return true;
 				});
 
-				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 5;
+				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
 				break;
 			} case TokenType::JUMP: {
 				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
