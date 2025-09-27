@@ -19,8 +19,7 @@ instr = source_file.readFile();
 source_file.close();
 instr_pos = 0;			~ instruction pointer
 
-data = []; ~ data
-data.resize(DATA_SIZE);
+data = vec.fill(DATA_SIZE, 0); ~ data
 data_pos = 0;				~ data pointer
 
 n_nested = 0;

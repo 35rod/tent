@@ -46,9 +46,23 @@ Value stdnl__isErr(const std::vector<Value>& args) {
 	return std::holds_alternative<NoOp>(args[0].v);
 }
 
+Value stdnl__chr(const std::vector<Value>& args) {
+	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v))
+		std::cerr << "chr(n: int): incorrect number of arguments passed: takes one 'int'" << std::endl;
+	return Value(std::string(1, (char)std::get<nl_int_t>(args[0].v)));
+}
+
+Value stdnl__ord(const std::vector<Value>& args) {
+	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v))
+		std::cerr << "ord(c: str): incorrect number of arguments passed: takes one 'str'" << std::endl;
+	return Value((nl_int_t)std::get<std::string>(args[0].v)[0]);
+}
+
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {
 	table["exit"] = stdnl__exit;
 	table["stoi"] = stdnl__stoi;
 	table["stof"] = stdnl__stof;
 	table["isErr"] = stdnl__isErr;
+	table["chr"] = stdnl__chr;
+	table["ord"] = stdnl__ord;
 }

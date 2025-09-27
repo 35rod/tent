@@ -9,17 +9,18 @@
 #include <string>
 #include <variant>
 #include "native.hpp"
+#include "types.hpp"
 
 Evaluator::Evaluator() {
 	nativeMethods["type_int"]["parse"] = [](const Value&, const std::vector<Value>& rhs) {
 		if (!std::holds_alternative<std::string>(rhs[0].v))
-			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed to int.parse(): first argument must be 'string'", -1);
+			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed: first argument must be 'string'", -1);
 
 		int base = 0; // special value that allows for 0x10 or 0b010 or the like
 		if (rhs.size() == 2 && std::holds_alternative<nl_int_t>(rhs[1].v))
 			base = std::get<nl_int_t>(rhs[1].v);
 		else if (rhs.size() == 2)
-			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed to int.parse(): second argument must be 'int', if present", -1);
+			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed: second argument must be 'int', if present", -1);
 
 		try {
 			return Value(nl_int_t(std::stoi(std::get<std::string>(rhs[0].v), nullptr, base)));
@@ -30,24 +31,14 @@ Evaluator::Evaluator() {
 	};
 
 	nativeMethods["type_vec"]["fill"] = [](const Value&, const std::vector<Value>& rhs) {
+		// vec.fill(n: int[, v: any]): return a vector of size 'n', optionally filled with 'v'.
 		Value::VecT ret = std::make_shared<std::vector<Value>>((std::vector<Value>::size_type) std::get<nl_int_t>(rhs[0].v));
 
 		if (rhs.size() > 1) {
-			for (size_t i = 0; i < ret->size(); i++) {
-				if (std::holds_alternative<nl_int_t>(rhs[1].v)) {
-					ret->at(i) = Value(std::get<nl_int_t>(rhs[1].v));
-				} else if (std::holds_alternative<nl_dec_t>(rhs[1].v)) {
-					ret->at(i) = Value(std::get<nl_dec_t>(rhs[1].v));
-				} else if (std::holds_alternative<std::string>(rhs[1].v)) {
-					ret->at(i) = Value(std::get<std::string>(rhs[1].v));
-				} else if (std::holds_alternative<nl_bool_t>(rhs[1].v)) {
-					ret->at(i) = Value(std::get<nl_bool_t>(rhs[1].v));
-				} else if (std::holds_alternative<Value::VecT>(rhs[1].v)) {
-					ret->at(i) = Value(std::get<Value::VecT>(rhs[1].v));
-				} else {
-					throw std::runtime_error("Invalid second argument for `fill`");
-				}
-			}
+			if (!is_primitive_val(rhs[1]))
+				TypeError("vec.fill(n: int[, v: any\\class_instance]): invalid argument(s) passed: second argument is of an invalid type for this function", -1);
+
+			std::fill(ret->begin(), ret->end(), rhs[1]);
 		}
 
 		return Value(ret);
@@ -95,15 +86,6 @@ Evaluator::Evaluator() {
 		Value ret = vec->back();
 		vec->pop_back();
 		return ret;
-	};
-	nativeMethods["vec"]["resize"] = [](const Value& lhs, const std::vector<Value>& rhs) {
-		Value::VecT vec = std::get<Value::VecT>(lhs.v);
-
-		if (rhs.size() != 1 || !std::holds_alternative<nl_int_t>(rhs[0].v))
-			TypeError("<vec>.resize(n: int): invalid argument(s) passed to <vec>.resize(): first argument must be 'int'", -1);
-		vec->resize((std::vector<Value>::size_type) std::get<nl_int_t>(rhs[0].v));
-
-		return Value();
 	};
 }
 

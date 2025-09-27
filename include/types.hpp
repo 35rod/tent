@@ -49,5 +49,9 @@ inline Value make_vec(const std::vector<Value>& elems) {
     return Value(std::make_shared<std::vector<Value>>(elems));
 }
 
+inline constexpr bool is_primitive_val(const Value& val) {
+	return !std::holds_alternative<NoOp>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
+}
+
 int64_t ipow(int64_t base, uint8_t exp);
 bool isRightAssoc(const TokenType& op);
