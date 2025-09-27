@@ -35,7 +35,7 @@ int32_t main(int32_t argc, char **argv) {
 
 	if (SRC_FILENAME.find(".nlc") != std::string::npos) {
 		VM vm;
-		auto bytecode = vm.loadFile(SRC_FILENAME);
+		auto bytecode = vm.loadFile(SRC_FILENAME, search_dirs);
 		vm.run(bytecode);
 		exit(0);
 	} else {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ast.hpp"
+#include "parser.hpp"
 #include "evaluator.hpp"
 #include "opcodes.hpp"
 

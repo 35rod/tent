@@ -1,15 +1,85 @@
 #include "vm.hpp"
 #include <stdexcept>
 
-std::vector<Instruction> VM::loadFile(const std::string& filename) {
+#if defined(_WIN32) || defined(_WIN64)
+	#include <windows.h>
+#else
+	#include <dlfcn.h>
+#endif
+
+std::vector<Instruction> VM::loadFile(const std::string& filename, const std::vector<std::string>& search_dirs) {
 	std::ifstream fileHandle(filename, std::ios::binary);
 
-	uint64_t count64 = 0;
-	fileHandle.read(reinterpret_cast<char*>(&count64), sizeof(count64));
-	
-	std::vector<Instruction> bytecode(count64);
+	uint64_t lib_count = 0;
+	fileHandle.read(reinterpret_cast<char*>(&lib_count), sizeof(lib_count));
 
-	for (size_t i = 0; i < count64; i++) {
+	using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
+
+	for (uint64_t i = 0; i < lib_count; i++) {
+		uint64_t len = 0;
+		fileHandle.read(reinterpret_cast<char*>(&len), sizeof(len));
+		std::string libName(len, '\0');
+		if (len) fileHandle.read(&libName[0], static_cast<std::streamsize>(len));
+
+		#if defined(_WIN32) || defined(_WIN64)
+		HMODULE handle = LoadLibraryA(("lib" + libName).c_str());
+		if (!handle) handle = LoadLibraryA(("lib" + libName + ".dll").c_str());
+
+		if (!handle) {
+			for (const std::string& dir : search_dirs) {
+				if (handle) break;
+				handle = LoadLibraryA((dir + "/lib" + libName).c_str());
+			}
+		}
+
+		if (!handle) {
+			std::cerr << "Failed to load library: " << libName << std::endl;
+			exit(1);
+		}
+
+		RegisterFn reg = reinterpret_cast<RegisterFn>(GetProcAddress(handle, "registerFunctions"));
+
+		if (!reg) {
+			std::cerr << "Library missing registerFunctions symbol" << std::endl;
+			FreeLibrary(handle);
+			exit(1);
+		}
+
+		reg(vmNativeFunctions);
+#else
+		void* handle = NULL;
+		for (const std::string& dir : search_dirs) {
+			if (handle) break;
+			handle = dlopen((dir + "/lib" + libName).c_str(), RTLD_LAZY);
+			if (!handle) handle = dlopen((dir + "/lib" + libName + ".dylib").c_str(), RTLD_LAZY);
+			if (!handle) handle = dlopen((dir + "/lib" + libName + ".so").c_str(), RTLD_LAZY);
+		}
+		
+		if (!handle) {
+			char *err_str = dlerror();
+			std::cerr << "Failed to load library: " << libName <<
+					(err_str ? (": \n" + std::string(err_str)) : "") << std::endl;
+			exit(1);
+		}
+
+		RegisterFn reg = reinterpret_cast<RegisterFn>(dlsym(handle, "registerFunctions"));
+
+		if (!reg) {
+			std::cerr << "Library missing registerFunctions symbol" << std::endl;
+			dlclose(handle);
+			exit(1);
+		}
+
+		reg(vmNativeFunctions);
+#endif
+	}
+
+	uint64_t count = 0;
+	fileHandle.read(reinterpret_cast<char*>(&count), sizeof(count));
+	
+	std::vector<Instruction> bytecode(count);
+
+	for (size_t i = 0; i < count; i++) {
 		TokenTypeSize op;
 		fileHandle.read(reinterpret_cast<char*>(&op), sizeof(op));
 		bytecode[i].op = static_cast<TokenType>(op);
@@ -122,6 +192,25 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				return;
 			} case TokenType::CALL: {
 				std::string funcName = std::get<std::string>(instr.operand.v);
+
+				auto nit = vmNativeFunctions.find(funcName);
+				
+				if (nit != vmNativeFunctions.end()) {
+					NativeFn fn = nit->second;
+					std::vector<Value> args;
+
+					while (!stack.empty()) {
+						args.push_back(stack.back());
+						stack.pop_back();
+					}
+
+					std::reverse(args.begin(), args.end());
+
+					Value result = fn(args);
+					stack.push_back(result);
+
+					break;
+				}
 
 				auto fit = functions.find(funcName);
 				if (fit == functions.end()) throw std::runtime_error("Undefined function: " + funcName);
@@ -238,37 +327,6 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				break;
 			} case TokenType::JUMP: {
 				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
-				break;
-			} case TokenType::PRINTLN:
-			case TokenType::PRINT: {
-				if (stack.empty()) {
-					std::cerr << "Error: Stack is empty on PRINT\n";
-					break;
-				}
-
-				Value val = stack.back();
-				stack.pop_back();
-				//std::cout << "popped element for PRINT/PRINTLN\n";
-
-				std::visit([&](auto arg) {
-					using T = std::decay_t<decltype(arg)>;
-
-					if constexpr (std::is_same_v<T, nl_int_t>)
-						std::cout << arg;
-					else if constexpr (std::is_same_v<T, nl_dec_t>)
-						std::cout << arg;
-					else if constexpr (std::is_same_v<T, nl_bool_t>)
-						std::cout << (arg ? "true" : "false");
-					else if constexpr (std::is_same_v<T, std::string>)
-						std::cout << arg;
-					else
-						std::cout << "(null)";
-				}, val.v);
-
-				if (instr.op == TokenType::PRINTLN)
-					std::cout << std::endl;
-
-				std::cout.flush();
 				break;
 			} default:
 				if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {

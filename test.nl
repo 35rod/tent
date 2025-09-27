@@ -1,3 +1,5 @@
+load "io";
+
 form nth_fib(n) {
     if n <= 1 {
         return n;

@@ -11,6 +11,8 @@
 	#include <dlfcn.h>
 #endif
 
+std::vector<std::string> nativeLibs;
+
 Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs)
 	: tokens(parserTokens), file_search_dirs(search_dirs) {}
 
@@ -148,11 +150,6 @@ ExpressionStmt Parser::parse_statement() {
 			return ExpressionStmt(std::move(imported_program));
 		}
 
-		/*bool is_shared_lib =
-			(fname.size() >= 3 && fname.substr(fname.size() - 3) == ".so") ||
-			(fname.size() >= 4 && fname.substr(fname.size() - 4) == ".dll") ||
-			(fname.size() >= 6 && fname.substr(fname.size() - 6) == ".dylib");*/
-		
 		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -206,6 +203,9 @@ ExpressionStmt Parser::parse_statement() {
 
 		reg(nativeFunctions);
 #endif
+
+		nativeLibs.push_back(fname);
+
 		return ExpressionStmt(std::make_unique<NoOp>(), true);
 		//}
 

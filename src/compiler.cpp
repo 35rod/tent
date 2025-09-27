@@ -20,6 +20,15 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 	std::ofstream out(filename, std::ios::binary);
 	if (!out) throw std::runtime_error("Failed to open file");
 
+	uint64_t lib_count = static_cast<uint64_t>(nativeLibs.size());
+	out.write(reinterpret_cast<const char*>(&lib_count), sizeof(lib_count));
+
+	for (const std::string& nativeLib : nativeLibs) {
+		uint64_t len = static_cast<uint64_t>(nativeLib.size());
+		out.write(reinterpret_cast<const char*>(&len), sizeof(len));
+		if (len) out.write(nativeLib.data(), static_cast<std::streamsize>(len));
+	}
+
 	uint64_t count = static_cast<uint64_t>(bytecode.size());
 	out.write(reinterpret_cast<const char*>(&count), sizeof(count));
 
@@ -162,16 +171,11 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		compileExpr(rl->value.get(), bytecode);
 		bytecode.push_back(Instruction(TokenType::RETURN));
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
-		if (fc->name == "println") {
-			compileExpr(fc->params[0].get(), bytecode);
-			bytecode.push_back(Instruction(TokenType::PRINTLN));
-		} else {
-			for (auto& param : fc->params) {
-				compileExpr(param.get(), bytecode);
-			}
-
-			bytecode.push_back(Instruction(TokenType::CALL, fc->name));
+		for (auto& param : fc->params) {
+			compileExpr(param.get(), bytecode);
 		}
+
+		bytecode.push_back(Instruction(TokenType::CALL, fc->name));
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
 		if (v->value) {
 			compileExpr(v->value.get(), bytecode);

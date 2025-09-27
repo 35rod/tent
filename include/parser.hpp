@@ -6,6 +6,8 @@
 #include "token.hpp"
 #include "ast.hpp"
 
+extern std::vector<std::string> nativeLibs;
+
 class Parser {
     std::map<TokenType, int> precedence = {
         {TokenType::DOT, 90},
