@@ -1,7 +1,7 @@
 load "io";
 
 class File(filename) {
-	set fi = file__openFile(filename);
+	fi = file__openFile(filename);
 
 	form isOpen() {
 		return fi != -1;
@@ -15,7 +15,7 @@ class File(filename) {
 		return file__readFile(fi);
 	}
 
-	form closeFile() {
+	form close() {
 		file__closeFile(fi);
 		fi = -1;
 	}

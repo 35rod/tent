@@ -5,11 +5,28 @@
 #include <cstdio>
 #include <dlfcn.h>
 #include <fstream>
+#include <stdexcept>
+#include <string>
+#include <variant>
 #include "native.hpp"
 
 Evaluator::Evaluator() {
 	nativeMethods["type_int"]["parse"] = [](const Value&, const std::vector<Value>& rhs) {
-		return nl_int_t(std::stoi(std::get<std::string>(rhs[0].v)));
+		if (!std::holds_alternative<std::string>(rhs[0].v))
+			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed to int.parse(): first argument must be 'string'", -1);
+
+		int base = 0; // special value that allows for 0x10 or 0b010 or the like
+		if (rhs.size() == 2 && std::holds_alternative<nl_int_t>(rhs[1].v))
+			base = std::get<nl_int_t>(rhs[1].v);
+		else if (rhs.size() == 2)
+			TypeError("int.parse(s: str[, b: int]): invalid argument(s) passed to int.parse(): second argument must be 'int', if present", -1);
+
+		try {
+			return Value(nl_int_t(std::stoi(std::get<std::string>(rhs[0].v), nullptr, base)));
+		} catch (std::exception&) {
+			// should probably return an exception or error value but we don't have those yet, so this is what I've got
+			return Value();
+		}
 	};
 
 	nativeMethods["type_vec"]["fill"] = [](const Value&, const std::vector<Value>& rhs) {
@@ -50,12 +67,41 @@ Evaluator::Evaluator() {
 		return Value(str);
 	};
 
+	nativeMethods["str"]["len"] = [](const Value& lhs, const std::vector<Value>&) {
+		const std::string& str = std::get<std::string>(lhs.v);
+		return Value((nl_int_t)str.length());
+	};
+
+	nativeMethods["vec"]["len"] = [](const Value& lhs, const std::vector<Value>&) {
+		Value::VecT vec = std::get<Value::VecT>(lhs.v);
+		return Value((nl_int_t)vec->size());
+	};
 	nativeMethods["vec"]["push"] = [](const Value& lhs, const std::vector<Value>& rhs) {
 		Value::VecT vec = std::get<Value::VecT>(lhs.v);
 
 		if (auto ip = std::get_if<nl_int_t>(&rhs[0].v)) {
 			vec->push_back(*ip);
 		}
+
+		return Value();
+	};
+	nativeMethods["vec"]["pop"] = [](const Value& lhs, const std::vector<Value>&) {
+		Value::VecT vec = std::get<Value::VecT>(lhs.v);
+
+		if (vec->size() < 1) {
+			Error("attempted to pop an element back from an empty vector", -1);
+		}
+
+		Value ret = vec->back();
+		vec->pop_back();
+		return ret;
+	};
+	nativeMethods["vec"]["resize"] = [](const Value& lhs, const std::vector<Value>& rhs) {
+		Value::VecT vec = std::get<Value::VecT>(lhs.v);
+
+		if (rhs.size() != 1 || !std::holds_alternative<nl_int_t>(rhs[0].v))
+			TypeError("<vec>.resize(n: int): invalid argument(s) passed to <vec>.resize(): first argument must be 'int'", -1);
+		vec->resize((std::vector<Value>::size_type) std::get<nl_int_t>(rhs[0].v));
 
 		return Value();
 	};

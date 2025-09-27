@@ -1,5 +1,5 @@
 #include "native.hpp"
-#include <memory>
+
 #include <string>
 #include <iostream>
 #include <variant>
@@ -40,20 +40,15 @@ Value stdnl__stof(const std::vector<Value>& args) {
 	return Value((nl_dec_t)std::stof(s, nullptr));
 }
 
-Value stdnl__vec_from_size(const std::vector<Value>& args) {
-	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v))
-	{
-		std::cerr << "`vec_from_size` takes exactly one int argument" << std::endl;
-		return Value();
-	}
-	Value::VecT ret = std::make_shared<std::vector<Value>>((std::vector<Value>::size_type) std::get<nl_int_t>(args[0].v));
-
-	return Value(ret);
+Value stdnl__isErr(const std::vector<Value>& args) {
+	if (args.size() != 1)
+		std::cerr << "isErr(v: any): incorrect number of arguments passed: isErr() takes one argument" << std::endl;
+	return std::holds_alternative<NoOp>(args[0].v);
 }
 
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {
 	table["exit"] = stdnl__exit;
 	table["stoi"] = stdnl__stoi;
 	table["stof"] = stdnl__stof;
-	table["vec_from_size"] = stdnl__vec_from_size;
+	table["isErr"] = stdnl__isErr;
 }

@@ -8,18 +8,23 @@ if ARG_COUNT < 1 {
 	println("usage: bf <filename>");
 	exit();
 }
-set DATA_SIZE = 32768;
+DATA_SIZE = 32768;
 
-set source_file = File(ARGS@0);
-set instr = source_file.readFile();
-source_file.closeFile();
-set instr_pos = 0;			~ instruction pointer
+source_file = File(ARGS@0);
+if !source_file.isOpen() {
+	println("failed to open file '", ARGS@0, "'");
+	exit();
+}
+instr = source_file.readFile();
+source_file.close();
+instr_pos = 0;			~ instruction pointer
 
-set data = vec_from_size(DATA_SIZE); ~ data
-set data_pos = 0;				~ data pointer
+data = []; ~ data
+data.resize(DATA_SIZE);
+data_pos = 0;				~ data pointer
 
-set n_nested = 0;
-set save_nested = n_nested;
+n_nested = 0;
+save_nested = n_nested;
 
 while instr_pos < (instr.length - 1) {
 	if instr@instr_pos == "#" {

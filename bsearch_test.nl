@@ -1,15 +1,23 @@
+load "io";
+load "stdnl";
 load "bsearch.nl";
 
 println("please enter numbers in sorted order");
-set in_vec = [];
-set cur = input("enter number: ");
+in_vec = [];
+cur = input("enter number: ");
 while cur != "end" {
-	vecpush("in_vec", stoll(cur));
+	v = int.parse(cur);
+	if !isErr(v) {
+		in_vec.push(v);
+	} else {
+		println("invalid integer");
+	}
 	cur = input("enter number: ");
 }
-set target = stoll(input("target number: "));
-set res = bsearch(in_vec, target);
-if res == -1
+target = int.parse(input("target number: "));
+res = bsearch(in_vec, target);
+if res == -1 {
 	println("target value ", target, " not found");
-else
+} else {
 	println("found target value ", target, " at index ", res);
+}
