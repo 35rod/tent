@@ -4,7 +4,11 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Box.H>
 
-static Fl_Window* globalWindow = nullptr;
+#if defined(__linux__)
+#include <fontconfig/fontconfig.h>
+#endif
+
+static std::unique_ptr<Fl_Window> globalWindow;
 
 Value createWindow(const std::vector<Value>& args) {
 	if (args.size() < 3) return Value();
@@ -13,7 +17,7 @@ Value createWindow(const std::vector<Value>& args) {
 	int height = std::get<nl_int_t>(args[1].v);
 	std::string title = std::get<std::string>(args[2].v);
 
-	globalWindow = new Fl_Window(width, height, title.c_str());
+	globalWindow = std::make_unique<Fl_Window>(width, height, title.c_str());
 	globalWindow->copy_label(title.c_str());
 
 	return Value((nl_int_t)1);
@@ -45,7 +49,16 @@ Value createButton(const std::vector<Value>& args) {
 }
 
 Value runGUI(const std::vector<Value>&) {
+#if defined(__linux__)
+	FcInit();
+#endif
+
 	Fl::run();
+	globalWindow.reset();
+	
+#if defined(__linux__)
+	FcFini();
+#endif
 	
 	return Value((nl_int_t)1);
 }
