@@ -216,6 +216,10 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		functions.push_back(fnl);
 
 		return Value();
+	} else if (auto inl = dynamic_cast<InlineLiteral*>(node)) {
+		functions.push_back(inl);
+
+		return Value();
 	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
 		Value v = evalExpr(rl->value.get());
 		v.isReturn = true;

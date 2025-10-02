@@ -219,7 +219,7 @@ ExpressionStmt Parser::parse_statement() {
 		ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
 
 		return expressionStmt;
-	} else if (token.kind == TokenType::FORM || token.kind == TokenType::CLASS) {
+	} else if (token.kind == TokenType::FORM || token.kind == TokenType::INLINE || token.kind == TokenType::CLASS) {
 		advance();
 		Token name = expect(TokenType::IDENT);
 		advance();
@@ -255,9 +255,10 @@ ExpressionStmt Parser::parse_statement() {
 
 		if (token.kind == TokenType::FORM) {
 			res = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
+		} else if (token.kind == TokenType::INLINE) {
+			res = std::make_unique<InlineLiteral>(name.text, std::move(params), std::move(stmsts));
 		} else {
 			res = std::make_unique<ClassLiteral>(name.text, std::move(params), std::move(stmts));
-		}
 
 		return ExpressionStmt(std::move(res));
 	} else if (token.kind == TokenType::RETURN) {

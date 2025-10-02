@@ -22,6 +22,8 @@ class Instruction {
 };
 
 class Compiler {
+	std::map<std::string, nl_int_t> inlines;
+
 	void compileStmt(ASTNode* node, std::vector<Instruction>& bytecode);
 	void compileExpr(ASTNode* node, std::vector<Instruction>& bytecode);
 

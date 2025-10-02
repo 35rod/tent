@@ -8,4 +8,4 @@ form nth_fib(n) {
     return nth_fib(n-1) + nth_fib(n-2);
 }
 
-println(nth_fib(6));
+println(nth_fib(30));

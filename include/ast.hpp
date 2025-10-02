@@ -225,6 +225,18 @@ class FunctionLiteral : public ASTNode {
 		FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
 };
 
+class InlineLiteral : public ASTNode {
+	public:
+		std::string name;
+		std::vector<ASTPtr> params;
+		std::vector<ExpressionStmt> stmts;
+		ASTPtr returnValue;
+
+		void print(int indent) override;
+
+		InlineLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
+};
+
 class ClassLiteral : public ASTNode {
 	public:
 		std::string name;

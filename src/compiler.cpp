@@ -62,7 +62,8 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 				out.write(reinterpret_cast<const char*>(&b), sizeof(b));
 				break;
 			} case TokenType::JUMP_IF_FALSE:
-			case TokenType::JUMP: {
+			case TokenType::JUMP:
+			case TokenType::CALL_INLINE: {
 				nl_int_t addr = std::get<nl_int_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&addr), sizeof(addr));
 				break;
@@ -93,6 +94,16 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		bytecode.push_back(Instruction(TokenType::PUSH_STRING, sl->value));
 	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
 		bytecode.push_back(Instruction(TokenType::PUSH_BOOL, bl->value));
+	} else if (dynamic_cast<TypeInt*>(node)) {
+		bytecode.push_back(Instruction(TokenType::TYPE_INT));
+	} else if (dynamic_cast<TypeFloat*>(node)) {
+		bytecode.push_back(Instruction(TokenType::TYPE_FLOAT));
+	} else if (dynamic_cast<TypeStr*>(node)) {
+		bytecode.push_back(Instruction(TokenType::TYPE_STR));
+	} else if (dynamic_cast<TypeBool*>(node)) {
+		bytecode.push_back(Instruction(TokenType::TYPE_BOOL));
+	} else if (dynamic_cast<TypeVec*>(node)) {
+		bytecode.push_back(Instruction(TokenType::TYPE_VEC));
 	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
 		compileExpr(ifl->condition.get(), bytecode);
 		
@@ -167,6 +178,30 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		}
 
 		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
+	} else if (auto inl = dynamic_cast<InlineLiteral*>(node)) {
+		bytecode.push_back(Instruction(TokenType::INLINE, inl->name));
+		nl_int_t startIndex = bytecode.size();
+
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<nl_int_t>(inl->params.size())));
+
+		for (auto& param : inl->params) {
+			auto v = dynamic_cast<Variable*>(param.get());
+			if (!v) throw std::runtime_error("Inline parameter is not a variable");
+			bytecode.push_back(Instruction(TokenType::PUSH_STRING, v->name));
+		}
+
+		size_t lengthIndex = bytecode.size();
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, nl_int_t(-1)));
+
+		size_t bodyStart = bytecode.size();
+
+		for (auto& stmt : inl->stmts) {
+			compileStmt(stmt.expr.get(), bytecode);
+		}
+
+		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
+
+		inlines[inl->name] = startIndex;
 	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
 		compileExpr(rl->value.get(), bytecode);
 		bytecode.push_back(Instruction(TokenType::RETURN));
@@ -175,7 +210,11 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 			compileExpr(param.get(), bytecode);
 		}
 
-		bytecode.push_back(Instruction(TokenType::CALL, fc->name));
+		if (inlines.find(fc->name) != inlines.end()) {
+			bytcode.push_back(Instruction(TokenType::CALL_INLINE, inlines[fc->name]));
+		} else {
+			bytecode.push_back(Instruction(TokenType::CALL, fc->name));
+		}
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
 		if (v->value) {
 			compileExpr(v->value.get(), bytecode);

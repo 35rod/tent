@@ -243,7 +243,9 @@ Token Lexer::getToken() {
 			kind = TokenType::LOAD;
 		} else if (text == "form") {
 			kind = TokenType::FORM;
-		} else if (text == "return") {
+		} else if (text == "inline") {
+			kind = TokenType::INLINE;
+		}else if (text == "return") {
 			kind = TokenType::RETURN;
 		} else if (text == "class") {
 			kind = TokenType::CLASS;
