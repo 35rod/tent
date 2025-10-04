@@ -116,7 +116,8 @@ std::vector<Instruction> VM::loadFile(const std::string& filename, const std::ve
 				bytecode[i].operand = nl_bool_t(b != 0);
 				break;
 			} case TokenType::JUMP_IF_FALSE:
-			case TokenType::JUMP: {
+			case TokenType::JUMP:
+			case TokenType::CALL_INLINE: {
 				nl_int_t addr;
 				fileHandle.read(reinterpret_cast<char*>(&addr), sizeof(addr));
 				bytecode[i].operand = addr;
@@ -186,12 +187,30 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				functions[funcName] = VMFunc{funcName, params, funcBytecode};
 
 				break;
+			} case TokenType::INLINE: {
+				nl_int_t paramCount = std::get<nl_int_t>(instr.operand.v);
+				ip += paramCount;
+				nl_int_t bodyLen = std::get<nl_int_t>(bytecode[ip+1].operand.v);
+				ip += bodyLen + 1;
+				break;
 			} case TokenType::RETURN: {
 				Value retVal = stack.back();
 				stack.pop_back();
 				callStack.pop_back();
 				stack.push_back(retVal);
 				return;
+			} case TokenType::RETURN_INLINE: {
+				if (stack.empty()) throw std::runtime_error("Stack underflow on RETURN_INLINE");
+				Value retVal = stack.back(); stack.pop_back();
+				
+				if (!callStack.empty()) callStack.pop_back();
+				if (returnAddrs.empty()) throw std::runtime_error("Inline RETURN without return address");
+
+				size_t ret = returnAddrs.back(); returnAddrs.pop_back();
+				stack.push_back(retVal);
+				ip = ret;
+
+				continue;
 			} case TokenType::CALL: {
 				std::string funcName = std::get<std::string>(instr.operand.v);
 
@@ -244,6 +263,29 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				ip = ret_ip;
 
 				break;
+			} case TokenType::CALL_INLINE: {
+				nl_int_t targetAddr = std::get<nl_int_t>(instr.operand.v);
+				returnAddrs.push_back(ip+1);
+				
+				nl_int_t paramCount = std::get<nl_int_t>(bytecode[targetAddr+1].operand.v);
+				std::vector<std::string> params;
+				
+				for (nl_int_t j = 0; j < paramCount; j++) {
+					params.push_back(std::get<std::string>(bytecode[targetAddr+2+j].operand.v));
+				}
+
+				CallFrame frame;
+
+				for (nl_int_t j = paramCount-1; j >= 0; j--) {
+					if (stack.empty()) throw std::runtime_error("Not enough args for inline call");
+					Value arg = stack.back(); stack.pop_back();
+					frame.locals[params[j]] = arg;
+				}
+
+				callStack.push_back(frame);
+				ip = targetAddr+2+paramCount+1;
+
+				continue;
 			} case TokenType::VAR: {
 				std::string name = std::get<std::string>(instr.operand.v);
 				bool found = false;
@@ -341,6 +383,7 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 					Value a = stack.back(); stack.pop_back();
 					stack.push_back(Evaluator::evalUnaryOp(a, instr.op));
 				} else {
+					std::cout << (long long)instr.op << std::endl;
 					std::cerr << "Unknown opcode\n";
 				}
 				

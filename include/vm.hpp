@@ -16,6 +16,7 @@ class VM {
 	std::vector<Value> stack;
 	std::unordered_map<std::string, Value> variables;
 	std::vector<CallFrame> callStack;
+	std::vector<size_t> returnAddrs;
 	std::unordered_map<std::string, NativeFn> vmNativeFunctions;
 	std::unordered_map<std::string, VMFunc> functions;
 

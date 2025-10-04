@@ -75,15 +75,15 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 	out.close();
 }
 
-void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode) {
+void Compiler::compileStmt(ASTNode* node, std::vector<Instruction>& bytecode, bool isInline) {
 	if (!node) return;
 
 	if (dynamic_cast<NoOp*>(node)) return;
 
-	compileExpr(node, bytecode);
+	compileExpr(node, bytecode, isInline);
 }
 
-void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
+void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bool isInline) {
 	if (!node) return;
 
 	if (auto il = dynamic_cast<IntLiteral*>(node)) {
@@ -196,7 +196,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		size_t bodyStart = bytecode.size();
 
 		for (auto& stmt : inl->stmts) {
-			compileStmt(stmt.expr.get(), bytecode);
+			compileStmt(stmt.expr.get(), bytecode, true);
 		}
 
 		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
@@ -204,14 +204,19 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode) {
 		inlines[inl->name] = startIndex;
 	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
 		compileExpr(rl->value.get(), bytecode);
-		bytecode.push_back(Instruction(TokenType::RETURN));
+
+		if (isInline) {
+			bytecode.push_back(Instruction(TokenType::RETURN_INLINE));
+		} else {
+			bytecode.push_back(Instruction(TokenType::RETURN));
+		}
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		for (auto& param : fc->params) {
 			compileExpr(param.get(), bytecode);
 		}
 
 		if (inlines.find(fc->name) != inlines.end()) {
-			bytcode.push_back(Instruction(TokenType::CALL_INLINE, inlines[fc->name]));
+			bytecode.push_back(Instruction(TokenType::CALL_INLINE, inlines[fc->name]));
 		} else {
 			bytecode.push_back(Instruction(TokenType::CALL, fc->name));
 		}

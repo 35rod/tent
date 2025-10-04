@@ -256,10 +256,11 @@ ExpressionStmt Parser::parse_statement() {
 		if (token.kind == TokenType::FORM) {
 			res = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
 		} else if (token.kind == TokenType::INLINE) {
-			res = std::make_unique<InlineLiteral>(name.text, std::move(params), std::move(stmsts));
+			res = std::make_unique<InlineLiteral>(name.text, std::move(params), std::move(stmts));
 		} else {
 			res = std::make_unique<ClassLiteral>(name.text, std::move(params), std::move(stmts));
-
+		}
+		
 		return ExpressionStmt(std::move(res));
 	} else if (token.kind == TokenType::RETURN) {
 		advance();
