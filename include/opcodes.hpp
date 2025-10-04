@@ -62,11 +62,11 @@ enum class TokenType: TokenTypeSize {
 
 	VAR,
 
-	JUMP_IF_FALSE, JUMP, INLINE,
+	JUMP_IF_FALSE, JUMP, INLINE, RETURN_INLINE,
 
 	FOR, ITER,
 
-	CALL,
+	CALL, CALL_INLINE,
 
 	DOT,
 

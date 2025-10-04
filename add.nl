@@ -1,3 +1,7 @@
-form add(a, b) {
+load "io";
+
+inline add(a, b) {
     return a + b;
 }
+
+println(add(3, 5));

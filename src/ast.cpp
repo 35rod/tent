@@ -238,6 +238,27 @@ void FunctionLiteral::print(int indent) {
 	}
 }
 
+InlineLiteral::InlineLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue)
+: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)), returnValue(std::move(literalReturnValue)) {}
+
+void InlineLiteral::print(int indent) {
+	printIndent(indent);
+	std::cout << "InlineLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
+	printIndent(indent+2);
+	std::cout << "Parameters:\n";
+
+	for (const auto& param : params) {
+		param->print(indent+4);
+	}
+
+	printIndent(indent+2);
+	std::cout << "Statements:\n";
+
+	for (ExpressionStmt& stmt: stmts) {
+		stmt.print(indent+4);
+	}
+}
+
 ClassLiteral::ClassLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts)
 : name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)) {}
 
