@@ -1,7 +1,11 @@
 load "io";
 
-inline add(a, b) {
-    return a + b;
+class Name(value) {
+    aura = value.length * 3;
 }
 
-println(add(3, 5));
+class User(name) {
+    println(name.aura);
+}
+
+User(Name("John"));
