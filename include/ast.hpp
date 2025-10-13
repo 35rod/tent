@@ -23,12 +23,15 @@ enum class NodeType : uint8_t {
 	Variable,
 	UnaryOp,
 	BinaryOp,
-	IfLiteral,
-	WhileLiteral,
-	ForLiteral,
+	IfStmt,
+	WhileStmt,
+	ForStmt,
 	FunctionCall,
-	ReturnLiteral,
-	FunctionLiteral,
+	ReturnStmt,
+	FunctionStmt,
+	InlineStmt,
+	ClassStmt,
+	NullLiteral,
 	NoOp,
 	ASTNode
 };
@@ -162,7 +165,7 @@ class ExpressionStmt : public ASTNode {
                 bool exprIsContinue=false);
 };
 
-class IfLiteral : public ASTNode {
+class IfStmt : public ASTNode {
 	public:
 		ASTPtr condition;
 		std::vector<ExpressionStmt> thenClauseStmts;
@@ -170,20 +173,20 @@ class IfLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts={});
+		IfStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts={});
 };
 
-class WhileLiteral : public ASTNode {
+class WhileStmt : public ASTNode {
 	public:
 		ASTPtr condition;
 		std::vector<ExpressionStmt> stmts;
 
 		void print(int indent) override;
 
-		WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts);
+		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts);
 };
 
-class ForLiteral : public ASTNode {
+class ForStmt : public ASTNode {
 	public:
 		ASTPtr var;
 		ASTPtr iter;
@@ -191,7 +194,7 @@ class ForLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		ForLiteral(ASTPtr literalVar, ASTPtr literalIter, std::vector<ExpressionStmt> literalStmts);
+		ForStmt(ASTPtr stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts);
 };
 
 class FunctionCall : public ASTNode {
@@ -204,16 +207,16 @@ class FunctionCall : public ASTNode {
 		FunctionCall(std::string callName, std::vector<ASTPtr> callParams);
 };
 
-class ReturnLiteral : public ASTNode {
+class ReturnStmt : public ASTNode {
 	public:
 		ASTPtr value;
 
 		void print(int indent) override;
 
-		ReturnLiteral(ASTPtr literalValue);
+		ReturnStmt(ASTPtr stmtValue);
 };
 
-class FunctionLiteral : public ASTNode {
+class FunctionStmt : public ASTNode {
 	public:
 		std::string name;
 		std::vector<ASTPtr> params;
@@ -222,10 +225,10 @@ class FunctionLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
+		FunctionStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue=nullptr);
 };
 
-class InlineLiteral : public ASTNode {
+class InlineStmt : public ASTNode {
 	public:
 		std::string name;
 		std::vector<ASTPtr> params;
@@ -234,10 +237,10 @@ class InlineLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		InlineLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue=nullptr);
+		InlineStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue=nullptr);
 };
 
-class ClassLiteral : public ASTNode {
+class ClassStmt : public ASTNode {
 	public:
 		std::string name;
 		std::vector<ASTPtr> params;
@@ -245,7 +248,7 @@ class ClassLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		ClassLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts);
+		ClassStmt(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts);
 };
 
 class Program : public ASTNode {

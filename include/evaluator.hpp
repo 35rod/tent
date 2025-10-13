@@ -18,8 +18,8 @@ class Evaluator {
 
 	std::vector<CallFrame> callStack;
 	std::map<std::string, Value> variables;
-	std::vector<FunctionLiteral*> functions;
-	std::unordered_map<std::string, ClassLiteral*> classes;
+	std::vector<FunctionStmt*> functions;
+	std::unordered_map<std::string, ClassStmt*> classes;
 	std::unordered_map<std::string, std::unordered_map<std::string, std::function<Value(const Value&, const std::vector<Value>&)>>> nativeMethods;
 
 	static Value evalBinaryOp(const Value& left, const Value& right, TokenType op);

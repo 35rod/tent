@@ -129,12 +129,11 @@ void BinaryOp::print(int indent) {
 	}
 }
 
-IfLiteral::IfLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts) : condition(std::move(literalCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
+IfStmt::IfStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts) : condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
-void IfLiteral::print(int indent) {
+void IfStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "IfLiteral(thenStmts=" << thenClauseStmts.size()
-			  << ", elseStmts=" << elseClauseStmts.size() << ")\n";
+	std::cout << "IfStmt(thenStmts=" << thenClauseStmts.size() << ", elseStmts=" << elseClauseStmts.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Condition:\n";
 	condition->print(indent+4);
@@ -152,12 +151,12 @@ void IfLiteral::print(int indent) {
 	}
 }
 
-WhileLiteral::WhileLiteral(ASTPtr literalCondition, std::vector<ExpressionStmt> literalStmts) : 
-ASTNode(), condition(std::move(literalCondition)), stmts(std::move(literalStmts)) {}
+WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts) :
+ASTNode(), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
 
-void WhileLiteral::print(int indent) {
+void WhileStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "WhileLiteral(statements=" << stmts.size() << ")\n";
+	std::cout << "WhileStmt(statements=" << stmts.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Condition:\n";
 	condition->print(indent+4);
@@ -169,12 +168,12 @@ void WhileLiteral::print(int indent) {
 	}
 }
 
-ForLiteral::ForLiteral(ASTPtr literalVar, ASTPtr literalIter, std::vector<ExpressionStmt> literalStmts)  : 
-ASTNode(), var(std::move(literalVar)), iter(std::move(literalIter)), stmts(std::move(literalStmts)) {}
+ForStmt::ForStmt(ASTPtr stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts)  :
+ASTNode(), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
 
-void ForLiteral::print(int indent) {
+void ForStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "ForLiteral(statements=" << stmts.size() << ")\n";
+	std::cout << "ForStmt(statements=" << stmts.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Var:\n";
 	var->print(indent+4);
@@ -203,11 +202,11 @@ void FunctionCall::print(int indent) {
 	}
 }
 
-ReturnLiteral::ReturnLiteral(ASTPtr literalValue) : value(std::move(literalValue)) {}
+ReturnStmt::ReturnStmt(ASTPtr stmtValue) : value(std::move(stmtValue)) {}
 
-void ReturnLiteral::print(int indent) {
+void ReturnStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "ReturnLiteral()\n";
+	std::cout << "ReturnStmt()\n";
 
 	if (value) {
 		value->print(indent+2);
@@ -217,12 +216,12 @@ void ReturnLiteral::print(int indent) {
 	}
 }
 
-FunctionLiteral::FunctionLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue)
-: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)), returnValue(std::move(literalReturnValue)) {}
+FunctionStmt::FunctionStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue)
+: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
 
-void FunctionLiteral::print(int indent) {
+void FunctionStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "FunctionLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
+	std::cout << "FunctionStmt(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Parameters:\n";
 
@@ -238,12 +237,12 @@ void FunctionLiteral::print(int indent) {
 	}
 }
 
-InlineLiteral::InlineLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts, ASTPtr literalReturnValue)
-: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)), returnValue(std::move(literalReturnValue)) {}
+InlineStmt::InlineStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue)
+: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
 
-void InlineLiteral::print(int indent) {
+void InlineStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "InlineLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
+	std::cout << "InlineStmt(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Parameters:\n";
 
@@ -259,12 +258,12 @@ void InlineLiteral::print(int indent) {
 	}
 }
 
-ClassLiteral::ClassLiteral(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts)
-: name(literalName), params(std::move(literalParams)), stmts(std::move(literalStmts)) {}
+ClassStmt::ClassStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts)
+: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)) {}
 
-void ClassLiteral::print(int indent) {
+void ClassStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "ClassLiteral(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
+	std::cout << "ClassStmt(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Parameters:\n";
 
@@ -284,8 +283,8 @@ ExpressionStmt::ExpressionStmt(
 		ASTPtr stmtExpr,
 		bool stmtNoOp,
 		bool exprIsBreak,
-		bool exprIsContinue)
-	: ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+		bool exprIsContinue
+) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);

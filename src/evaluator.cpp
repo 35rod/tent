@@ -160,7 +160,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		Value res;
 		res.typeVec = true;
 		return res;
-	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
+	} else if (auto ifl = dynamic_cast<IfStmt*>(node)) {
 		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get()).v);
 		Value cur_res;
 
@@ -191,7 +191,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return cur_res;
-	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
+	} else if (auto wl = dynamic_cast<WhileStmt*>(node)) {
 		bool break_while_loop = false;
 
 		while (std::get<nl_bool_t>(evalExpr(wl->condition.get()).v) == true && !break_while_loop) {
@@ -212,23 +212,23 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return Value();
-	} else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
+	} else if (auto fnl = dynamic_cast<FunctionStmt*>(node)) {
 		functions.push_back(fnl);
 
 		return Value();
-	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
+	} else if (auto rl = dynamic_cast<ReturnStmt*>(node)) {
 		Value v = evalExpr(rl->value.get());
 		v.isReturn = true;
 
 		return v;
-	} else if (auto cl = dynamic_cast<ClassLiteral*>(node)) {
+	} else if (auto cl = dynamic_cast<ClassStmt*>(node)) {
 		classes[cl->name] = cl;
 
 		return Value();
 	} else if (auto fc = dynamic_cast<FunctionCall*>(node)) {
 		if (classes.count(fc->name)) {
 			// class constructor call
-			ClassLiteral* classDef = classes[fc->name];
+			ClassStmt* classDef = classes[fc->name];
 			
 			Value::ClassInstance instance(classDef->name);
 
@@ -244,7 +244,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			callStack.push_back(std::move(frame));
 
 			for (ExpressionStmt& stmt : classDef->stmts) {
-				if (auto fn = dynamic_cast<FunctionLiteral*>(stmt.expr.get())) {
+				if (auto fn = dynamic_cast<FunctionStmt*>(stmt.expr.get())) {
 					instance.methods[fn->name] = fn;
 				} else if (auto bin = dynamic_cast<BinaryOp*>(stmt.expr.get())) {
 					if (auto var = dynamic_cast<Variable*>(bin->left.get())) {
@@ -262,9 +262,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			return Value(instance);
 		}
 
-		FunctionLiteral* func = nullptr;
+		FunctionStmt* func = nullptr;
 
-		for (FunctionLiteral* f : functions) {
+		for (FunctionStmt* f : functions) {
 			if (f->name == fc->name) {
 				func = f;
 				break;
@@ -414,7 +414,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					auto it = inst->methods.find(name);
 
 					if (it != inst->methods.end()) {
-						FunctionLiteral* method = it->second;
+						FunctionStmt* method = it->second;
 
 						CallFrame frame;
 

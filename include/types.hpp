@@ -13,14 +13,14 @@ typedef int64_t nl_int_t;
 typedef float nl_dec_t;
 typedef bool nl_bool_t;
 
-class FunctionLiteral;
+class FunctionStmt;
 struct Value;
 
 struct Value {
     struct ClassInstance {
         std::string name;
         std::unordered_map<std::string, Value> fields;
-        std::unordered_map<std::string, FunctionLiteral*> methods;
+        std::unordered_map<std::string, FunctionStmt*> methods;
 
         ClassInstance(std::string name_init) : name(name_init) {};
     };

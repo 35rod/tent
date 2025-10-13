@@ -104,7 +104,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		bytecode.push_back(Instruction(TokenType::TYPE_BOOL));
 	} else if (dynamic_cast<TypeVec*>(node)) {
 		bytecode.push_back(Instruction(TokenType::TYPE_VEC));
-	} else if (auto ifl = dynamic_cast<IfLiteral*>(node)) {
+	} else if (auto ifl = dynamic_cast<IfStmt*>(node)) {
 		compileExpr(ifl->condition.get(), bytecode);
 		
 		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, nl_int_t(-1)));
@@ -128,7 +128,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		} else {
 			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
 		}
-	} else if (auto wl = dynamic_cast<WhileLiteral*>(node)) {
+	} else if (auto wl = dynamic_cast<WhileStmt*>(node)) {
 		size_t condStart = bytecode.size();
 		compileExpr(wl->condition.get(), bytecode);
 
@@ -157,7 +157,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 				}
 			}
 		}
-	} else if (auto fnl = dynamic_cast<FunctionLiteral*>(node)) {
+	} else if (auto fnl = dynamic_cast<FunctionStmt*>(node)) {
 		bytecode.push_back(Instruction(TokenType::FORM, fnl->name));
 
 		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<nl_int_t>(fnl->params.size())));
@@ -178,7 +178,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		}
 
 		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
-	} else if (auto inl = dynamic_cast<InlineLiteral*>(node)) {
+	} else if (auto inl = dynamic_cast<InlineStmt*>(node)) {
 		bytecode.push_back(Instruction(TokenType::INLINE, inl->name));
 		nl_int_t startIndex = bytecode.size();
 
@@ -202,7 +202,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
 
 		inlines[inl->name] = startIndex;
-	} else if (auto rl = dynamic_cast<ReturnLiteral*>(node)) {
+	} else if (auto rl = dynamic_cast<ReturnStmt*>(node)) {
 		compileExpr(rl->value.get(), bytecode);
 
 		if (isInline) {

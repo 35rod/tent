@@ -207,16 +207,13 @@ ExpressionStmt Parser::parse_statement() {
 		nativeLibs.push_back(fname);
 
 		return ExpressionStmt(std::make_unique<NoOp>(), true);
-		//}
-
 	/*	std::cerr << "Unsupported file type for LOAD: " << fname << std::endl;
 
 		return ExpressionStmt(std::make_unique<NoOp>(), true);*/
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 
-		ASTPtr noOp = std::make_unique<NoOp>(NoOp());
-		ExpressionStmt expressionStmt = ExpressionStmt(std::move(noOp), true);
+		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), true);
 
 		return expressionStmt;
 	} else if (token.kind == TokenType::FORM || token.kind == TokenType::INLINE || token.kind == TokenType::CLASS) {
@@ -254,11 +251,11 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr res = nullptr;
 
 		if (token.kind == TokenType::FORM) {
-			res = std::make_unique<FunctionLiteral>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts));
 		} else if (token.kind == TokenType::INLINE) {
-			res = std::make_unique<InlineLiteral>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<InlineStmt>(name.text, std::move(params), std::move(stmts));
 		} else {
-			res = std::make_unique<ClassLiteral>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts));
 		}
 		
 		return ExpressionStmt(std::move(res));
@@ -273,9 +270,9 @@ ExpressionStmt Parser::parse_statement() {
 			MissingTerminatorError("Missing statement terminator after return statement", current().lineNo);
 		}
 
-		ASTPtr returnLiteral = std::make_unique<ReturnLiteral>(std::move(value));
+		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value));
 
-		return ExpressionStmt(std::move(returnLiteral));
+		return ExpressionStmt(std::move(returnStmt));
 	} else if (token.kind == TokenType::WHILE) {
 		advance();
 		ASTPtr condition = parse_expression(0);
@@ -289,9 +286,9 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr whileLiteral = std::make_unique<WhileLiteral>(std::move(condition), std::move(stmts));
+		ASTPtr whileStmt = std::make_unique<WhileStmt>(std::move(condition), std::move(stmts));
 
-		return ExpressionStmt(std::move(whileLiteral));
+		return ExpressionStmt(std::move(whileStmt));
 	} else if (token.kind == TokenType::FOR) {
 		advance();
 		ASTPtr var = parse_expression(0);
@@ -309,9 +306,9 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr forLiteral = std::make_unique<ForLiteral>(std::move(var), std::move(iter), std::move(stmts));
+		ASTPtr forStmt = std::make_unique<ForStmt>(std::move(var), std::move(iter), std::move(stmts));
 
-		return ExpressionStmt(std::move(forLiteral));
+		return ExpressionStmt(std::move(forStmt));
 	} else if (token.kind == TokenType::IF) {
 		advance();
 
@@ -327,9 +324,9 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		if (current().kind != TokenType::ELSE) {
-			ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts));
+			ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts));
 
-			return ExpressionStmt(std::move(ifLiteral));
+			return ExpressionStmt(std::move(ifStmt));
 		}
 
 		advance();
@@ -340,18 +337,16 @@ ExpressionStmt Parser::parse_statement() {
 			elseStmts = parse_block();
 		}
 
-		ASTPtr ifLiteral = std::make_unique<IfLiteral>(std::move(condition), std::move(thenStmts), std::move(elseStmts));
+		ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::move(elseStmts));
 
-		return ExpressionStmt(std::move(ifLiteral));
+		return ExpressionStmt(std::move(ifStmt));
 	} else if (token.kind == TokenType::BREAK || token.kind == TokenType::CONTINUE) {
-		ASTPtr noOp = std::make_unique<NoOp>();
-
 		if (peek().kind == TokenType::SEM)
 			advance();
 		else
 			MissingTerminatorError("Missing statement terminator after break statement", current().lineNo);
 
-		return ExpressionStmt(std::move(noOp), true, true, token.kind == TokenType::CONTINUE);
+		return ExpressionStmt(std::make_unique<NoOp>(), true, true, token.kind == TokenType::CONTINUE);
 	}
 
 	ASTPtr expr = parse_expression(0);
