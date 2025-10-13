@@ -16,13 +16,14 @@ Value stdnl__exit(const std::vector<Value>& args) {
 }
 
 Value stdnl__stoi(const std::vector<Value>& args) {
-	if (args.size() < 1 || args.size() > 2 || !std::holds_alternative<std::string>(args[0].v))
-	{
+	if (args.size() < 1 || args.size() > 2 || !std::holds_alternative<std::string>(args[0].v)) {
 		std::cerr << "`stoi` takes 1. one string argument or 2. one string argument and an int base" << std::endl;
 		return Value();
 	}
+
 	nl_int_t radix = 10;
 	const std::string& s = std::get<std::string>(args[0].v);
+
 	if (args.size() == 2 && std::holds_alternative<nl_int_t>(args[1].v))
 		radix = std::get<nl_int_t>(args[1].v);
 
@@ -43,7 +44,7 @@ Value stdnl__stof(const std::vector<Value>& args) {
 Value stdnl__isErr(const std::vector<Value>& args) {
 	if (args.size() != 1)
 		std::cerr << "isErr(v: any): incorrect number of arguments passed: isErr() takes one argument" << std::endl;
-	return std::holds_alternative<NoOp>(args[0].v);
+	return std::holds_alternative<NullLiteral>(args[0].v);
 }
 
 Value stdnl__chr(const std::vector<Value>& args) {
@@ -55,6 +56,7 @@ Value stdnl__chr(const std::vector<Value>& args) {
 Value stdnl__ord(const std::vector<Value>& args) {
 	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v))
 		std::cerr << "ord(c: str): incorrect number of arguments passed: takes one 'str'" << std::endl;
+
 	return Value((nl_int_t)std::get<std::string>(args[0].v)[0]);
 }
 

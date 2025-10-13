@@ -16,6 +16,14 @@ class ASTNode {
 		virtual ~ASTNode() {}
 };
 
+class NullLiteral : public ASTNode {
+    public:
+        void print(int indent) override {
+            printIndent(indent);
+            std::cout << "NoOp()\n";
+        }
+};
+
 class NoOp : public ASTNode {
 	public:
 		void print(int indent) override {

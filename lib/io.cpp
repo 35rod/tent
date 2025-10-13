@@ -53,23 +53,19 @@ Value print(const std::vector<Value>& args) {
 		else if (std::holds_alternative<Value::VecT>(e.v))
 			total += vec_to_string(std::get<Value::VecT>(e.v));
 		else
-			total += "(null)";
+			total += "null";
 	}
 
 	std::cout << total;
 
-	return Value((nl_int_t)total.size());
+	return Value();
 }
 
 Value println(const std::vector<Value>& args) {
 	Value res = print(args);
 	std::cout << std::endl;
 
-	if (std::holds_alternative<nl_int_t>(res.v)) {
-		return Value(std::get<nl_int_t>(res.v) + 1);
-	}
-
-	return Value(nl_int_t(1));
+	return Value();
 }
 
 Value input(const std::vector<Value>& args) {

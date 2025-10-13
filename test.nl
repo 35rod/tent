@@ -1,3 +1,3 @@
 load "io";
 
-println(25 * 25);
+println(println(5));

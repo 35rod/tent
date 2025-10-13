@@ -476,20 +476,20 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					} else {
 						TypeError("Unknown vector method: " + name, -1);
 					}
-				} else if (auto tPtr = std::get_if<NoOp>(&lhs.v)) {
+				} else if (auto tPtr = std::get_if<NullLiteral>(&lhs.v)) {
 					if (lhs.typeInt) {
 						if (nativeMethods["type_int"].count(name)) {
 							std::vector<Value> args;
 							for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
 
-							return nativeMethods["type_int"][name](*tPtr, args);
+							return nativeMethods["type_int"][name](Value(), args);
 						}
 					} else if (lhs.typeVec) {
 						if (nativeMethods["type_vec"].count(name)) {
 							std::vector<Value> args;
 							for (auto& param : fc->params) args.push_back(evalExpr(param.get()));
 
-							return nativeMethods["type_vec"][name](*tPtr, args);
+							return nativeMethods["type_vec"][name](Value(), args);
 						}
 					}
 				} else {
@@ -532,7 +532,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 		using L = std::decay_t<decltype(l)>;
 		using R = std::decay_t<decltype(r)>;
 
-		if constexpr (std::is_same_v<L, NoOp> || std::is_same_v<R, NoOp>) {
+		if constexpr (std::is_same_v<L, NullLiteral> || std::is_same_v<R, NullLiteral>) {
 			return Value();
 		} else if constexpr (std::is_same_v<L, std::string> && std::is_same_v<R, std::string>) {
 			switch (op) {

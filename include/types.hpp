@@ -26,7 +26,7 @@ struct Value {
     };
 
     using VecT = std::shared_ptr<std::vector<Value>>;
-    std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, ClassInstance, NoOp> v;
+    std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, ClassInstance, NullLiteral> v;
     bool typeInt = false;
     bool typeFloat = false;
     bool typeStr = false;
@@ -35,14 +35,13 @@ struct Value {
     bool isReturn = false;
     bool isExit = false;
 
-    Value() : v(NoOp()) {}
+    Value() : v(NullLiteral()) {}
     Value(nl_int_t i) : v(i) {}
     Value(nl_dec_t d) : v(d) {}
     Value(nl_bool_t b) : v(b) {}
     Value(std::string s) : v(s) {}
     Value(VecT vec) : v(vec) {}
     Value(ClassInstance ci) : v(ci) {}
-    Value(NoOp n) : v(n) {}
 };
 
 inline Value make_vec(const std::vector<Value>& elems) {
@@ -50,7 +49,7 @@ inline Value make_vec(const std::vector<Value>& elems) {
 }
 
 inline constexpr bool is_primitive_val(const Value& val) {
-	return !std::holds_alternative<NoOp>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
+	return !std::holds_alternative<NullLiteral>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
 }
 
 int64_t ipow(int64_t base, uint8_t exp);
