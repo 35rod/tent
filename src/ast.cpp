@@ -168,7 +168,7 @@ void WhileStmt::print(int indent) {
 	}
 }
 
-ForStmt::ForStmt(ASTPtr stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts)  :
+ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts)  :
 ASTNode(), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
 
 void ForStmt::print(int indent) {
@@ -176,7 +176,8 @@ void ForStmt::print(int indent) {
 	std::cout << "ForStmt(statements=" << stmts.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Var:\n";
-	var->print(indent+4);
+	printIndent(indent+4);
+	printf((var + '\n').c_str());
 	printIndent(indent+2);
 	std::cout << "Iter:\n";
 	iter->print(indent+4);

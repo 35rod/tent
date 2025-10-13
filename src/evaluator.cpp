@@ -212,6 +212,43 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return Value();
+	} else if (auto fl = dynamic_cast<ForStmt*>(node)) {
+	    bool break_for_loop = false;
+	    int index = 0;
+	    int length = 0;
+
+	    Value iter = evalExpr(fl->iter.get());
+
+	    if (std::holds_alternative<nl_int_t>(iter.v)) {
+	        length = std::get<nl_int_t>(iter.v);
+	    } else if (std::holds_alternative<Value::VecT>(iter.v)) {
+	        length = std::get<Value::VecT>(iter.v)->size();
+	    }
+
+        while (index < length && !break_for_loop) {
+            if (std::holds_alternative<nl_int_t>(iter.v)) {
+                variables[fl->var] = Value((nl_int_t)index);
+            } else if (std::holds_alternative<Value::VecT>(iter.v)) {
+                variables[fl->var] = (*std::get<Value::VecT>(iter.v))[index];
+            }
+
+            for (ExpressionStmt& stmt : fl->stmts) {
+                if (stmt.isBreak) {
+                    break_for_loop = true;
+                    break;
+                } else if (stmt.isContinue) {
+                    break;
+                }
+
+                Value res = evalStmt(stmt);
+
+                if (res.isReturn || res.isExit) {
+                    return res;
+                }
+            }
+
+            index++;
+        }
 	} else if (auto fnl = dynamic_cast<FunctionStmt*>(node)) {
 		functions.push_back(fnl);
 
@@ -341,6 +378,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {
 			return evalUnaryOp(evalExpr(un->operand.get()), un->op);
 		}
+
 		if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
 			if (variables.count(var->name) != 1) {
 				SyntaxError("Undefined variable: " + var->name, -1);
@@ -444,6 +482,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 								return result;
 							}
+
 							if (result.isExit)
 								return result;
 						}
@@ -476,7 +515,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					} else {
 						TypeError("Unknown vector method: " + name, -1);
 					}
-				} else if (auto tPtr = std::get_if<NullLiteral>(&lhs.v)) {
+				} else if (std::get_if<NullLiteral>(&lhs.v)) {
 					if (lhs.typeInt) {
 						if (nativeMethods["type_int"].count(name)) {
 							std::vector<Value> args;

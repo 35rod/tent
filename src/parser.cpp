@@ -306,7 +306,7 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr forStmt = std::make_unique<ForStmt>(std::move(var), std::move(iter), std::move(stmts));
+		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts));
 
 		return ExpressionStmt(std::move(forStmt));
 	} else if (token.kind == TokenType::IF) {

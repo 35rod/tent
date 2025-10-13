@@ -188,13 +188,13 @@ class WhileStmt : public ASTNode {
 
 class ForStmt : public ASTNode {
 	public:
-		ASTPtr var;
+		std::string var;
 		ASTPtr iter;
 		std::vector<ExpressionStmt> stmts;
 
 		void print(int indent) override;
 
-		ForStmt(ASTPtr stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts);
+		ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts);
 };
 
 class FunctionCall : public ASTNode {
