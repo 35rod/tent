@@ -1,3 +1,5 @@
 load "io";
 
-println(int.parse("5") + 5);
+for i $ ["h", "i"] {
+	print(i);
+}

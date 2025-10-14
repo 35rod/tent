@@ -10,7 +10,7 @@ form print_board() {
     println(board@6 + "|" + board@7 + "|" + board@8);
 }
 
-if rand() > 0.5 {
+if rand() >= 0.5 {
     first = "O";
     second = "X";
 } else {
