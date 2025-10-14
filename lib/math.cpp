@@ -65,16 +65,16 @@ nl_int_t signi(nl_int_t i) {
 nl_int_t signf(nl_dec_t f) {
 	return (f > 0) ? 1 : ((f < 0) ? -1 : 0);
 }
-Value nl_math__sign(const std::vector<Value>& args) { 									\
-	if (std::holds_alternative<nl_int_t>(args[0].v)) { 										\
+Value nl_math__sign(const std::vector<Value>& args) { 							\
+	if (std::holds_alternative<nl_int_t>(args[0].v)) { 							\
 		return Value(signi(std::get<nl_int_t>(args[0].v))); 						\
-	} else if (std::holds_alternative<nl_dec_t>(args[0].v)) { 									\
-		return Value(signf((std::get<nl_dec_t>(args[0].v)))); 						\
-	} else { 																	\
-		std::cerr << "Passed non-numeric argument to first parameter of `sign`" << std::endl; 	\
-	} 																		\
-																			\
-	return Value(); 																\
+	} else if (std::holds_alternative<nl_dec_t>(args[0].v)) { 						\
+		return Value(signf((std::get<nl_dec_t>(args[0].v)))); 					\
+	} else { 														\
+		std::cerr << "Passed non-numeric argument to first parameter of `sign`" << std::endl; \
+	} 															\
+																\
+	return Value(); 													\
 }
 
 Value nl_math__random(const std::vector<Value>&) {
@@ -107,9 +107,6 @@ extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& tab
 	table["abs"]	= nl_math__abs;
 	table["sqrt"]	= nl_math__sqrt;
 	table["atan2"]	= nl_math__atan2;
-<<<<<<< Updated upstream
-	table["rand"] = nl_math__random;
-=======
+	table["rand"]	= nl_math__random;
 	table["sign"]	= nl_math__sign;
->>>>>>> Stashed changes
 }
