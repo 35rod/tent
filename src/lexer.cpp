@@ -313,14 +313,18 @@ Token Lexer::getToken() {
 			token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, lineNo);
 		} else {
 			TokenType intlit_type = TokenType::INT_DEC;
+
 			if (is_digit_func == is_hex_digit)
 				intlit_type = TokenType::INT_HEX;
 			else if (is_digit_func == is_oct_digit)
 				intlit_type = TokenType::INT_OCT;
 			else if (is_digit_func == is_bin_digit)
 				intlit_type = TokenType::INT_BIN;
+
 			token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo);
 		}
+	} else if (curChar == ':') {
+	    token = Token(":", TokenType::COLON, lineNo);
 	} else if (curChar == ';') {
 		token = Token(";", TokenType::SEM, lineNo);
 	} else if (curChar == '\n') {

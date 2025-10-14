@@ -1,5 +1,3 @@
 load "io";
 
-for c $ "John" {
-    println(c);
-}
+ages = {"John": 14, "George": 13, "Margaret": 15};

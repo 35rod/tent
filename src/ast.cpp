@@ -37,6 +37,13 @@ void VecLiteral::print(int indent) {
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
+DicLiteral::DicLiteral(std::map<ASTPtr, ASTPtr> literalDic) : ASTNode(), dic(std::move(literalDic)) {}
+
+void DicLiteral::print(int indent) {
+    printIndent(indent);
+    std::cout << "DicLiteral(size=" << dic.size() << ")\n";
+}
+
 TypeInt::TypeInt() : ASTNode() {}
 
 void TypeInt::print(int indent) {
@@ -70,6 +77,13 @@ TypeVec::TypeVec() : ASTNode() {}
 void TypeVec::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeVec()" << std::endl;
+}
+
+TypeDic::TypeDic() : ASTNode() {}
+
+void TypeDic::print(int indent) {
+    printIndent(indent);
+    std::cout << "TypeDic()" << std::endl;
 }
 
 Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
@@ -177,7 +191,7 @@ void ForStmt::print(int indent) {
 	printIndent(indent+2);
 	std::cout << "Var:\n";
 	printIndent(indent+4);
-	printf((var + '\n').c_str());
+	printf("%s", (var + '\n').c_str());
 	printIndent(indent+2);
 	std::cout << "Iter:\n";
 	iter->print(indent+4);

@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <map>
 #include <unordered_map>
 #include <memory>
 #include "opcodes.hpp"
@@ -26,12 +27,14 @@ struct Value {
     };
 
     using VecT = std::shared_ptr<std::vector<Value>>;
-    std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, ClassInstance, NullLiteral> v;
+    using DicT = std::shared_ptr<std::map<Value, Value>>;
+    std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, DicT, ClassInstance, NullLiteral> v;
     bool typeInt = false;
     bool typeFloat = false;
     bool typeStr = false;
     bool typeBool = false;
     bool typeVec = false;
+    bool typeDic = false;
     bool isReturn = false;
     bool isExit = false;
 
@@ -41,6 +44,7 @@ struct Value {
     Value(nl_bool_t b) : v(b) {}
     Value(std::string s) : v(s) {}
     Value(VecT vec) : v(vec) {}
+    Value(DicT dic) : v(dic) {}
     Value(ClassInstance ci) : v(ci) {}
 };
 

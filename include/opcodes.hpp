@@ -76,5 +76,8 @@ enum class TokenType: TokenTypeSize {
 	TYPE_STR,
 	TYPE_FLOAT,
 	TYPE_BOOL,
-	TYPE_VEC
+	TYPE_VEC,
+	TYPE_DIC,
+
+	COLON
 };

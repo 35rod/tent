@@ -405,6 +405,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		left = std::make_unique<TypeBool>();
 	} else if (token.kind == TokenType::TYPE_VEC) {
 		left = std::make_unique<TypeVec>();
+	} else if (token.kind == TokenType::TYPE_DIC) {
+	    left = std::make_unique<TypeDic>();
 	} else if (token.kind == TokenType::CHR) {
 		char c = 0;
 		get_escape(token.text, &c);
@@ -435,6 +437,34 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		}
 		
 		left = std::make_unique<VecLiteral>(std::move(elems));
+	} else if (token.kind == TokenType::OPEN_BRAC) {
+	    advance();
+
+	    std::map<ASTPtr, ASTPtr> dic;
+
+	    while (current().kind != TokenType::CLOSE_BRAC) {
+	        if (current().kind == TokenType::EOF_TOK) {
+	            SyntaxError("Unterminated dictionary literal", current().lineNo);
+	        }
+
+	        ASTPtr key = parse_expression(0);
+	        advance();
+	        expect(TokenType::COLON);
+	        advance();
+	        ASTPtr value = parse_expression(0);
+	        dic[std::move(key)] = std::move(value);
+
+	        advance();
+
+	        if (current().kind == TokenType::CLOSE_BRAC)
+	            break;
+
+	        expect(TokenType::COMMA);
+
+	        advance();
+	    }
+
+	    left = std::make_unique<DicLiteral>(std::move(dic));
 	} else if (token.kind == TokenType::IDENT) {
 		if (peek().kind == TokenType::OPEN_PAREN) {
 			advance(2);

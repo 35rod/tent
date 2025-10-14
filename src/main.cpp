@@ -56,8 +56,10 @@ int32_t main(int32_t argc, char **argv) {
 		std::vector<Instruction> bytecode = compiler.compileProgram(std::move(program));
 		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
 	} else {
-		Evaluator evaluator;
-		evaluator.evalProgram(std::move(program), prog_args);
+	    if (!IS_FLAG_SET(DEBUG_STOP)) {
+            Evaluator evaluator;
+            evaluator.evalProgram(std::move(program), prog_args);
+        }
 	}
 
 	return 0;

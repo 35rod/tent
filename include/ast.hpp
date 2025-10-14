@@ -83,6 +83,15 @@ class VecLiteral : public ASTNode {
 		VecLiteral(std::vector<ASTPtr> literalValue);
 };
 
+class DicLiteral : public ASTNode {
+    public:
+        std::map<ASTPtr, ASTPtr> dic;
+
+        void print(int indent) override;
+
+        DicLiteral(std::map<ASTPtr, ASTPtr> literalDic);
+};
+
 class TypeInt : public ASTNode {
 	public:
 		void print(int indent) override;
@@ -116,6 +125,13 @@ class TypeVec : public ASTNode {
 		void print(int indent) override;
 
 		TypeVec();
+};
+
+class TypeDic : public ASTNode {
+    public:
+        void print(int indent) override;
+
+        TypeDic();
 };
 
 class Variable : public ASTNode {
