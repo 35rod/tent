@@ -221,6 +221,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 	    if (std::holds_alternative<nl_int_t>(iter.v)) {
 	        length = std::get<nl_int_t>(iter.v);
+	    } else if (std::holds_alternative<std::string>(iter.v)) {
+	        length = std::get<std::string>(iter.v).size();
 	    } else if (std::holds_alternative<Value::VecT>(iter.v)) {
 	        length = std::get<Value::VecT>(iter.v)->size();
 	    }
@@ -228,6 +230,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
         while (index < length && !break_for_loop) {
             if (std::holds_alternative<nl_int_t>(iter.v)) {
                 variables[fl->var] = Value((nl_int_t)index);
+            } else if (std::holds_alternative<std::string>(iter.v)) {
+                variables[fl->var] = Value(std::string(1, std::get<std::string>(iter.v)[index]));
             } else if (std::holds_alternative<Value::VecT>(iter.v)) {
                 variables[fl->var] = (*std::get<Value::VecT>(iter.v))[index];
             }
