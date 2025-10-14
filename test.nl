@@ -6,6 +6,4 @@ for i $ nums {
     for j $ i {
         println(j);
     }
-
-    println("-------------------");
 }

@@ -289,7 +289,7 @@ ExpressionStmt::ExpressionStmt(
 
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);
-	std::cout << "ExpressionStmt()" << std::endl;
+	std::cout << "ExpressionStmt(break=" << (isBreak ? "true" : "false") << ")" << std::endl;
 	
 	if (expr) {
 		expr->print(indent+2);

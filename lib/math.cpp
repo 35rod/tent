@@ -1,6 +1,7 @@
 #include "native.hpp"
 #include <iostream>
 #include <cmath>
+#include <random>
 
 #define generic_math_func_1arg(func_name, ret_for_int)										\
 Value nl_math__##func_name(const std::vector<Value>& args) { 									\
@@ -59,6 +60,14 @@ generic_math_func_1arg(abs, nl_int_t);
 generic_math_func_1arg_dec(sqrt);
 generic_math_func_2arg_dec(atan2);
 
+Value nl_math__random(const std::vector<Value>&) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+
+    return Value((nl_dec_t)dis(gen));
+}
+
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {
 	table["ln"]		= nl_math__log;
 	table["log10"]	= nl_math__log10;
@@ -81,4 +90,5 @@ extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& tab
 	table["abs"]	= nl_math__abs;
 	table["sqrt"]	= nl_math__sqrt;
 	table["atan2"]	= nl_math__atan2;
+	table["rand"] = nl_math__random;
 }
