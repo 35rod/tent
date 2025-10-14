@@ -16,7 +16,7 @@ static std::string vec_to_string(const Value::VecT& vecPtr) {
 				out += std::to_string(std::get<nl_int_t>(elem.v));
 			else if (std::holds_alternative<nl_dec_t>(elem.v)) {
 				static char str_buf[MAX_DEC_LEN+1];
-				std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", 6, std::get<nl_dec_t>(elem.v));
+				std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(elem.v));
 				out += str_buf;
 			} else if (std::holds_alternative<nl_bool_t>(elem.v))
 				out += std::get<nl_bool_t>(elem.v) ? "true" : "false";
@@ -44,7 +44,7 @@ Value print(const std::vector<Value>& args) {
 			total += std::to_string(std::get<nl_int_t>(e.v));
 		else if (std::holds_alternative<nl_dec_t>(e.v)) {
 			static char str_buf[MAX_DEC_LEN+1];
-			std::snprintf(str_buf, MAX_DEC_LEN, "%.*f", 6, std::get<nl_dec_t>(e.v));
+			std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(e.v));
 			total += str_buf;
 		} else if (std::holds_alternative<nl_bool_t>(e.v))
 			total += std::get<nl_bool_t>(e.v) ? "true" : "false";
