@@ -140,6 +140,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		}
 
 		return Value(std::make_shared<std::vector<Value>>(elems));
+	} else if (auto dl = dynamic_cast<DicLiteral*>(node)) {
+		std::vector<std::pair<Value, Value>> dic;
+		
+		for (auto& pair : dl->dic) {
+			dic.push_back({evalExpr(pair.first.get()), evalExpr(pair.second.get())});
+		}
+
+		return Value(std::make_shared<std::vector<std::pair<Value, Value>>>(dic));
 	} else if (dynamic_cast<TypeInt*>(node)) {
         Value res;
         res.typeInt = true;
@@ -159,6 +167,10 @@ Value Evaluator::evalExpr(ASTNode* node) {
 	} else if (dynamic_cast<TypeVec*>(node)) {
 		Value res;
 		res.typeVec = true;
+		return res;
+	} else if (dynamic_cast<TypeDic*>(node)) {
+		Value res;
+		res.typeDic = true;
 		return res;
 	} else if (auto ifl = dynamic_cast<IfStmt*>(node)) {
 		const bool condition = std::get<nl_bool_t>(evalExpr(ifl->condition.get()).v);
@@ -225,7 +237,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 	        length = std::get<std::string>(iter.v).size();
 	    } else if (std::holds_alternative<Value::VecT>(iter.v)) {
 	        length = std::get<Value::VecT>(iter.v)->size();
-	    }
+	    } else if (std::holds_alternative<Value::DicT>(iter.v)) {
+			length = std::get<Value::DicT>(iter.v)->size();
+		}
 
         while (index < length && !break_for_loop) {
             if (std::holds_alternative<nl_int_t>(iter.v)) {
@@ -234,7 +248,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
                 variables[fl->var] = Value(std::string(1, std::get<std::string>(iter.v)[index]));
             } else if (std::holds_alternative<Value::VecT>(iter.v)) {
                 variables[fl->var] = (*std::get<Value::VecT>(iter.v))[index];
-            }
+            } else if (std::holds_alternative<Value::DicT>(iter.v)) {
+				Value::DicT dic = std::get<Value::DicT>(iter.v);
+				
+				auto& entry = (*dic)[(size_t)index];
+
+				std::vector<std::pair<Value, Value>> single = {entry};
+				variables[fl->var] = Value(std::make_shared<std::vector<std::pair<Value, Value>>>(single));
+			}
 
             for (ExpressionStmt& stmt : fl->stmts) {
                 if (stmt.isBreak) {
@@ -405,21 +426,25 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					if (auto* vecVar = dynamic_cast<Variable*>(leftIndex->left.get())) {
 						if (variables.count(vecVar->name) != 1) SyntaxError("Undefined variable: " + vecVar->name, -1);
 						Value& holder = variables[vecVar->name];
-						if (!std::holds_alternative<Value::VecT>(holder.v)) TypeError("indexing non-vector", -1);
-						auto vecPtr = std::get<Value::VecT>(holder.v);
-						if (!vecPtr) Error("null vector", -1);
 
-						Value idxVal = evalExpr(leftIndex->right.get());
-						if (!std::holds_alternative<nl_int_t>(idxVal.v)) TypeError("index must be integer", -1);
-						nl_int_t idx = std::get<nl_int_t>(idxVal.v);
+						if (std::holds_alternative<Value::VecT>(holder.v)) {
+							auto vecPtr = std::get<Value::VecT>(holder.v);
+							if (!vecPtr) Error("null vector", -1);
 
-						if (idx < 0 || (size_t)idx >= vecPtr->size())
-							Error("index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()) + ".", -1);
+							Value idxVal = evalExpr(leftIndex->right.get());
+							if (!std::holds_alternative<nl_int_t>(idxVal.v)) TypeError("index must be integer", -1);
+							nl_int_t idx = std::get<nl_int_t>(idxVal.v);
 
-						Value rhs = evalExpr(bin->right.get());
-						(*vecPtr)[(size_t)idx] = rhs;
+							if (idx < 0 || (size_t)idx >= vecPtr->size())
+								Error("index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()) + ".", -1);
 
-						return rhs;
+							Value rhs = evalExpr(bin->right.get());
+							(*vecPtr)[(size_t)idx] = rhs;
+
+							return rhs;
+						} else if (std::holds_alternative<Value::DicT>(holder.v)) {
+							// This absolutely sucks. Save me!!! :(
+						}
 					} else {
 						TypeError("Left-hand side of indexed assignment must be a variable", -1);
 					}
