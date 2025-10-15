@@ -1,6 +1,6 @@
 load "io";
-load "stdnl";
-load "file.nl";
+load "stdtent";
+load "file.tent";
 
 f = File(ARGS@0);
 if !f.isOpen() {

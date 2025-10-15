@@ -1,8 +1,8 @@
 ~ an implementation of a brainf*ck interpreter, in newLang
 
 load "io";
-load "stdnl";
-load "file.nl";
+load "stdtent";
+load "file.tent";
 
 if ARG_COUNT < 1 {
 	println("usage: bf <filename>");

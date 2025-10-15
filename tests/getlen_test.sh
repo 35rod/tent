@@ -1,1 +1,1 @@
-echo -n 'hello' | ../build/main getlen.nl
+echo -n 'hello' | ../build/main getlen.test
