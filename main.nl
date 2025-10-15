@@ -1,6 +1,3 @@
-load "gui.nl";
+load "io";
 
-window = Window(300, 200, "Hello FLTK!");
-button = Button(100, 100, 100, 40, "Click Me!");
-window.show();
-run();
+println("Hello World!");
