@@ -1,6 +1,6 @@
 load "io";
-load "stdnl";
-load "bsearch.nl";
+load "stdtent";
+load "bsearch.tent";
 
 println("please enter numbers in sorted order");
 in_vec = [];

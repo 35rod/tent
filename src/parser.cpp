@@ -120,7 +120,7 @@ ExpressionStmt Parser::parse_statement() {
 
 		std::string fname = filename.text;
 
-		if (fname.size() >= 3 && fname.substr(fname.size() - 3) == ".nl") {
+		if (fname.size() >= 3 && fname.substr(fname.size() - 5) == ".tent") {
 			std::ifstream fileHandle(fname);
 
 			for (const std::string& dir : file_search_dirs) {

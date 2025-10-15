@@ -1,5 +1,5 @@
 load "io";
-load "stdnl";
+load "stdtent";
 load "math";
 
 board = vec.fill(9, " ");
