@@ -9,6 +9,7 @@ tests/*
 !tests/*.c
 !tests/*.sh
 *.nlc
+*.out
 lib/*.dll
 lib/*.so
 lib/*.dylib
