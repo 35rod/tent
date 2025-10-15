@@ -38,11 +38,11 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 
 		switch(instr.op) {
 			case TokenType::PUSH_INT: {
-				nl_int_t val = std::get<nl_int_t>(instr.operand.v);
+				tn_int_t val = std::get<tn_int_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
 			} case TokenType::PUSH_FLOAT: {
-				nl_dec_t val = std::get<nl_dec_t>(instr.operand.v);
+				tn_dec_t val = std::get<tn_dec_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 				break;
 			} case TokenType::PUSH_STRING:
@@ -64,7 +64,7 @@ void Compiler::saveToFile(std::vector<Instruction>& bytecode, const std::string&
 			} case TokenType::JUMP_IF_FALSE:
 			case TokenType::JUMP:
 			case TokenType::CALL_INLINE: {
-				nl_int_t addr = std::get<nl_int_t>(instr.operand.v);
+				tn_int_t addr = std::get<tn_int_t>(instr.operand.v);
 				out.write(reinterpret_cast<const char*>(&addr), sizeof(addr));
 				break;
 			} default:
@@ -107,7 +107,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 	} else if (auto ifl = dynamic_cast<IfStmt*>(node)) {
 		compileExpr(ifl->condition.get(), bytecode);
 		
-		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, nl_int_t(-1)));
+		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, tn_int_t(-1)));
 		size_t jumpIfFalseIndex = bytecode.size() - 1;
 
 		for (auto& stmt : ifl->thenClauseStmts) {
@@ -118,49 +118,49 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 			bytecode.push_back(Instruction(TokenType::JUMP));
 			size_t jumpOverElseIndex = bytecode.size() - 1;
 
-			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
+			bytecode[jumpIfFalseIndex].operand = static_cast<tn_int_t>(bytecode.size());
 
 			for (auto& stmt : ifl->elseClauseStmts) {
 				compileStmt(stmt.expr.get(), bytecode);
 			}
 
-			bytecode[jumpOverElseIndex].operand = static_cast<nl_int_t>(bytecode.size());
+			bytecode[jumpOverElseIndex].operand = static_cast<tn_int_t>(bytecode.size());
 		} else {
-			bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(bytecode.size());
+			bytecode[jumpIfFalseIndex].operand = static_cast<tn_int_t>(bytecode.size());
 		}
 	} else if (auto wl = dynamic_cast<WhileStmt*>(node)) {
 		size_t condStart = bytecode.size();
 		compileExpr(wl->condition.get(), bytecode);
 
-		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, nl_int_t(-1)));
+		bytecode.push_back(Instruction(TokenType::JUMP_IF_FALSE, tn_int_t(-1)));
 		size_t jumpIfFalseIndex = bytecode.size() - 1;
 
 		for (auto& stmt : wl->stmts) {
 			if (stmt.isBreak) {
-				bytecode.push_back(Instruction(TokenType::JUMP, nl_int_t(-1)));
+				bytecode.push_back(Instruction(TokenType::JUMP, tn_int_t(-1)));
 			} else if (stmt.isContinue) {
-				bytecode.push_back(Instruction(TokenType::JUMP, static_cast<nl_int_t>(condStart)));
+				bytecode.push_back(Instruction(TokenType::JUMP, static_cast<tn_int_t>(condStart)));
 			} else {
 				compileStmt(stmt.expr.get(), bytecode);
 			}
 		}
 
-		bytecode.push_back(Instruction(TokenType::JUMP, static_cast<nl_int_t>(condStart)));
+		bytecode.push_back(Instruction(TokenType::JUMP, static_cast<tn_int_t>(condStart)));
 		
 		size_t loopEnd = bytecode.size();
-		bytecode[jumpIfFalseIndex].operand = static_cast<nl_int_t>(loopEnd);
+		bytecode[jumpIfFalseIndex].operand = static_cast<tn_int_t>(loopEnd);
 
 		for (size_t i = jumpIfFalseIndex + 1; i < loopEnd; i++) {
 			if (bytecode[i].op == TokenType::JUMP) {
-				if (std::holds_alternative<nl_int_t>(bytecode[i].operand.v) && std::get<nl_int_t>(bytecode[i].operand.v) == -1) {
-					bytecode[i].operand = static_cast<nl_int_t>(loopEnd);
+				if (std::holds_alternative<tn_int_t>(bytecode[i].operand.v) && std::get<tn_int_t>(bytecode[i].operand.v) == -1) {
+					bytecode[i].operand = static_cast<tn_int_t>(loopEnd);
 				}
 			}
 		}
 	} else if (auto fnl = dynamic_cast<FunctionStmt*>(node)) {
 		bytecode.push_back(Instruction(TokenType::FORM, fnl->name));
 
-		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<nl_int_t>(fnl->params.size())));
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<tn_int_t>(fnl->params.size())));
 
 		for (auto& param : fnl->params) {
 			auto v = dynamic_cast<Variable*>(param.get());
@@ -169,7 +169,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		}
 
 		size_t lengthIndex = bytecode.size();
-		bytecode.push_back(Instruction(TokenType::PUSH_INT, nl_int_t(-1)));
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, tn_int_t(-1)));
 
 		size_t bodyStart = bytecode.size();
 
@@ -177,12 +177,12 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 			compileStmt(stmt.expr.get(), bytecode);
 		}
 
-		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
+		bytecode[lengthIndex].operand = static_cast<tn_int_t>(bytecode.size() - bodyStart);
 	} else if (auto inl = dynamic_cast<InlineStmt*>(node)) {
 		bytecode.push_back(Instruction(TokenType::INLINE, inl->name));
-		nl_int_t startIndex = bytecode.size();
+		tn_int_t startIndex = bytecode.size();
 
-		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<nl_int_t>(inl->params.size())));
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, static_cast<tn_int_t>(inl->params.size())));
 
 		for (auto& param : inl->params) {
 			auto v = dynamic_cast<Variable*>(param.get());
@@ -191,7 +191,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 		}
 
 		size_t lengthIndex = bytecode.size();
-		bytecode.push_back(Instruction(TokenType::PUSH_INT, nl_int_t(-1)));
+		bytecode.push_back(Instruction(TokenType::PUSH_INT, tn_int_t(-1)));
 
 		size_t bodyStart = bytecode.size();
 
@@ -199,7 +199,7 @@ void Compiler::compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bo
 			compileStmt(stmt.expr.get(), bytecode, true);
 		}
 
-		bytecode[lengthIndex].operand = static_cast<nl_int_t>(bytecode.size() - bodyStart);
+		bytecode[lengthIndex].operand = static_cast<tn_int_t>(bytecode.size() - bodyStart);
 
 		inlines[inl->name] = startIndex;
 	} else if (auto rl = dynamic_cast<ReturnStmt*>(node)) {

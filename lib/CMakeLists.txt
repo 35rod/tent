@@ -1,5 +1,3 @@
-find_package(FLTK REQUIRED)
-
 file(GLOB LIB_SOURCES "*.cpp")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)

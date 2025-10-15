@@ -5,10 +5,10 @@ compile_commands.json
 vgcore*
 build/*
 tests/*
-!tests/*.nl
+!tests/*.tent
 !tests/*.c
 !tests/*.sh
-*.nlc
+*.tnc
 *.out
 lib/*.dll
 lib/*.so

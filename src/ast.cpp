@@ -2,14 +2,14 @@
 #include "ast.hpp"
 #include "misc.hpp"
 
-IntLiteral::IntLiteral(nl_int_t literalValue) : ASTNode(), value(literalValue) {}
+IntLiteral::IntLiteral(tn_int_t literalValue) : ASTNode(), value(literalValue) {}
 
 void IntLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "IntLiteral(value=" << value << ")\n";
 }
 
-FloatLiteral::FloatLiteral(nl_dec_t literalValue) : ASTNode(), value(literalValue) {}
+FloatLiteral::FloatLiteral(tn_dec_t literalValue) : ASTNode(), value(literalValue) {}
 
 void FloatLiteral::print(int indent) {
 	printIndent(indent);
@@ -23,7 +23,7 @@ void StrLiteral::print(int indent) {
 	std::cout << "StringLiteral(value=" << value << ")\n";
 }
 
-BoolLiteral::BoolLiteral(nl_bool_t literalValue) : ASTNode(), value(literalValue) {}
+BoolLiteral::BoolLiteral(tn_bool_t literalValue) : ASTNode(), value(literalValue) {}
 
 void BoolLiteral::print(int indent) {
 	printIndent(indent);

@@ -33,7 +33,7 @@ int32_t main(int32_t argc, char **argv) {
 
 	ASTPtr program = nullptr;
 
-	if (SRC_FILENAME.find(".nlc") != std::string::npos) {
+	if (SRC_FILENAME.find(".tnc") != std::string::npos) {
 		VM vm;
 		auto bytecode = vm.loadFile(SRC_FILENAME, search_dirs);
 		vm.run(bytecode);
@@ -54,7 +54,7 @@ int32_t main(int32_t argc, char **argv) {
 	if (IS_FLAG_SET(COMPILE)) {
 		Compiler compiler;
 		std::vector<Instruction> bytecode = compiler.compileProgram(std::move(program));
-		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".nlc");
+		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".tnc");
 	} else {
 	    if (!IS_FLAG_SET(DEBUG_STOP)) {
             Evaluator evaluator;

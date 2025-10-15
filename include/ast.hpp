@@ -40,20 +40,20 @@ using ASTPtr = std::unique_ptr<ASTNode>;
 
 class IntLiteral : public ASTNode {
 	public:
-		nl_int_t value;
+		tn_int_t value;
 
 		void print(int indent) override;
 
-		IntLiteral(nl_int_t literalValue);
+		IntLiteral(tn_int_t literalValue);
 };
 
 class FloatLiteral : public ASTNode {
 	public:
-		nl_dec_t value;
+		tn_dec_t value;
 
 		void print(int indent) override;
 
-		FloatLiteral(nl_dec_t literalValue);
+		FloatLiteral(tn_dec_t literalValue);
 };
 
 class StrLiteral : public ASTNode {
@@ -67,11 +67,11 @@ class StrLiteral : public ASTNode {
 
 class BoolLiteral : public ASTNode {
 	public:
-		nl_bool_t value;
+		tn_bool_t value;
 		
 		void print(int indent) override;
 
-		BoolLiteral(nl_bool_t literalValue);
+		BoolLiteral(tn_bool_t literalValue);
 };
 
 class VecLiteral : public ASTNode {

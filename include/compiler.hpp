@@ -15,14 +15,14 @@ class Instruction {
 
 		Instruction() = default;
 		Instruction(TokenType opcode) : op(opcode) {}
-		Instruction(TokenType opcode, nl_int_t val) : op(opcode), operand(val) {}
-		Instruction(TokenType opcode, nl_dec_t val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode, tn_int_t val) : op(opcode), operand(val) {}
+		Instruction(TokenType opcode, tn_dec_t val) : op(opcode), operand(val) {}
 		Instruction(TokenType opcode, std::string val) : op(opcode), operand(val) {}
 		Instruction(TokenType opcode, bool val) : op(opcode), operand(val) {}
 };
 
 class Compiler {
-	std::map<std::string, nl_int_t> inlines;
+	std::map<std::string, tn_int_t> inlines;
 
 	void compileStmt(ASTNode* node, std::vector<Instruction>& bytecode, bool isInline=false);
 	void compileExpr(ASTNode* node, std::vector<Instruction>& bytecode, bool isInline=false);

@@ -10,9 +10,9 @@
 #include "opcodes.hpp"
 #include "misc.hpp"
 
-typedef int64_t nl_int_t;
-typedef float nl_dec_t;
-typedef bool nl_bool_t;
+typedef int64_t tn_int_t;
+typedef float tn_dec_t;
+typedef bool tn_bool_t;
 
 class FunctionStmt;
 struct Value;
@@ -28,7 +28,7 @@ struct Value {
 
     using VecT = std::shared_ptr<std::vector<Value>>;
     using DicT = std::shared_ptr<std::vector<std::pair<Value, Value>>>;
-    std::variant<nl_int_t, nl_dec_t, nl_bool_t, std::string, VecT, DicT, ClassInstance, NullLiteral> v;
+    std::variant<tn_int_t, tn_dec_t, tn_bool_t, std::string, VecT, DicT, ClassInstance, NullLiteral> v;
     bool typeInt = false;
     bool typeFloat = false;
     bool typeStr = false;
@@ -39,9 +39,9 @@ struct Value {
     bool isExit = false;
 
     Value() : v(NullLiteral()) {}
-    Value(nl_int_t i) : v(i) {}
-    Value(nl_dec_t d) : v(d) {}
-    Value(nl_bool_t b) : v(b) {}
+    Value(tn_int_t i) : v(i) {}
+    Value(tn_dec_t d) : v(d) {}
+    Value(tn_bool_t b) : v(b) {}
     Value(std::string s) : v(s) {}
     Value(VecT vec) : v(vec) {}
     Value(DicT dic) : v(dic) {}

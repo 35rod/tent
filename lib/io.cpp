@@ -12,14 +12,14 @@ static std::string vec_to_string(const Value::VecT& vecPtr) {
 		for (size_t i = 0; i < vecPtr->size(); i++) {
 			const Value& elem = (*vecPtr)[i];
 
-			if (std::holds_alternative<nl_int_t>(elem.v))
-				out += std::to_string(std::get<nl_int_t>(elem.v));
-			else if (std::holds_alternative<nl_dec_t>(elem.v)) {
+			if (std::holds_alternative<tn_int_t>(elem.v))
+				out += std::to_string(std::get<tn_int_t>(elem.v));
+			else if (std::holds_alternative<tn_dec_t>(elem.v)) {
 				static char str_buf[MAX_DEC_LEN+1];
-				std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(elem.v));
+				std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(elem.v));
 				out += str_buf;
-			} else if (std::holds_alternative<nl_bool_t>(elem.v))
-				out += std::get<nl_bool_t>(elem.v) ? "true" : "false";
+			} else if (std::holds_alternative<tn_bool_t>(elem.v))
+				out += std::get<tn_bool_t>(elem.v) ? "true" : "false";
 			else if (std::holds_alternative<std::string>(elem.v))
 				out += std::get<std::string>(elem.v);
 			else if (std::holds_alternative<Value::VecT>(elem.v))
@@ -43,14 +43,14 @@ static std::string dic_to_string(const Value::DicT& dicPtr) {
         for (size_t i = 0; i < dicPtr->size(); i++) {
             const std::pair<Value, Value>& pair = (*dicPtr)[i];
 
-            if (std::holds_alternative<nl_int_t>(pair.first.v))
-                out += std::to_string(std::get<nl_int_t>(pair.first.v));
-            else if (std::holds_alternative<nl_dec_t>(pair.first.v)) {
+            if (std::holds_alternative<tn_int_t>(pair.first.v))
+                out += std::to_string(std::get<tn_int_t>(pair.first.v));
+            else if (std::holds_alternative<tn_dec_t>(pair.first.v)) {
                 static char str_buf[MAX_DEC_LEN+1];
-                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(pair.first.v));
+                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(pair.first.v));
                 out += str_buf;
-            } else if (std::holds_alternative<nl_bool_t>(pair.first.v))
-                out += std::get<nl_bool_t>(pair.first.v) ? "true" : "false";
+            } else if (std::holds_alternative<tn_bool_t>(pair.first.v))
+                out += std::get<tn_bool_t>(pair.first.v) ? "true" : "false";
             else if (std::holds_alternative<std::string>(pair.first.v))
                 out += std::get<std::string>(pair.first.v);
             else if (std::holds_alternative<Value::VecT>(pair.first.v))
@@ -60,14 +60,14 @@ static std::string dic_to_string(const Value::DicT& dicPtr) {
 
             out += ": ";
 
-            if (std::holds_alternative<nl_int_t>(pair.second.v))
-                out += std::to_string(std::get<nl_int_t>(pair.second.v));
-            else if (std::holds_alternative<nl_dec_t>(pair.second.v)) {
+            if (std::holds_alternative<tn_int_t>(pair.second.v))
+                out += std::to_string(std::get<tn_int_t>(pair.second.v));
+            else if (std::holds_alternative<tn_dec_t>(pair.second.v)) {
                 static char str_buf[MAX_DEC_LEN+1];
-                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(pair.second.v));
+                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(pair.second.v));
                 out += str_buf;
-            } else if (std::holds_alternative<nl_bool_t>(pair.second.v))
-                out += std::get<nl_bool_t>(pair.second.v) ? "true" : "false";
+            } else if (std::holds_alternative<tn_bool_t>(pair.second.v))
+                out += std::get<tn_bool_t>(pair.second.v) ? "true" : "false";
             else if (std::holds_alternative<std::string>(pair.second.v))
                 out += std::get<std::string>(pair.second.v);
             else if (std::holds_alternative<Value::VecT>(pair.second.v))
@@ -90,14 +90,14 @@ Value print(const std::vector<Value>& args) {
 	std::string total;
 
 	for (const Value& e : args) {
-		if (std::holds_alternative<nl_int_t>(e.v))
-			total += std::to_string(std::get<nl_int_t>(e.v));
-		else if (std::holds_alternative<nl_dec_t>(e.v)) {
+		if (std::holds_alternative<tn_int_t>(e.v))
+			total += std::to_string(std::get<tn_int_t>(e.v));
+		else if (std::holds_alternative<tn_dec_t>(e.v)) {
 			static char str_buf[MAX_DEC_LEN+1];
-			std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(e.v));
+			std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(e.v));
 			total += str_buf;
-		} else if (std::holds_alternative<nl_bool_t>(e.v))
-			total += std::get<nl_bool_t>(e.v) ? "true" : "false";
+		} else if (std::holds_alternative<tn_bool_t>(e.v))
+			total += std::get<tn_bool_t>(e.v) ? "true" : "false";
 		else if (std::holds_alternative<std::string>(e.v))
 			total += std::get<std::string>(e.v);
 		else if (std::holds_alternative<Value::VecT>(e.v))
@@ -135,35 +135,35 @@ Value input(const std::vector<Value>& args) {
 }
 
 Value io__getc(const std::vector<Value>&) {
-	return Value((nl_int_t)fgetc(stdin));
+	return Value((tn_int_t)fgetc(stdin));
 }
 
 static std::vector<std::ifstream> file_handles;
 
 Value io__file__open_file(const std::vector<Value>& args) {
 	if (args.size() != 1 || !std::holds_alternative<std::string>(args[0].v)) {
-		return Value((nl_int_t)-1);
+		return Value((tn_int_t)-1);
 	}
 	const std::string& filename = std::get<std::string>(args[0].v);
 	std::ifstream temp_file(filename);
 	if (!temp_file.is_open())
 	{
-		return Value((nl_int_t)-1);
+		return Value((tn_int_t)-1);
 	}
 
 	const std::vector<std::ifstream>::size_type file_index = file_handles.size();
 	file_handles.push_back(std::move(temp_file));
 
-	return Value((nl_int_t)file_index);
+	return Value((tn_int_t)file_index);
 }
 
 Value io__file__read_line(const std::vector<Value>& args) {
-	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v)) {
+	if (args.size() != 1 || !std::holds_alternative<tn_int_t>(args[0].v)) {
 		std::cerr << "`File::readLine` takes a file index (int)" << std::endl;
-		return Value((nl_int_t)-1);
+		return Value((tn_int_t)-1);
 	}
 
-	const nl_int_t& fd = std::get<nl_int_t>(args[0].v);
+	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
 	if (fd == -1)
 		std::cerr << "`File::readLine`: invalid file index passed" << std::endl;
 	std::ifstream& file = file_handles[fd];
@@ -175,12 +175,12 @@ Value io__file__read_line(const std::vector<Value>& args) {
 }
 
 Value io__file__read_file(const std::vector<Value>& args) {
-	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v)) {
+	if (args.size() != 1 || !std::holds_alternative<tn_int_t>(args[0].v)) {
 		std::cerr << "`File::readFile` takes a file index (int)" << std::endl;
-		return Value((nl_int_t)-1);
+		return Value((tn_int_t)-1);
 	}
 
-	const nl_int_t& fd = std::get<nl_int_t>(args[0].v);
+	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
 	if (fd == -1)
 		std::cerr << "`File::readFile`: invalid file index passed" << std::endl;
 
@@ -196,12 +196,12 @@ Value io__file__read_file(const std::vector<Value>& args) {
 }
 
 Value io__file__close_file(const std::vector<Value>& args) {
-	if (args.size() != 1 || !std::holds_alternative<nl_int_t>(args[0].v)) {
+	if (args.size() != 1 || !std::holds_alternative<tn_int_t>(args[0].v)) {
 		std::cerr << "`File::closeFile` takes a file index (int)" << std::endl;
-		return Value((nl_int_t)0);
+		return Value((tn_int_t)0);
 	}
 
-	const nl_int_t& fd = std::get<nl_int_t>(args[0].v);
+	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
 	if (fd == -1)
 		std::cerr << "`File::closeFile`: invalid file index passed" << std::endl;
 
@@ -209,7 +209,7 @@ Value io__file__close_file(const std::vector<Value>& args) {
 	
 	file.close();
 
-	return Value((nl_int_t)1);
+	return Value((tn_int_t)1);
 }
 
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {

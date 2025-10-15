@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.1.1)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(newLang)
+project(tent)
 
 include_directories(include)
 
@@ -24,10 +24,10 @@ set(SOURCE_FILES
 
 add_subdirectory(lib)
 
-add_executable(main ${SOURCE_FILES})
+add_executable(tent ${SOURCE_FILES})
 
 if(MSVC)
-	target_compile_options(main PRIVATE -O3 /W4 /WX)
+	target_compile_options(tent PRIVATE -O3 /W4 /WX)
 else()
-	target_compile_options(main PRIVATE -O3 -Wall -Wextra -Wpedantic)
+	target_compile_options(tent PRIVATE -O3 -Wall -Wextra -Wpedantic)
 endif()

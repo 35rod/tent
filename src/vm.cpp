@@ -88,12 +88,12 @@ std::vector<Instruction> VM::loadFile(const std::string& filename, const std::ve
 
 		switch(bytecode[i].op) {
 			case TokenType::PUSH_INT: {
-				nl_int_t val;
+				tn_int_t val;
 				fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
 				bytecode[i].operand = val;
 				break;
 			} case TokenType::PUSH_FLOAT: {
-				nl_dec_t val;
+				tn_dec_t val;
 				fileHandle.read(reinterpret_cast<char*>(&val), sizeof(val));
 				bytecode[i].operand = val;
 				break;
@@ -113,12 +113,12 @@ std::vector<Instruction> VM::loadFile(const std::string& filename, const std::ve
 			} case TokenType::PUSH_BOOL: {
 				uint8_t b;
 				fileHandle.read(reinterpret_cast<char*>(&b), sizeof(b));
-				bytecode[i].operand = nl_bool_t(b != 0);
+				bytecode[i].operand = tn_bool_t(b != 0);
 				break;
 			} case TokenType::JUMP_IF_FALSE:
 			case TokenType::JUMP:
 			case TokenType::CALL_INLINE: {
-				nl_int_t addr;
+				tn_int_t addr;
 				fileHandle.read(reinterpret_cast<char*>(&addr), sizeof(addr));
 				bytecode[i].operand = addr;
 				break;
@@ -138,11 +138,11 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 		switch(instr.op) {
 			case TokenType::PUSH_INT: {
-				nl_int_t val = std::get<nl_int_t>(instr.operand.v);
+				tn_int_t val = std::get<tn_int_t>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::PUSH_FLOAT: {
-				nl_dec_t val = std::get<nl_dec_t>(instr.operand.v);
+				tn_dec_t val = std::get<tn_dec_t>(instr.operand.v);
 				stack.push_back(val);
 				break;
 			} case TokenType::PUSH_STRING: {
@@ -157,30 +157,30 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 				std::string funcName = std::get<std::string>(instr.operand.v);
 
 				ip++;
-				nl_int_t paramCount = std::get<nl_int_t>(bytecode[ip].operand.v);
+				tn_int_t paramCount = std::get<tn_int_t>(bytecode[ip].operand.v);
 
 				std::vector<std::string> params;
 
-				for (nl_int_t j = 0; j < paramCount; j++) {
+				for (tn_int_t j = 0; j < paramCount; j++) {
 					ip++;
 					params.push_back(std::get<std::string>(bytecode[ip].operand.v));
 				}
 
 				ip++;
-				nl_int_t funcLength = std::get<nl_int_t>(bytecode[ip].operand.v);
+				tn_int_t funcLength = std::get<tn_int_t>(bytecode[ip].operand.v);
 
 				std::vector<Instruction> funcBytecode;
 				size_t funcBodyGlobalStart = ip + 1;
 
-				for (nl_int_t j = 0; j < funcLength; j++) {
+				for (tn_int_t j = 0; j < funcLength; j++) {
 					ip++;
 					funcBytecode.push_back(bytecode[ip]);
 				}
 
 				for (Instruction& finstr : funcBytecode) {
 					if (finstr.op == TokenType::JUMP_IF_FALSE || finstr.op == TokenType::JUMP) {
-						nl_int_t globalAddr = std::get<nl_int_t>(finstr.operand.v);
-						finstr.operand = globalAddr - static_cast<nl_int_t>(funcBodyGlobalStart);
+						tn_int_t globalAddr = std::get<tn_int_t>(finstr.operand.v);
+						finstr.operand = globalAddr - static_cast<tn_int_t>(funcBodyGlobalStart);
 					}
 				}
 
@@ -188,9 +188,9 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				break;
 			} case TokenType::INLINE: {
-				nl_int_t paramCount = std::get<nl_int_t>(instr.operand.v);
+				tn_int_t paramCount = std::get<tn_int_t>(instr.operand.v);
 				ip += paramCount;
-				nl_int_t bodyLen = std::get<nl_int_t>(bytecode[ip+1].operand.v);
+				tn_int_t bodyLen = std::get<tn_int_t>(bytecode[ip+1].operand.v);
 				ip += bodyLen + 1;
 				break;
 			} case TokenType::RETURN: {
@@ -264,19 +264,19 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				break;
 			} case TokenType::CALL_INLINE: {
-				nl_int_t targetAddr = std::get<nl_int_t>(instr.operand.v);
+				tn_int_t targetAddr = std::get<tn_int_t>(instr.operand.v);
 				returnAddrs.push_back(ip+1);
 				
-				nl_int_t paramCount = std::get<nl_int_t>(bytecode[targetAddr+1].operand.v);
+				tn_int_t paramCount = std::get<tn_int_t>(bytecode[targetAddr+1].operand.v);
 				std::vector<std::string> params;
 				
-				for (nl_int_t j = 0; j < paramCount; j++) {
+				for (tn_int_t j = 0; j < paramCount; j++) {
 					params.push_back(std::get<std::string>(bytecode[targetAddr+2+j].operand.v));
 				}
 
 				CallFrame frame;
 
-				for (nl_int_t j = paramCount-1; j >= 0; j--) {
+				for (tn_int_t j = paramCount-1; j >= 0; j--) {
 					if (stack.empty()) throw std::runtime_error("Not enough args for inline call");
 					Value arg = stack.back(); stack.pop_back();
 					frame.locals[params[j]] = arg;
@@ -344,10 +344,10 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				if (!target) throw std::runtime_error("Undefined variable: " + name);
 
-				if (std::holds_alternative<nl_int_t>(target->v)) {
-					*target = std::get<nl_int_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
-				} else if (std::holds_alternative<nl_dec_t>(target->v)) {
-					*target = std::get<nl_dec_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				if (std::holds_alternative<tn_int_t>(target->v)) {
+					*target = std::get<tn_int_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
+				} else if (std::holds_alternative<tn_dec_t>(target->v)) {
+					*target = std::get<tn_dec_t>(target->v) + (instr.op == TokenType::INCREMENT ? 1 : -1);
 				} else {
 					throw std::runtime_error("Increment/decrement applied to non-numeric value");
 				}
@@ -360,17 +360,17 @@ void VM::run(const std::vector<Instruction>& bytecode) {
 
 				Value cond = stack.back(); stack.pop_back();
 
-				bool condTrue = std::visit([&]() -> nl_bool_t {
-					if (std::holds_alternative<nl_bool_t>(cond.v)) return std::get<nl_bool_t>(cond.v);
-					if (std::holds_alternative<nl_int_t>(cond.v)) return std::get<nl_bool_t>(cond.v) != 0;
-					if (std::holds_alternative<nl_dec_t>(cond.v)) return std::get<nl_bool_t>(cond.v) != 0.0;
+				bool condTrue = std::visit([&]() -> tn_bool_t {
+					if (std::holds_alternative<tn_bool_t>(cond.v)) return std::get<tn_bool_t>(cond.v);
+					if (std::holds_alternative<tn_int_t>(cond.v)) return std::get<tn_bool_t>(cond.v) != 0;
+					if (std::holds_alternative<tn_dec_t>(cond.v)) return std::get<tn_bool_t>(cond.v) != 0.0;
 					return true;
 				});
 
-				if (!condTrue) ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
+				if (!condTrue) ip = static_cast<size_t>(std::get<tn_int_t>(instr.operand.v)) - 1;
 				break;
 			} case TokenType::JUMP: {
-				ip = static_cast<size_t>(std::get<nl_int_t>(instr.operand.v)) - 1;
+				ip = static_cast<size_t>(std::get<tn_int_t>(instr.operand.v)) - 1;
 				break;
 			} default:
 				if (instr.op >= TokenType::ADD && instr.op <= TokenType::NOTEQ) {
