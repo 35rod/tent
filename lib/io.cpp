@@ -36,6 +36,56 @@ static std::string vec_to_string(const Value::VecT& vecPtr) {
 	return out;
 }
 
+static std::string dic_to_string(const Value::DicT& dicPtr) {
+    std::string out = "{";
+
+    if (dicPtr) {
+        for (size_t i = 0; i < dicPtr->size(); i++) {
+            const std::pair<Value, Value>& pair = (*dicPtr)[i];
+
+            if (std::holds_alternative<nl_int_t>(pair.first.v))
+                out += std::to_string(std::get<nl_int_t>(pair.first.v));
+            else if (std::holds_alternative<nl_dec_t>(pair.first.v)) {
+                static char str_buf[MAX_DEC_LEN+1];
+                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(pair.first.v));
+                out += str_buf;
+            } else if (std::holds_alternative<nl_bool_t>(pair.first.v))
+                out += std::get<nl_bool_t>(pair.first.v) ? "true" : "false";
+            else if (std::holds_alternative<std::string>(pair.first.v))
+                out += std::get<std::string>(pair.first.v);
+            else if (std::holds_alternative<Value::VecT>(pair.first.v))
+                out += vec_to_string(std::get<Value::VecT>(pair.first.v));
+            else
+                out += "(null)";
+
+            out += ": ";
+
+            if (std::holds_alternative<nl_int_t>(pair.second.v))
+                out += std::to_string(std::get<nl_int_t>(pair.second.v));
+            else if (std::holds_alternative<nl_dec_t>(pair.second.v)) {
+                static char str_buf[MAX_DEC_LEN+1];
+                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<nl_dec_t>(pair.second.v));
+                out += str_buf;
+            } else if (std::holds_alternative<nl_bool_t>(pair.second.v))
+                out += std::get<nl_bool_t>(pair.second.v) ? "true" : "false";
+            else if (std::holds_alternative<std::string>(pair.second.v))
+                out += std::get<std::string>(pair.second.v);
+            else if (std::holds_alternative<Value::VecT>(pair.second.v))
+                out += vec_to_string(std::get<Value::VecT>(pair.second.v));
+            else
+                out += "(null)";
+
+            if (i != dicPtr->size() - 1) {
+                out += ", ";
+            }
+        }
+    }
+
+    out += "}";
+
+    return out;
+}
+
 Value print(const std::vector<Value>& args) {
 	std::string total;
 
@@ -52,6 +102,8 @@ Value print(const std::vector<Value>& args) {
 			total += std::get<std::string>(e.v);
 		else if (std::holds_alternative<Value::VecT>(e.v))
 			total += vec_to_string(std::get<Value::VecT>(e.v));
+		else if (std::holds_alternative<Value::DicT>(e.v))
+		    total += dic_to_string(std::get<Value::DicT>(e.v));
 		else
 			total += "null";
 	}
