@@ -13,6 +13,8 @@ The command to run the `tent` program may differ depending on your operating sys
 - MacOS/Linux: `./tent`
 - Windows: `.\tent`
 This will be written as `tent` from here on for brevity.
+Edit: a `build.zig` file was added, so you can build with just `zig build` now. The executable is placed in (by default) `zig-out/bin/tent`, and core libraries are in `zig-out/lib/`. You'll
+probably have to add `-S zig-out/lib` to your execution command if you're using core libraries.
 
 
 ## Tutorial!
