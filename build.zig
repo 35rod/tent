@@ -29,7 +29,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    var lib_dir = std.fs.cwd().openDir(lib_path, .{.access_sub_paths = true}) catch {
+    var lib_dir = std.fs.cwd().openDir(lib_path, .{.access_sub_paths = true, .iterate = true}) catch {
         std.log.err("'" ++ lib_path ++ "' directory could not be opened. make sure it exists.", .{});
         return;
     };
