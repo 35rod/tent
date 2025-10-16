@@ -27,7 +27,7 @@ struct Value {
     };
 
     using VecT = std::shared_ptr<std::vector<Value>>;
-    using DicT = std::shared_ptr<std::vector<std::pair<Value, Value>>>;
+    using DicT = std::shared_ptr<std::map<std::string, Value>>;
     std::variant<tn_int_t, tn_dec_t, tn_bool_t, std::string, VecT, DicT, ClassInstance, NullLiteral> v;
     bool typeInt = false;
     bool typeFloat = false;

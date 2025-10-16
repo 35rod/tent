@@ -1,4 +1,10 @@
 load "io";
 
 ages = {"John": 14, "George": 13, "Margaret": 15};
+println("{");
+for pair $ ages {
+	println(ages@(pair@0));
+	println('    "' + pair@0 + '": ', pair@1, ",");
+}
+println("}");
 println(ages);

@@ -1,14 +1,17 @@
 #include "evaluator.hpp"
 #include "errors.hpp"
 #include "ast.hpp"
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <dlfcn.h>
+#include <exception>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <variant>
 #include "native.hpp"
+#include "opcodes.hpp"
 #include "types.hpp"
 
 Evaluator::Evaluator() {
@@ -141,13 +144,17 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 		return Value(std::make_shared<std::vector<Value>>(elems));
 	} else if (auto dl = dynamic_cast<DicLiteral*>(node)) {
-		std::vector<std::pair<Value, Value>> dic;
+		std::map<std::string, Value> dic;
 		
 		for (auto& pair : dl->dic) {
-			dic.push_back({evalExpr(pair.first.get()), evalExpr(pair.second.get())});
+			const Value first_in_pair = evalExpr(pair.first.get());
+			if (!std::holds_alternative<std::string>(first_in_pair.v)) {
+				Error("dictionary key must be a string", -1);
+			}
+			dic[std::get<std::string>(first_in_pair.v)] = evalExpr(pair.second.get());
 		}
 
-		return Value(std::make_shared<std::vector<std::pair<Value, Value>>>(dic));
+		return Value(std::make_shared<std::map<std::string, Value>>(dic));
 	} else if (dynamic_cast<TypeInt*>(node)) {
         Value res;
         res.typeInt = true;
@@ -228,8 +235,11 @@ Value Evaluator::evalExpr(ASTNode* node) {
 	    bool break_for_loop = false;
 	    int index = 0;
 	    int length = 0;
-
+		Value::DicT::element_type::iterator dic_it;
+		bool is_dic = false;
+		
 	    Value iter = evalExpr(fl->iter.get());
+
 
 	    if (std::holds_alternative<tn_int_t>(iter.v)) {
 	        length = std::get<tn_int_t>(iter.v);
@@ -238,10 +248,12 @@ Value Evaluator::evalExpr(ASTNode* node) {
 	    } else if (std::holds_alternative<Value::VecT>(iter.v)) {
 	        length = std::get<Value::VecT>(iter.v)->size();
 	    } else if (std::holds_alternative<Value::DicT>(iter.v)) {
-			length = std::get<Value::DicT>(iter.v)->size();
+			dic_it = std::get<Value::DicT>(iter.v)->begin();
+			is_dic = true;
 		}
 
-        while (index < length && !break_for_loop) {
+        while (((is_dic && dic_it != std::get<Value::DicT>(iter.v)->end()) || (index < length))
+				&& !break_for_loop) {
             if (std::holds_alternative<tn_int_t>(iter.v)) {
                 variables[fl->var] = Value((tn_int_t)index);
             } else if (std::holds_alternative<std::string>(iter.v)) {
@@ -249,12 +261,10 @@ Value Evaluator::evalExpr(ASTNode* node) {
             } else if (std::holds_alternative<Value::VecT>(iter.v)) {
                 variables[fl->var] = (*std::get<Value::VecT>(iter.v))[index];
             } else if (std::holds_alternative<Value::DicT>(iter.v)) {
-				Value::DicT dic = std::get<Value::DicT>(iter.v);
-				
-				auto& entry = (*dic)[(size_t)index];
+				std::vector<Value> single = {Value(dic_it->first), dic_it->second};
+				variables[fl->var] = Value(std::make_shared<Value::VecT::element_type>(single));
 
-				std::vector<std::pair<Value, Value>> single = {entry};
-				variables[fl->var] = Value(std::make_shared<std::vector<std::pair<Value, Value>>>(single));
+				dic_it++;
 			}
 
             for (ExpressionStmt& stmt : fl->stmts) {
@@ -443,7 +453,15 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 							return rhs;
 						} else if (std::holds_alternative<Value::DicT>(holder.v)) {
-							// This absolutely sucks. Save me!!! :(
+							auto dictPtr = std::get<Value::DicT>(holder.v);
+							if (!dictPtr) Error("null dictionary", -1);
+
+							Value idxVal = evalExpr(leftIndex->right.get());
+							if (!std::holds_alternative<std::string>(idxVal.v)) TypeError("dictionary key must be a string", -1);
+							std::string idx = std::get<std::string>(idxVal.v);
+
+							Value rhs = evalExpr(bin->right.get());
+							(*dictPtr)[idx] = rhs;
 						}
 					} else {
 						TypeError("Left-hand side of indexed assignment must be a variable", -1);
@@ -672,6 +690,8 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 						+ std::to_string((uint16_t)op), -1);
 			}
 		} else if constexpr (std::is_same_v<L, Value::VecT> && std::is_integral_v<R>) {
+			// op is vector index it just doesn't say so
+			assert(op == TokenType::INDEX);
 			auto vecPtr = l;
 			if (!vecPtr) Error("null vector", -1);
 			tn_int_t idx = static_cast<tn_int_t>(r);
@@ -681,6 +701,17 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			}
 
 			return (*vecPtr)[(size_t)idx];
+		} else if constexpr (std::is_same_v<L, Value::DicT> && std::is_same_v<R, std::string>) {
+			assert(op == TokenType::INDEX);
+			Value::DicT dictPtr = l;
+			if (!dictPtr) Error("null dictionary", -1);
+			std::string idx = static_cast<std::string>(r);
+			
+			try {
+				return dictPtr->at(idx);
+			} catch (std::exception) {
+				Error("key '" + idx + "' was not found in dictionary", -1);
+			}
 		}
 
 		return Value();

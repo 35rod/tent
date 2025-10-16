@@ -40,23 +40,10 @@ static std::string dic_to_string(const Value::DicT& dicPtr) {
     std::string out = "{";
 
     if (dicPtr) {
-        for (size_t i = 0; i < dicPtr->size(); i++) {
-            const std::pair<Value, Value>& pair = (*dicPtr)[i];
+        for (auto it = dicPtr->begin(); it != dicPtr->end(); it++) {
+            const std::pair<std::string, Value>& pair = *it;
 
-            if (std::holds_alternative<tn_int_t>(pair.first.v))
-                out += std::to_string(std::get<tn_int_t>(pair.first.v));
-            else if (std::holds_alternative<tn_dec_t>(pair.first.v)) {
-                static char str_buf[MAX_DEC_LEN+1];
-                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(pair.first.v));
-                out += str_buf;
-            } else if (std::holds_alternative<tn_bool_t>(pair.first.v))
-                out += std::get<tn_bool_t>(pair.first.v) ? "true" : "false";
-            else if (std::holds_alternative<std::string>(pair.first.v))
-                out += std::get<std::string>(pair.first.v);
-            else if (std::holds_alternative<Value::VecT>(pair.first.v))
-                out += vec_to_string(std::get<Value::VecT>(pair.first.v));
-            else
-                out += "(null)";
+	    	out += "\"" + pair.first + "\"";
 
             out += ": ";
 
@@ -69,13 +56,13 @@ static std::string dic_to_string(const Value::DicT& dicPtr) {
             } else if (std::holds_alternative<tn_bool_t>(pair.second.v))
                 out += std::get<tn_bool_t>(pair.second.v) ? "true" : "false";
             else if (std::holds_alternative<std::string>(pair.second.v))
-                out += std::get<std::string>(pair.second.v);
+                out += "\"" + std::get<std::string>(pair.second.v) + "\"";
             else if (std::holds_alternative<Value::VecT>(pair.second.v))
                 out += vec_to_string(std::get<Value::VecT>(pair.second.v));
             else
                 out += "(null)";
 
-            if (i != dicPtr->size() - 1) {
+            if (std::next(it) != dicPtr->end()) {
                 out += ", ";
             }
         }
