@@ -1,31 +1,41 @@
 #include "native.hpp"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <variant>
 
 #define MAX_DEC_LEN 50
 
+static std::string vec_to_string(const Value::VecT& vecPtr);
+static void write_val_to_string(const Value &val, std::ostream &stream, bool quote_string=false) {
+	if (std::holds_alternative<tn_int_t>(val.v))
+		stream << std::get<tn_int_t>(val.v);
+	else if (std::holds_alternative<tn_dec_t>(val.v)) {
+		static char str_buf[MAX_DEC_LEN+1];
+		std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(val.v));
+		stream << str_buf;
+	} else if (std::holds_alternative<tn_bool_t>(val.v))
+		stream << (std::get<tn_bool_t>(val.v) ? "true" : "false");
+	else if (std::holds_alternative<std::string>(val.v)) {
+		if (quote_string)
+			stream << "\"" + std::get<std::string>(val.v) + "\"";
+		else
+			stream << std::get<std::string>(val.v);
+	} else if (std::holds_alternative<Value::VecT>(val.v))
+		stream << vec_to_string(std::get<Value::VecT>(val.v));
+	else
+		stream << "(null)";
+}
+
 static std::string vec_to_string(const Value::VecT& vecPtr) {
 	std::string out = "[";
+	std::ostringstream oss(out);
 
 	if (vecPtr) {
 		for (size_t i = 0; i < vecPtr->size(); i++) {
 			const Value& elem = (*vecPtr)[i];
 
-			if (std::holds_alternative<tn_int_t>(elem.v))
-				out += std::to_string(std::get<tn_int_t>(elem.v));
-			else if (std::holds_alternative<tn_dec_t>(elem.v)) {
-				static char str_buf[MAX_DEC_LEN+1];
-				std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(elem.v));
-				out += str_buf;
-			} else if (std::holds_alternative<tn_bool_t>(elem.v))
-				out += std::get<tn_bool_t>(elem.v) ? "true" : "false";
-			else if (std::holds_alternative<std::string>(elem.v))
-				out += std::get<std::string>(elem.v);
-			else if (std::holds_alternative<Value::VecT>(elem.v))
-				out += vec_to_string(std::get<Value::VecT>(elem.v));
-			else
-				out += "(null)";
+			write_val_to_string(elem, oss);
 			
 			if ((i + 1) < vecPtr->size()) out += ", ";
 		}
@@ -37,40 +47,26 @@ static std::string vec_to_string(const Value::VecT& vecPtr) {
 }
 
 static std::string dic_to_string(const Value::DicT& dicPtr) {
-    std::string out = "{";
+    std::ostringstream oss;
+    oss << "{";
 
     if (dicPtr) {
         for (auto it = dicPtr->begin(); it != dicPtr->end(); it++) {
             const std::pair<std::string, Value>& pair = *it;
 
-	    	out += "\"" + pair.first + "\"";
+	    	oss << "\"" << pair.first << "\": ";
 
-            out += ": ";
-
-            if (std::holds_alternative<tn_int_t>(pair.second.v))
-                out += std::to_string(std::get<tn_int_t>(pair.second.v));
-            else if (std::holds_alternative<tn_dec_t>(pair.second.v)) {
-                static char str_buf[MAX_DEC_LEN+1];
-                std::snprintf(str_buf, MAX_DEC_LEN, "%.*g", 6, std::get<tn_dec_t>(pair.second.v));
-                out += str_buf;
-            } else if (std::holds_alternative<tn_bool_t>(pair.second.v))
-                out += std::get<tn_bool_t>(pair.second.v) ? "true" : "false";
-            else if (std::holds_alternative<std::string>(pair.second.v))
-                out += "\"" + std::get<std::string>(pair.second.v) + "\"";
-            else if (std::holds_alternative<Value::VecT>(pair.second.v))
-                out += vec_to_string(std::get<Value::VecT>(pair.second.v));
-            else
-                out += "(null)";
+		write_val_to_string(pair.second, oss, true);
 
             if (std::next(it) != dicPtr->end()) {
-                out += ", ";
+                oss << ", ";
             }
         }
     }
 
-    out += "}";
+    oss << "}";
 
-    return out;
+    return oss.str();
 }
 
 Value print(const std::vector<Value>& args) {
