@@ -1,4 +1,13 @@
-load "io";
-load "math";
+load "tm.tent";
 
-println("Hello World!");
+build = BuildSystem();
+
+lib = build.create_target("mylib", "lib");
+lib.add_source("tests/foo.cpp");
+lib.add_source("tests/bar.cpp");
+lib.add_flag("-Wall");
+
+exe = build.create_target("foobar", "exe");
+exe.add_include("tests/bar.hpp");
+exe.link_lib("mylib");
+build.build_all();

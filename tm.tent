@@ -1,0 +1,30 @@
+load "tm";
+
+class BuildTarget(native_idx) {
+    form add_source(path) {
+        add_source(native_idx, path);
+    }
+
+    form add_include(path) {
+        add_include(native_idx, path);
+    }
+
+    form add_flag(flag) {
+        add_flag(native_idx, flag);
+    }
+
+    form link_lib(lib) {
+        link_lib(native_idx, lib);
+    }
+}
+
+class BuildSystem() {
+    form create_target(name, type) {
+        idx = create_target(name, type);
+        return BuildTarget(idx);
+    }
+
+    form build_all() {
+        build_all();
+    }
+}
