@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <dlfcn.h>
 #include <exception>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -709,7 +708,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			
 			try {
 				return dictPtr->at(idx);
-			} catch (std::exception) {
+			} catch (std::exception&) {
 				Error("key '" + idx + "' was not found in dictionary", -1);
 			}
 		}
