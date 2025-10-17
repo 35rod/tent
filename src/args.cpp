@@ -21,7 +21,8 @@ void parse_args(int32_t argc, char **argv) {
 	search_dirs.push_back("../lib");
 	bool doing_prog_args = false;
 
-	for (int32_t arg_n = 1; arg_n < argc; ++arg_n) {
+	for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
+	{
 		if (doing_prog_args) {
 			prog_args.push_back(std::string(argv[arg_n]));
 			continue;
@@ -32,14 +33,15 @@ void parse_args(int32_t argc, char **argv) {
 				if (argv[arg_n][2] == '\0') {
 					doing_prog_args = true;
 					if (SRC_FILENAME.empty()) {
-						std::cerr << "Argument error: cannot pass arguments to program before the"
-									 "program filename is resolved." << std::endl;
+						std::cerr
+							<< "Argument error: cannot pass arguments to program before the"
+							<< "program filename is resolved." << std::endl;
 						print_usage();
 					}
 				} else if (strcmp(argv[arg_n]+2, "debug") == 0)
 					SET_FLAG(DEBUG);
 				else if (strcmp(argv[arg_n]+2, "debug_stop") == 0)
-				    SET_FLAG(DEBUG_STOP);
+					SET_FLAG(DEBUG_STOP);
 				else if (strcmp(argv[arg_n]+2, "compile") == 0)
 					SET_FLAG(COMPILE);
 				else if (strcmp(argv[arg_n]+2, "repl") == 0)
@@ -66,17 +68,19 @@ void parse_args(int32_t argc, char **argv) {
 				bool end_loop = false;
 				bool skip_next = false;
 
-				for (char *pos = argv[arg_n]+1; *pos && !end_loop; pos++) {
-				    if (skip_next) {
-				        skip_next = false;
-				        continue;
-				    }
+				for (char *pos = argv[arg_n]+1; *pos && !end_loop; pos++)
+				{
+					if (skip_next) {
+						skip_next = false;
+						continue;
+					}
 
 					switch (*pos) {
 					case 'd':
-					    if (*(pos+1) == 's')
-					        SET_FLAG(DEBUG_STOP);
-					        skip_next = true;
+						if (*(pos+1) == 's') {
+							SET_FLAG(DEBUG_STOP);
+							skip_next = true;
+						}
 
 						SET_FLAG(DEBUG);
 						break;
@@ -103,8 +107,7 @@ void parse_args(int32_t argc, char **argv) {
 						end_loop = true;
 						break;
 					case 'f':
-						if (!SRC_FILENAME.empty())
-						{
+						if (!SRC_FILENAME.empty()) {
 							std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
 								<< "') after filename was already resolved." << std::endl;
 							print_usage();
@@ -113,8 +116,7 @@ void parse_args(int32_t argc, char **argv) {
 							SRC_FILENAME = std::string(argv[++arg_n]);
 						else if (*(pos+1) != '\0')
 							SRC_FILENAME = std::string(pos+1);
-						else
-						{
+						else {
 							std::cerr << "Argument error: found filename indicator ('" << argv[arg_n]
 								<< "') without a following filename." << std::endl;
 							print_usage();
@@ -129,14 +131,13 @@ void parse_args(int32_t argc, char **argv) {
 					}
 				}
 			}
-		} else if (SRC_FILENAME.empty())
-		{
+		} else if (SRC_FILENAME.empty()) {
 			SRC_FILENAME = std::string(argv[arg_n]);
-		} else
-		{
-		  std::cerr << "Argument error: found (assumed) filename ('" << argv[arg_n]
-			  << "') after filename was already resolved." << std::endl;
-		  print_usage();
+		} else {
+			std::cerr
+				<< "Argument error: found (assumed) filename ('" << argv[arg_n]
+				<< "') after filename was already resolved." << std::endl;
+			print_usage();
 		}
 	}
 	
