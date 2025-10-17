@@ -19,6 +19,8 @@ class ASTNode {
 			printIndent(indent);
 			std::cout << "ASTNode()" << std::endl;
 		}
+
+		friend class Evaluator;
 		
 		virtual ~ASTNode() {}
 };

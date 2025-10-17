@@ -1,7 +1,7 @@
 load "io";
 
-form add(a, b) {
+form add(5, b) {
     return a + b;
 }
 
-println(add(3, 5));
+println(add(3));

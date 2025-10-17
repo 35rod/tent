@@ -57,7 +57,7 @@ int32_t main(int32_t argc, char **argv) {
 		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".tnc");
 	} else {
 	    if (!IS_FLAG_SET(DEBUG_STOP)) {
-            Evaluator evaluator;
+            Evaluator evaluator(output);
             evaluator.evalProgram(std::move(program), prog_args);
         }
 	}

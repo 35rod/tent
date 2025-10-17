@@ -14,6 +14,8 @@ struct CallFrame {
 };
 
 class Evaluator {
+	std::string source;
+
 	bool program_should_terminate = false;
 
 	std::vector<CallFrame> callStack;
@@ -21,6 +23,10 @@ class Evaluator {
 	std::vector<FunctionStmt*> functions;
 	std::unordered_map<std::string, ClassStmt*> classes;
 	std::unordered_map<std::string, std::unordered_map<std::string, std::function<Value(const Value&, const std::vector<Value>&)>>> nativeMethods;
+
+	int lineNo = -1;
+	int colNo = -1;
+	std::string filename = "";
 
 	static Value evalBinaryOp(const Value& left, const Value& right, TokenType op);
 	static Value evalUnaryOp(const Value& operand, TokenType op);
@@ -33,5 +39,5 @@ class Evaluator {
 		bool load(const std::string& path);
 		Value evalProgram(ASTPtr program, const std::vector<std::string> args={});
 
-		Evaluator();
+		Evaluator(std::string input);
 };
