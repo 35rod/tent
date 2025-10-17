@@ -1,360 +1,430 @@
 #include "lexer.hpp"
-#include "errors.hpp"
+#include <sstream>
+#include <cctype>
 #include "opcodes.hpp"
 
 void Lexer::nextChar(int num) {
-	curPos += num;
+    for (int i = 0; i < num; i++) {
+        curPos++;
 
-	if (curPos >= source.length()) {
-		curChar = '\0';
-	} else {
-		curChar = source[curPos];
-	}
+        if (curPos >= source.length()) {
+            curChar = '\0';
+            return;
+        }
+
+        curChar = source[curPos];
+        
+        if (curChar == '\n') {
+            lineNo++;
+            colNo = 0;
+        } else {
+            colNo++;
+        }
+    }
 }
 
 char Lexer::peek() {
-	if (curPos+1 >= source.length()) {
-		return '\0';
-	}
-
-	return source[curPos+1];
+    if (curPos + 1 >= source.length()) return '\0';
+    return source[curPos+1];
 }
 
 void Lexer::skipWhitespace() {
-	while (curChar == ' ' || curChar == '\t' || curChar == '\r') {
-		nextChar();
-	}
+    while (curChar == ' ' || curChar == '\t' || curChar == '\r') {
+        nextChar();
+    }
 }
 
 void Lexer::skipComment() {
-	if (curChar == '~') {
-		while (curChar != '\n') {
-			nextChar();
-		}
-	}
+    if (curChar == '~') {
+        while (curChar != '\n' && curChar != '\0') {
+            nextChar();
+        }
+    }
+}
+
+std::string Lexer::getLineText(int line) {
+    size_t start = 0;
+    int current = 1;
+
+    while (current < line) {
+        size_t next_newline = source.find('\n', start);
+
+        if (next_newline == std::string::npos) {
+            return ""; 
+        }
+
+        start = next_newline + 1;
+        current++;
+    }
+
+    size_t end = source.find('\n', start);
+
+    if (end == std::string::npos) {
+        return source.substr(start);
+    }
+
+    return source.substr(start, end - start);
 }
 
 #include "is_digit_incl.cpp"
 
 Token Lexer::getToken() {
-	skipWhitespace();
-	skipComment();
+    skipWhitespace();
+    skipComment();
 
-	Token token("", TokenType::INVALID_TOKEN, lineNo);
+    Token token("", TokenType::INVALID_TOKEN, lineNo, colNo);
 
-	if (curChar == '+') {
-		if (peek() == '+') {
-			nextChar();
-			token = Token("++", TokenType::INCREMENT, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("+=", TokenType::ADD_ASSIGN, lineNo);
-		} else {
-			token = Token("+", TokenType::ADD, lineNo);
-		}
-	} else if (curChar == '-') {
-		if (peek() == '-') {
-			nextChar();
-			token = Token("--", TokenType::DECREMENT, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("-=", TokenType::SUB_ASSIGN, lineNo);
-		} else {
-			token = Token("-", TokenType::SUB, lineNo);
-		}
-	} else if (curChar == '*') {
-		if (peek() == '*') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token("**=", TokenType::POW_ASSIGN, lineNo);
-			} else
-				token = Token("**", TokenType::POW, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("*=", TokenType::MUL_ASSIGN, lineNo);
-		} else {
-			token = Token("*", TokenType::MUL, lineNo);
-		}
-	} else if (curChar == '/') {
-		if (peek() == '/') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token("//=", TokenType::FLOOR_DIV_ASSIGN, lineNo);
-			} else
-				token = Token("//", TokenType::FLOOR_DIV, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("/=", TokenType::DIV_ASSIGN, lineNo);
-		} else {
-			token = Token("/", TokenType::DIV, lineNo);
-		}
-	} else if (curChar == '%') {
-		if (peek() == '=') {
-			nextChar();
-			token = Token("%=", TokenType::MOD_ASSIGN, lineNo);
-		} else
-			token = Token("%", TokenType::MOD, lineNo);
-	} else if (curChar == '&') {
-		if (peek() == '&') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token("&&=", TokenType::AND_ASSIGN, lineNo);
-			} else
-				token = Token("&&", TokenType::AND, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("&=", TokenType::BIT_AND_ASSIGN, lineNo);
-		} else
-			token = Token("&", TokenType::BIT_AND, lineNo);
-	} else if (curChar == '.') {
-		token = Token(".", TokenType::DOT, lineNo);
-	} else if (curChar == '@') {
-		token = Token("@", TokenType::INDEX, lineNo);
-	} else if (curChar == '$') {
-		token = Token("$", TokenType::ITER, lineNo);
-	} else if (curChar == '^') {
-		if (peek() == '=') {
-			nextChar();
-			token = Token("^=", TokenType::BIT_XOR_ASSIGN, lineNo);
-		} else
-			token = Token("^", TokenType::BIT_XOR, lineNo);
-	} else if (curChar == '|') {
-		if (peek() == '|') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token("||=", TokenType::OR_ASSIGN, lineNo);
-			} else
-				token = Token("||", TokenType::OR, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("|=", TokenType::BIT_OR_ASSIGN, lineNo);
-		} else
-			token = Token("|", TokenType::BIT_OR, lineNo);
-	} else if (curChar == '<') {
-		char peekChar = peek();
-		if (peekChar == '<') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token("<<=", TokenType::LSHIFT_ASSIGN, lineNo);
-			} else
-				token = Token("<<", TokenType::LSHIFT, lineNo);
-		} else if (peekChar == '=') {
-			nextChar();
-			token = Token("<=", TokenType::LESSEQ, lineNo);
-		} else
-			token = Token("<", TokenType::LESS, lineNo);
-	} else if (curChar == '>') {
-		char peekChar = peek();
-		if (peekChar == '>') {
-			nextChar();
-			if (peek() == '=') {
-				nextChar();
-				token = Token(">>=", TokenType::RSHIFT_ASSIGN, lineNo);
-			} else
-				token = Token(">>", TokenType::RSHIFT, lineNo);
-		} else if (peekChar == '=') {
-			nextChar();
-			token = Token(">=", TokenType::GREATEREQ, lineNo);
-		} else
-			token = Token(">", TokenType::GREATER, lineNo);
-	} else if (curChar == '(') {
-		token = Token("(", TokenType::OPEN_PAREN, lineNo);
-	} else if (curChar == ')') {
-		token = Token(")", TokenType::CLOSE_PAREN, lineNo);
-	} else if (curChar == '{') {
-		token = Token("{", TokenType::OPEN_BRAC, lineNo);
-	} else if (curChar == '}') {
-		token = Token("}", TokenType::CLOSE_BRAC, lineNo);
-	} else if (curChar == ',') {
-		token = Token(",", TokenType::COMMA, lineNo);
-	} else if (curChar == '[') {
-		token = Token("[", TokenType::OPEN_BRACKET, lineNo);
-	} else if (curChar == ']') {
-		token = Token("]", TokenType::CLOSE_BRACKET, lineNo);
-	} else if (curChar == '!') {
-		if (peek() == '!') {
-			nextChar();
-			token = Token("!!", TokenType::BIT_NOT, lineNo);
-		} else if (peek() == '=') {
-			nextChar();
-			token = Token("!=", TokenType::NOTEQ, lineNo);
-		} else
-			token = Token("!", TokenType::NOT, lineNo);
-	} else if (curChar == '=') {
-		if (peek() == '=') {
-			nextChar();
-			token = Token("==", TokenType::EQEQ, lineNo);
-		} else {
-			token = Token("=", TokenType::ASSIGN, lineNo);
-		}
-	} else if (curChar == '\"') {
-		nextChar();
+    if (curChar == '+') {
+        if (peek() == '+') {
+            nextChar();
+            token = Token("++", TokenType::INCREMENT, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("+=", TokenType::ADD_ASSIGN, lineNo, colNo);
+        } else {
+            token = Token("+", TokenType::ADD, lineNo, colNo);
+        }
+    } else if (curChar == '-') {
+        if (peek() == '-') {
+            nextChar();
+            token = Token("--", TokenType::DECREMENT, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("-=", TokenType::SUB_ASSIGN, lineNo, colNo);
+        } else {
+            token = Token("-", TokenType::SUB, lineNo, colNo);
+        }
+    } else if (curChar == '*') {
+        if (peek() == '*') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token("**=", TokenType::POW_ASSIGN, lineNo, colNo);
+            } else
+                token = Token("**", TokenType::POW, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("*=", TokenType::MUL_ASSIGN, lineNo, colNo);
+        } else {
+            token = Token("*", TokenType::MUL, lineNo, colNo);
+        }
+    } else if (curChar == '/') {
+        if (peek() == '/') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token("//=", TokenType::FLOOR_DIV_ASSIGN, lineNo, colNo);
+            } else
+                token = Token("//", TokenType::FLOOR_DIV, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("/=", TokenType::DIV_ASSIGN, lineNo, colNo);
+        } else {
+            token = Token("/", TokenType::DIV, lineNo, colNo);
+        }
+    } else if (curChar == '%') {
+        if (peek() == '=') {
+            nextChar();
+            token = Token("%=", TokenType::MOD_ASSIGN, lineNo, colNo);
+        } else
+            token = Token("%", TokenType::MOD, lineNo, colNo);
+    } else if (curChar == '&') {
+        if (peek() == '&') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token("&&=", TokenType::AND_ASSIGN, lineNo, colNo);
+            } else
+                token = Token("&&", TokenType::AND, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("&=", TokenType::BIT_AND_ASSIGN, lineNo, colNo);
+        } else
+            token = Token("&", TokenType::BIT_AND, lineNo, colNo);
+    } else if (curChar == '.') {
+        token = Token(".", TokenType::DOT, lineNo, colNo);
+    } else if (curChar == '@') {
+        token = Token("@", TokenType::INDEX, lineNo, colNo);
+    } else if (curChar == '$') {
+        token = Token("$", TokenType::ITER, lineNo, colNo);
+    } else if (curChar == '^') {
+        if (peek() == '=') {
+            nextChar();
+            token = Token("^=", TokenType::BIT_XOR_ASSIGN, lineNo, colNo);
+        } else
+            token = Token("^", TokenType::BIT_XOR, lineNo, colNo);
+    } else if (curChar == '|') {
+        if (peek() == '|') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token("||=", TokenType::OR_ASSIGN, lineNo, colNo);
+            } else
+                token = Token("||", TokenType::OR, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("|=", TokenType::BIT_OR_ASSIGN, lineNo, colNo);
+        } else
+            token = Token("|", TokenType::BIT_OR, lineNo, colNo);
+    } else if (curChar == '<') {
+        char peekChar = peek();
+        if (peekChar == '<') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token("<<=", TokenType::LSHIFT_ASSIGN, lineNo, colNo);
+            } else
+                token = Token("<<", TokenType::LSHIFT, lineNo, colNo);
+        } else if (peekChar == '=') {
+            nextChar();
+            token = Token("<=", TokenType::LESSEQ, lineNo, colNo);
+        } else
+            token = Token("<", TokenType::LESS, lineNo, colNo);
+    } else if (curChar == '>') {
+        char peekChar = peek();
+        if (peekChar == '>') {
+            nextChar();
+            if (peek() == '=') {
+                nextChar();
+                token = Token(">>=", TokenType::RSHIFT_ASSIGN, lineNo, colNo);
+            } else
+                token = Token(">>", TokenType::RSHIFT, lineNo, colNo);
+        } else if (peekChar == '=') {
+            nextChar();
+            token = Token(">=", TokenType::GREATEREQ, lineNo, colNo);
+        } else
+            token = Token(">", TokenType::GREATER, lineNo, colNo);
+    } else if (curChar == '(') {
+        token = Token("(", TokenType::OPEN_PAREN, lineNo, colNo);
+    } else if (curChar == ')') {
+        token = Token(")", TokenType::CLOSE_PAREN, lineNo, colNo);
+    } else if (curChar == '{') {
+        token = Token("{", TokenType::OPEN_BRAC, lineNo, colNo);
+    } else if (curChar == '}') {
+        token = Token("}", TokenType::CLOSE_BRAC, lineNo, colNo);
+    } else if (curChar == ',') {
+        token = Token(",", TokenType::COMMA, lineNo, colNo);
+    } else if (curChar == '[') {
+        token = Token("[", TokenType::OPEN_BRACKET, lineNo, colNo);
+    } else if (curChar == ']') {
+        token = Token("]", TokenType::CLOSE_BRACKET, lineNo, colNo);
+    } else if (curChar == '!') {
+        if (peek() == '!') {
+            nextChar();
+            token = Token("!!", TokenType::BIT_NOT, lineNo, colNo);
+        } else if (peek() == '=') {
+            nextChar();
+            token = Token("!=", TokenType::NOTEQ, lineNo, colNo);
+        } else
+            token = Token("!", TokenType::NOT, lineNo, colNo);
+    } else if (curChar == '=') {
+        if (peek() == '=') {
+            nextChar();
+            token = Token("==", TokenType::EQEQ, lineNo, colNo);
+        } else {
+            token = Token("=", TokenType::ASSIGN, lineNo, colNo);
+        }
+    } else if (curChar == '\"') {
+        int literalStartCol = colNo;
+        std::string lineSrc = getLineText(lineNo);
+        nextChar();
+        int startPos = curPos;
 
-		int startPos = curPos;
+        while (curChar != '\"' && curChar != '\0')
+            nextChar();
+        
+        if (curChar == '\0') {
+            MissingTerminatorError(
+                "Unterminated string literal",
+                lineNo,
+                literalStartCol,
+                filename,
+                "Did you forget a closing quote (\")?",
+                lineSrc
+            ).print();
+            exit(1);
+        }
 
-		while (curChar != '\"' && curChar != '\0')
-			nextChar();
-		if (curChar == '\0')
-			MissingTerminatorError("Unterminated string literal", lineNo);
+        token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo, colNo);
+    } else if (curChar == '\'') {
+        int literalStartCol = colNo;
+        std::string lineSrc = getLineText(lineNo);
+        nextChar();
+        int startPos = curPos;
 
-		token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo);
-	} else if (curChar == '\'') {
-		nextChar();
+        while (curChar != '\'' && curChar != '\0')
+            nextChar();
+        
+        if (curChar == '\0') {
+            MissingTerminatorError(
+                "Unterminated character literal",
+                lineNo,
+                literalStartCol,
+                filename,
+                "Character literals must end with a single quote (').",
+                lineSrc
+            ).print();
+            exit(1);
+        }
 
-		int startPos = curPos;
+        if (curPos - startPos == 1)
+            token = Token(source.substr(startPos, 1), TokenType::CHR, lineNo, colNo);
+        else 
+            token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo, colNo);
+    } else if (isalpha(curChar) || curChar == '_') {
+        int startPos = curPos;
 
-		while (curChar != '\'' && curChar != '\0')
-			nextChar();
-		if (curChar == '\0')
-			MissingTerminatorError("Unterminated string literal", lineNo);
+        char curChar = 0;
+        while (isalnum(curChar = peek()) || curChar == '_') {
+            nextChar();
+        }
 
-		if (curPos - startPos == 1)
-			token = Token(source.substr(startPos, 1), TokenType::CHR, lineNo);
-		else 
-			token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo);
-	} else if (isalpha(curChar) || curChar == '_') {
-		int startPos = curPos;
+        std::string text = source.substr(startPos, curPos-startPos+1);
 
-		char curChar = 0;
-		while (isalnum(curChar = peek()) || curChar == '_') {
-			nextChar();
-		}
+        TokenType kind;
 
-		std::string text = source.substr(startPos, curPos-startPos+1);
+        if (text == "int") {
+            kind = TokenType::TYPE_INT;
+        } else if (text == "str") {
+            kind = TokenType::TYPE_STR;
+        } else if (text == "float") {
+            kind = TokenType::TYPE_FLOAT;
+        } else if (text == "bool") {
+            kind = TokenType::TYPE_BOOL;
+        } else if (text == "vec") {
+            kind = TokenType::TYPE_VEC;
+        } else if (text == "load") {
+            kind = TokenType::LOAD;
+        } else if (text == "form") {
+            kind = TokenType::FORM;
+        } else if (text == "inline") {
+            kind = TokenType::INLINE;
+        }else if (text == "return") {
+            kind = TokenType::RETURN;
+        } else if (text == "class") {
+            kind = TokenType::CLASS;
+        } else if (text == "if") {
+            kind = TokenType::IF;
+        } else if (text == "else") {
+            kind = TokenType::ELSE;
+        } else if (text == "while") {
+            kind = TokenType::WHILE;
+        } else if (text == "for") {
+            kind = TokenType::FOR;
+        } else if (text == "break") {
+            kind = TokenType::BREAK;
+        } else if (text == "continue") {
+            kind = TokenType::CONTINUE;
+        } else if (text == "true" || text == "false") {
+            kind = TokenType::BOOL;
+        } else {
+            kind = TokenType::IDENT;
+        }
 
-		TokenType kind;
+        token = Token(text, kind, lineNo, colNo);
+    } else if (is_hex_digit(curChar)) {
+        bool (*is_digit_func) (char) = is_dec_digit;
+        if (curChar == '0') {
+            char peekChar = peek();
+            switch (peekChar) {
+            case 'x':
+                is_digit_func = is_hex_digit;
+                nextChar(2);
+                break;
+            case 'd':
+                nextChar(2);
+                break;
+            case 'o':
+                is_digit_func = is_oct_digit;
+                nextChar(2);
+                break;
+            case 'b':
+                is_digit_func = is_bin_digit;
+                nextChar(2);
+                break;
+            default:
+                if (isalnum(peekChar)) {
+                    SyntaxError(
+                        "Illegal integer literal radix specifier: " +
+                        std::string("0") + peekChar,
+                        lineNo,
+                        colNo,
+                        filename,
+                        "Use 0x for hex, 0b for binary, 0o for octal, and 0d for decimal.",
+                        getLineText(lineNo)
+                    ).print();
+                    exit(1);
+                }
+            }
+        }
 
-		if (text == "int") {
-			kind = TokenType::TYPE_INT;
-		} else if (text == "str") {
-			kind = TokenType::TYPE_STR;
-		} else if (text == "float") {
-			kind = TokenType::TYPE_FLOAT;
-		} else if (text == "bool") {
-			kind = TokenType::TYPE_BOOL;
-		} else if (text == "vec") {
-			kind = TokenType::TYPE_VEC;
-		} else if (text == "load") {
-			kind = TokenType::LOAD;
-		} else if (text == "form") {
-			kind = TokenType::FORM;
-		} else if (text == "inline") {
-			kind = TokenType::INLINE;
-		}else if (text == "return") {
-			kind = TokenType::RETURN;
-		} else if (text == "class") {
-			kind = TokenType::CLASS;
-		} else if (text == "if") {
-			kind = TokenType::IF;
-		} else if (text == "else") {
-			kind = TokenType::ELSE;
-		} else if (text == "while") {
-			kind = TokenType::WHILE;
-		} else if (text == "for") {
-			kind = TokenType::FOR;
-		} else if (text == "break") {
-			kind = TokenType::BREAK;
-		} else if (text == "continue") {
-			kind = TokenType::CONTINUE;
-		} else if (text == "true" || text == "false") {
-			kind = TokenType::BOOL;
-		} else {
-			kind = TokenType::IDENT;
-		}
+        int startPos = curPos;
+        
+        while (is_digit_func(peek())) {
+            nextChar();
+        }
 
-		token = Token(text, kind, lineNo);
-	} else if (is_hex_digit(curChar)) {
-		bool (*is_digit_func) (char) = is_dec_digit;
-		if (curChar == '0') {
-			char peekChar = peek();
-			switch (peekChar) {
-			case 'x':
-				is_digit_func = is_hex_digit;
-				nextChar(2);
-				break;
-			case 'd':
-				nextChar(2);
-				break;
-			case 'o':
-				is_digit_func = is_oct_digit;
-				nextChar(2);
-				break;
-			case 'b':
-				is_digit_func = is_bin_digit;
-				nextChar(2);
-				break;
-			default:
-				if (isalnum(peekChar))
-					SyntaxError("Illegal integer literal radix specifier: " + std::string(curChar, 1) + std::string(peekChar, 1), lineNo);
-			}
-		}
+        if (peek() == '.') {
+            if (is_digit_func != is_dec_digit) {
+                SyntaxError(
+                    "Floating-point literals with specified radixes are not supported.",
+                    lineNo,
+                    colNo,
+                    filename,
+                    "Only normal decimal floats are valid.",
+                    getLineText(lineNo)
+                ).print();
+                exit(1);
+            }
 
-		int startPos = curPos;
-		
-		while (is_digit_func(peek())) {
-			nextChar();
-		}
+            nextChar();
 
-		if (peek() == '.') {
-			if (is_digit_func != is_dec_digit) {
-				SyntaxError("Floating-point literals with specified radixes are not supported.", lineNo);
-			}
-			nextChar();
+            while (isdigit(peek()))
+                nextChar();
 
-			while (isdigit(peek())) {
-				nextChar();
-			}
+            token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, lineNo, colNo);
+        } else {
+            TokenType intlit_type = TokenType::INT_DEC;
 
-			token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, lineNo);
-		} else {
-			TokenType intlit_type = TokenType::INT_DEC;
+            if (is_digit_func == is_hex_digit)
+                intlit_type = TokenType::INT_HEX;
+            else if (is_digit_func == is_oct_digit)
+                intlit_type = TokenType::INT_OCT;
+            else if (is_digit_func == is_bin_digit)
+                intlit_type = TokenType::INT_BIN;
 
-			if (is_digit_func == is_hex_digit)
-				intlit_type = TokenType::INT_HEX;
-			else if (is_digit_func == is_oct_digit)
-				intlit_type = TokenType::INT_OCT;
-			else if (is_digit_func == is_bin_digit)
-				intlit_type = TokenType::INT_BIN;
+            token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo, colNo);
+        }
+    } else if (curChar == ':') {
+        token = Token(":", TokenType::COLON, lineNo, colNo);
+    } else if (curChar == ';') {
+        token = Token(";", TokenType::SEM, lineNo, colNo);
+    } else if (curChar == '\n') {
+        lineNo++;
 
-			token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo);
-		}
-	} else if (curChar == ':') {
-	    token = Token(":", TokenType::COLON, lineNo);
-	} else if (curChar == ';') {
-		token = Token(";", TokenType::SEM, lineNo);
-	} else if (curChar == '\n') {
-		lineNo++;
+        token = Token("\\n", TokenType::NEWLINE, lineNo, colNo);
+    } else if (curChar == '\0') {
+        token = Token("", TokenType::EOF_TOK, lineNo, colNo);
+    }
 
-		token = Token("\\n", TokenType::NEWLINE, lineNo);
-	} else if (curChar == '\0') {
-		token = Token("", TokenType::EOF_TOK, lineNo);
-	}
+    nextChar();
 
-	nextChar();
-
-	return token;
+    return token;
 }
 
 void Lexer::getTokens() {
-	while (true) {
-		Token token = getToken();
+    while (true) {
+        Token token = getToken();
 
-		if (token.kind != TokenType::NEWLINE && token.kind != TokenType::EOF_TOK) {
-			tokens.push_back(token);
-		} else {
-			if (token.kind == TokenType::EOF_TOK) {
-				break;
-			}
-		}
-	}
+        if (token.kind != TokenType::NEWLINE && token.kind != TokenType::EOF_TOK) {
+            tokens.push_back(token);
+        } else {
+            if (token.kind == TokenType::EOF_TOK) {
+                break;
+            }
+        }
+    }
 }
 
-Lexer::Lexer(std::string input) : source(input) {
-	curPos = -1;
-	lineNo = 1;
-}
+Lexer::Lexer(std::string input, std::string file)
+: source(input), curPos(-1), curChar('\0'), filename(file) {}

@@ -18,7 +18,7 @@ Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_
 
 Token Parser::current() {
 	if (pos >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, tokens[pos-1].lineNo);
+		return Token("\0", TokenType::EOF_TOK, tokens[pos-1].lineNo, tokens[pos-1].colNo);
 	}
 
 	return tokens[pos];
@@ -26,7 +26,7 @@ Token Parser::current() {
 
 Token Parser::peek(int num) {
 	if ((pos+num) >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, 0);
+		return Token("\0", TokenType::EOF_TOK, 0, 0);
 	}
 
 	return tokens[pos+num];
@@ -34,7 +34,7 @@ Token Parser::peek(int num) {
 
 Token Parser::advance(int num) {
 	if (pos >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, 0);
+		return Token("\0", TokenType::EOF_TOK, 0, 0);
 	}
 
 	Token token = tokens[pos];

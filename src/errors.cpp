@@ -1,30 +1,121 @@
 #include "errors.hpp"
 
-Error::Error(std::string errorMessage, int line) : message(errorMessage), lineNo(line) {
-    printException();
-}
+Error::Error(
+    std::string msg,
+    int line,
+    int col,
+    std::string file,
+    std::string hintMsg,
+    std::string lineSrc
+) : message(msg), lineNo(line), colNo(col), filename(file), hint(hintMsg), lineText(lineSrc) {}
 
 std::string Error::getClassName() const {
-    std::string res = typeid(*this).name();
-    res.erase(0, 1);
-
-    return res;
-};
-
-void Error::printException() {
-    if (lineNo == -1)
-        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on unknown line:\n"
-                  << "        " + message + "\x1b[0m" << std::endl;
-    else
-        std::cerr << "\x1b[38;5;9m[ERROR] " + getClassName() + " on line " << lineNo << ":\n"
-                  << "        " + message + "\x1b[0m" << std::endl;
-    exit(1);
+    return "Error";
 }
 
-SyntaxError::SyntaxError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+std::string Error::format() const {
+    std::ostringstream out;
 
-MissingTerminatorError::MissingTerminatorError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+    out << BOLD << RED << "[" << getClassName() << "]" << RESET  << " "
+        << RED << message << RESET << "\n";
+    
+    if (lineNo >= 0) {
+        out << GRAY << "  --> ";
+        if (!filename.empty()) out << filename << ":";
+        out << lineNo;
+        if (colNo >= 0) out << ":" << colNo;
+        out << RESET << "\n";
+    }
 
-IdentifierError::IdentifierError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+    if (!lineText.empty()) {
+        std::string lineNoStr = std::to_string(lineNo);
+        int paddingWidth = lineNoStr.length();
 
-TypeError::TypeError(std::string errorMessage, int line) : Error(errorMessage, line) {}
+        out << GRAY << std::string(paddingWidth, ' ') << " |" << RESET << "\n";
+        out << BOLD << lineNoStr << RESET << GRAY << " | " << RESET << lineText << "\n";
+
+        int arrowCol = std::min(colNo, (int)lineText.size() + 1);
+
+        if (arrowCol > 0) {
+            out << GRAY << std::string(paddingWidth, ' ') << " | " << RESET;
+            
+            for (int i = 0; i < arrowCol - 1; i++) {
+                out << (lineText[i] == '\t' ? '\t' : ' ');
+            }
+
+            out << BOLD << RED << "^" << RESET << "\n";
+        }
+
+        out << GRAY << std::string(paddingWidth, ' ') << " |" << RESET << "\n";
+    }
+
+    if (!hint.empty()) {
+        out << YELLOW << "Hint: " << RESET << hint << "\n";
+    }
+
+    return out.str();
+}
+
+void Error::print() const {
+    std::cerr << format() << std::endl;
+}
+
+const char* Error::what() const noexcept {
+    return message.c_str();
+}
+
+void Error::setHint(const std::string& h) {
+    hint = h;
+}
+
+SyntaxError::SyntaxError(
+    std::string msg,
+    int line,
+    int col,
+    std::string file,
+    std::string hintMsg,
+    std::string lineSrc
+) : Error(msg, line, col, file, hintMsg, lineSrc) {}
+
+std::string SyntaxError::getClassName() const {
+    return "SyntaxError";
+}
+
+MissingTerminatorError::MissingTerminatorError(
+    std::string msg,
+    int line,
+    int col,
+    std::string file,
+    std::string hintMsg,
+    std::string lineSrc
+) : SyntaxError(msg, line, col, file, hintMsg, lineSrc) {}
+
+std::string MissingTerminatorError::getClassName() const {
+    return "MissingTerminatorError";
+}
+
+IdentifierError::IdentifierError(
+    std::string msg,
+    int line,
+    int col,
+    std::string file,
+    std::string hintMsg,
+    std::string lineSrc
+) : Error(msg, line, col, file, hintMsg, lineSrc) {}
+
+std::string IdentifierError::getClassName() const {
+    return "IdentifierError";
+}
+
+TypeError::TypeError(
+    std::string msg,
+    int line,
+    int col,
+    std::string file,
+    std::string hintMsg,
+    std::string lineSrc
+) : Error(msg, line, col, file, hintMsg, lineSrc) {}
+
+std::string TypeError::getClassName() const {
+    return "TypeError";
+}

@@ -39,7 +39,7 @@ int32_t main(int32_t argc, char **argv) {
 		vm.run(bytecode);
 		exit(0);
 	} else {
-		Lexer lexer(output);
+		Lexer lexer(output, SRC_FILENAME);
 
 		lexer.nextChar();
 		lexer.getTokens();

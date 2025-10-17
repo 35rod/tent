@@ -3,24 +3,27 @@
 #include <string>
 #include <vector>
 #include "token.hpp"
+#include "errors.hpp"
 
 class Lexer {
     std::string source;
     std::string::size_type curPos;
     char curChar;
-    int lineNo;
+    int lineNo = -1;
+    int colNo = -1;
+    std::string filename;
 
     char peek();
     void skipWhitespace();
     void skipComment();
-    
     Token getToken();
+    std::string getLineText(int line);
 
     public:
         std::vector<Token> tokens;
 
-        void nextChar(int num=1);
+        void nextChar(int num = 1);
         void getTokens();
 
-        Lexer(std::string input);
+        Lexer(std::string input, std::string file = "<stdin>");
 };
