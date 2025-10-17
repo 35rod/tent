@@ -56,5 +56,29 @@ inline constexpr bool is_primitive_val(const Value& val) {
 	return !std::holds_alternative<NullLiteral>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
 }
 
+static inline std::string getLineText(std::string source, int line) {
+    size_t start = 0;
+    int current = 1;
+
+    while (current < line) {
+        size_t next_newline = source.find('\n', start);
+
+        if (next_newline == std::string::npos) {
+            return ""; 
+        }
+
+        start = next_newline + 1;
+        current++;
+    }
+
+    size_t end = source.find('\n', start);
+
+    if (end == std::string::npos) {
+        return source.substr(start);
+    }
+
+    return source.substr(start, end - start);
+}
+
 int64_t ipow(int64_t base, uint8_t exp);
 bool isRightAssoc(const TokenType& op);

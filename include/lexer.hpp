@@ -17,7 +17,6 @@ class Lexer {
     void skipWhitespace();
     void skipComment();
     Token getToken();
-    std::string getLineText(int line);
 
     public:
         std::vector<Token> tokens;

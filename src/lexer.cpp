@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "types.hpp"
 #include <sstream>
 #include <cctype>
 #include "opcodes.hpp"
@@ -40,30 +41,6 @@ void Lexer::skipComment() {
             nextChar();
         }
     }
-}
-
-std::string Lexer::getLineText(int line) {
-    size_t start = 0;
-    int current = 1;
-
-    while (current < line) {
-        size_t next_newline = source.find('\n', start);
-
-        if (next_newline == std::string::npos) {
-            return ""; 
-        }
-
-        start = next_newline + 1;
-        current++;
-    }
-
-    size_t end = source.find('\n', start);
-
-    if (end == std::string::npos) {
-        return source.substr(start);
-    }
-
-    return source.substr(start, end - start);
 }
 
 #include "is_digit_incl.cpp"
@@ -226,7 +203,7 @@ Token Lexer::getToken() {
         }
     } else if (curChar == '\"') {
         int literalStartCol = colNo;
-        std::string lineSrc = getLineText(lineNo);
+        std::string lineSrc = getLineText(source, lineNo);
         nextChar();
         int startPos = curPos;
 
@@ -248,7 +225,7 @@ Token Lexer::getToken() {
         token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo, colNo);
     } else if (curChar == '\'') {
         int literalStartCol = colNo;
-        std::string lineSrc = getLineText(lineNo);
+        std::string lineSrc = getLineText(source, lineNo);
         nextChar();
         int startPos = curPos;
 
@@ -261,7 +238,7 @@ Token Lexer::getToken() {
                 lineNo,
                 literalStartCol,
                 filename,
-                "Character literals must end with a single quote (').",
+                "Did you forget a closing quote (')?.",
                 lineSrc
             ).print();
             exit(1);
@@ -351,7 +328,7 @@ Token Lexer::getToken() {
                         colNo,
                         filename,
                         "Use 0x for hex, 0b for binary, 0o for octal, and 0d for decimal.",
-                        getLineText(lineNo)
+                        getLineText(source, lineNo)
                     ).print();
                     exit(1);
                 }
@@ -372,7 +349,7 @@ Token Lexer::getToken() {
                     colNo,
                     filename,
                     "Only normal decimal floats are valid.",
-                    getLineText(lineNo)
+                    getLineText(source, lineNo)
                 ).print();
                 exit(1);
             }

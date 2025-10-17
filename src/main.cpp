@@ -44,7 +44,7 @@ int32_t main(int32_t argc, char **argv) {
 		lexer.nextChar();
 		lexer.getTokens();
 
-		Parser parser(lexer.tokens, search_dirs);
+		Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
 		program = parser.parse_program();
 	}
 

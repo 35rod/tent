@@ -36,6 +36,9 @@ class Parser {
     std::vector<Token> tokens;
     std::vector<Token>::size_type pos = 0;
 
+    std::string source;
+    std::string filename;
+
     const std::vector<std::string> file_search_dirs;
 
     Token current();
@@ -50,5 +53,5 @@ class Parser {
     public:
         ASTPtr parse_program();
 
-        Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs);
+        Parser(std::vector<Token> parserTokens, std::string input, std::string file, std::vector<std::string> search_dirs);
 };

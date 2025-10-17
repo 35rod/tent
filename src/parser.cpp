@@ -13,8 +13,8 @@
 
 std::vector<std::string> nativeLibs;
 
-Parser::Parser(std::vector<Token> parserTokens, std::vector<std::string> search_dirs)
-	: tokens(parserTokens), file_search_dirs(search_dirs) {}
+Parser::Parser(std::vector<Token> parserTokens, std::string input, std::string file, std::vector<std::string> search_dirs)
+: tokens(parserTokens), source(input), filename(file), file_search_dirs(search_dirs) {}
 
 Token Parser::current() {
 	if (pos >= tokens.size()) {
@@ -48,8 +48,16 @@ Token Parser::expect(TokenType ttype) {
 		return current();
 	}
 
-	SyntaxError("Expected " + std::to_string((uint16_t)ttype)
-            + ", got " + std::to_string((uint16_t)current().kind), current().lineNo);
+	SyntaxError(
+		"Expected " + tokenTypeToString(ttype) +
+		", got " + tokenTypeToString(current().kind),
+		current().lineNo,
+		current().colNo,
+		filename,
+		"",
+		getLineText(source, current().lineNo)
+	).print();
+	exit(1);
 
 	return current();
 }
@@ -90,8 +98,17 @@ std::vector<ExpressionStmt> Parser::parse_block() {
 	std::vector<ExpressionStmt> stmts;
 
 	while (current().kind != TokenType::CLOSE_BRAC) {
-		if (current().kind == TokenType::EOF_TOK)
-			SyntaxError("Closing braces required for code block", current().lineNo);
+		if (current().kind == TokenType::EOF_TOK) {
+			SyntaxError(
+				"Closing braces required for code block", 
+				current().lineNo,
+				current().colNo,
+				filename,
+				"Did you forget a closing brace (})?",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
+		}
 
 		ExpressionStmt&& stmt = parse_statement();
 
@@ -110,15 +127,21 @@ ExpressionStmt Parser::parse_statement() {
 
 	if (token.kind == TokenType::LOAD) {
 		advance();
-		Token filename = expect(TokenType::STR);
+		std::string fname = expect(TokenType::STR).text;
 
 		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
-			MissingTerminatorError("Missing statement terminator after load statement", current().lineNo);
+			MissingTerminatorError(
+				"Missing statement terminator after load statement", 
+				current().lineNo,
+				current().colNo,
+				filename,
+				"Did you forget a semicolon (;)?",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
 		}
-
-		std::string fname = filename.text;
 
 		if (fname.size() >= 5 && fname.substr(fname.size() - 5) == ".tent") {
 			std::ifstream fileHandle(fname);
@@ -143,7 +166,7 @@ ExpressionStmt Parser::parse_statement() {
 			lexer.nextChar();
 			lexer.getTokens();
 
-			Parser parser(lexer.tokens, file_search_dirs);
+			Parser parser(lexer.tokens, output, fname, file_search_dirs);
 
 			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
 
@@ -207,9 +230,6 @@ ExpressionStmt Parser::parse_statement() {
 		nativeLibs.push_back(fname);
 
 		return ExpressionStmt(std::make_unique<NoOp>(), true);
-	/*	std::cerr << "Unsupported file type for LOAD: " << fname << std::endl;
-
-		return ExpressionStmt(std::make_unique<NoOp>(), true);*/
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 
@@ -227,7 +247,15 @@ ExpressionStmt Parser::parse_statement() {
 
 		while (current().kind != TokenType::CLOSE_PAREN) {
 			if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError("Closing parentheses required for function/class definition", current().lineNo);
+				SyntaxError(
+					"Closing parenthesis required for function/class definition",
+					current().lineNo,
+					current().colNo,
+					filename,
+					"Did you forget closing parenthesis ())?",
+					getLineText(source, current().lineNo)
+				).print();
+				exit(1);
 			}
 
 			Token param = expect(TokenType::IDENT);
@@ -267,7 +295,15 @@ ExpressionStmt Parser::parse_statement() {
 		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
-			MissingTerminatorError("Missing statement terminator after return statement", current().lineNo);
+			MissingTerminatorError(
+				"Missing statement terminator after return statement",
+				current().lineNo,
+				current().colNo,
+				filename,
+				"Did you forget a semicolon (;)?",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
 		}
 
 		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value));
@@ -343,8 +379,17 @@ ExpressionStmt Parser::parse_statement() {
 	} else if (token.kind == TokenType::BREAK || token.kind == TokenType::CONTINUE) {
 		if (peek().kind == TokenType::SEM)
 			advance();
-		else
-			MissingTerminatorError("Missing statement terminator after break statement", current().lineNo);
+		else {
+			MissingTerminatorError(
+				"Missing statement terminator after break statement",
+				current().lineNo,
+				current().colNo,
+				filename,
+				"Did you forget a semicolon (;)?",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
+		}
 
 		return ExpressionStmt(std::make_unique<NoOp>(), true, true, token.kind == TokenType::CONTINUE);
 	}
@@ -354,7 +399,15 @@ ExpressionStmt Parser::parse_statement() {
 	if (peek().kind == TokenType::SEM) {
 		advance();
 	} else {
-		MissingTerminatorError("Missing statement terminator after expression", current().lineNo);
+		MissingTerminatorError(
+			"Missing statement terminator after expression",
+			current().lineNo,
+			current().colNo,
+			filename,
+			"Did you forget a semicolon (;)?",
+			getLineText(source, current().lineNo)
+		).print();
+		exit(1);
 	}
 
 	return ExpressionStmt(std::move(expr));
@@ -385,10 +438,17 @@ ASTPtr Parser::parse_expression(int min_bp) {
 			base = 8;
 		if (token.kind == TokenType::INT_BIN)
 			base = 2;
-		if (base == -1)
-			SyntaxError("Somehow an integer with an invalid radix (base) has slipped through the cracks..."
-					"this message shouldn't ever appear at all, really."
-					"Please report this in the Issue Tracker.", token.lineNo);
+		if (base == -1) {
+			SyntaxError(
+				"Invalid radix base",
+				current().lineNo,
+				current().colNo,
+				filename,
+				"Please report this in the Issue Tracker",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
+		}
 
 		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base));
 	} else if (token.kind == TokenType::FLOAT) {
@@ -420,7 +480,15 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		
 		while (current().kind != TokenType::CLOSE_BRACKET) {
 			if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError("Unterminated vector literal", current().lineNo);
+				SyntaxError(
+					"Unterminated vector literal",
+					current().lineNo,
+					current().colNo,
+					filename,
+					"Did you forget a closing bracket (])?",
+					getLineText(source, current().lineNo)
+				).print();
+				exit(1);
 			}
 
 			ASTPtr elem = parse_expression(0);
@@ -444,7 +512,15 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 	    while (current().kind != TokenType::CLOSE_BRAC) {
 	        if (current().kind == TokenType::EOF_TOK) {
-	            SyntaxError("Unterminated dictionary literal", current().lineNo);
+				SyntaxError(
+					"Unterminated dictionary literal",
+					current().lineNo,
+					current().colNo,
+					filename,
+					"Did you forget a closing brace (})?",
+					getLineText(source, current().lineNo)
+				).print();
+	            exit(1);
 	        }
 
 	        ASTPtr key = parse_expression(0);
@@ -473,7 +549,15 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 			while (current().kind != TokenType::CLOSE_PAREN) {
 				if (current().kind == TokenType::EOF_TOK) {
-					SyntaxError("Closing parenthesis required for function call", current().lineNo);
+					SyntaxError(
+						"Closing parenthesis required for function call", 
+						current().lineNo,
+						current().colNo,
+						filename,
+						"Did you forget closing parenthesis ())?",
+						getLineText(source, current().lineNo)
+					).print();
+					exit(1);
 				}
 
 				ASTPtr param = parse_expression(0);
@@ -501,8 +585,16 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		advance();
 		expect(TokenType::CLOSE_PAREN);
 	} else {
-		SyntaxError("Unexpected token in expression: " + std::to_string((uint16_t)token.kind) + 
-			(token.text.empty() ? "" : (", '" + token.text + "'")), token.lineNo);
+		SyntaxError(
+			"Unexpected token in expression: " + tokenTypeToString(token.kind) +
+			(token.text.empty() ? "" : (", '" + token.text + "'")),
+			token.lineNo,
+			token.colNo,
+			filename,
+			"",
+			getLineText(source, token.lineNo)
+		).print();
+		exit(1);
 	}
 
 	while (true) {
