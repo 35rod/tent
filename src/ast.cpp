@@ -2,91 +2,104 @@
 #include "ast.hpp"
 #include "misc.hpp"
 
-IntLiteral::IntLiteral(tn_int_t literalValue) : ASTNode(), value(literalValue) {}
+IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)
+: ASTNode(line, col, file), value(literalValue) {}
 
 void IntLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "IntLiteral(value=" << value << ")\n";
 }
 
-FloatLiteral::FloatLiteral(tn_dec_t literalValue) : ASTNode(), value(literalValue) {}
+FloatLiteral::FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file)
+: ASTNode(line, col, file), value(literalValue) {}
 
 void FloatLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "FloatLiteral(value=" << value << ")\n";
 }
 
-StrLiteral::StrLiteral(std::string literalValue) : ASTNode(), value(literalValue) {}
+StrLiteral::StrLiteral(std::string literalValue, int line, int col, std::string file)
+: ASTNode(line, col, file), value(literalValue) {}
 
 void StrLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "StringLiteral(value=" << value << ")\n";
 }
 
-BoolLiteral::BoolLiteral(tn_bool_t literalValue) : ASTNode(), value(literalValue) {}
+BoolLiteral::BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file)
+: ASTNode(line, col, file), value(literalValue) {}
 
 void BoolLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "BoolLiteral(value=" << (value ? "true" : "false") << ")\n";
 }
 
-VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue) : ASTNode(), elems(std::move(literalValue)) {}
+VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file)
+: ASTNode(line, col, file), elems(std::move(literalValue)) {}
 
 void VecLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
-DicLiteral::DicLiteral(std::map<ASTPtr, ASTPtr> literalDic) : ASTNode(), dic(std::move(literalDic)) {}
+DicLiteral::DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file)
+: ASTNode(line, col, file), dic(std::move(literalDic)) {}
 
 void DicLiteral::print(int indent) {
     printIndent(indent);
     std::cout << "DicLiteral(size=" << dic.size() << ")\n";
 }
 
-TypeInt::TypeInt() : ASTNode() {}
+TypeInt::TypeInt(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeInt::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeInt()" << std::endl;
 }
 
-TypeFloat::TypeFloat() : ASTNode() {}
+TypeFloat::TypeFloat(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeFloat::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeFloat()" << std::endl;
 }
 
-TypeStr::TypeStr() : ASTNode() {}
+TypeStr::TypeStr(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeStr::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeStr()" << std::endl;
 }
 
-TypeBool::TypeBool() : ASTNode() {}
+TypeBool::TypeBool(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeBool::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeBool()" << std::endl;
 }
 
-TypeVec::TypeVec() : ASTNode() {}
+TypeVec::TypeVec(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeVec::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeVec()" << std::endl;
 }
 
-TypeDic::TypeDic() : ASTNode() {}
+TypeDic::TypeDic(int line, int col, std::string file)
+: ASTNode(line, col, file) {}
 
 void TypeDic::print(int indent) {
     printIndent(indent);
     std::cout << "TypeDic()" << std::endl;
 }
 
-Variable::Variable(std::string varName, ASTPtr varValue) : ASTNode(), name(varName), value(std::move(varValue)) {}
+Variable::Variable(std::string varName, ASTPtr varValue, int line, int col, std::string file)
+: ASTNode(line, col, file), name(varName), value(std::move(varValue)) {}
 
 void Variable::print(int indent) {
 	printIndent(indent);
@@ -99,8 +112,8 @@ void Variable::print(int indent) {
 	}
 }
 
-UnaryOp::UnaryOp(TokenType opOp, ASTPtr opOperand)
-: ASTNode(), op(opOp), operand(std::move(opOperand)) {}
+UnaryOp::UnaryOp(TokenType opOp, ASTPtr opOperand, int line, int col, std::string file)
+: ASTNode(line, col, file), op(opOp), operand(std::move(opOperand)) {}
 
 void UnaryOp::print(int indent) {
 	printIndent(indent);
@@ -116,8 +129,8 @@ void UnaryOp::print(int indent) {
 	}
 }
 
-BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight) :
-ASTNode(), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
+BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file)
+: ASTNode(line, col, file), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 
 void BinaryOp::print(int indent) {
 	printIndent(indent);
@@ -143,7 +156,14 @@ void BinaryOp::print(int indent) {
 	}
 }
 
-IfStmt::IfStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts) : condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
+IfStmt::IfStmt(
+	ASTPtr stmtCondition,
+	std::vector<ExpressionStmt> thenStmts,
+	std::vector<ExpressionStmt> elseStmts,
+	int line,
+	int col,
+	std::string file
+) : ASTNode(line, col, file), condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
 void IfStmt::print(int indent) {
 	printIndent(indent);
@@ -165,8 +185,8 @@ void IfStmt::print(int indent) {
 	}
 }
 
-WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts) :
-ASTNode(), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
+WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file) :
+ASTNode(line, col, file), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
 
 void WhileStmt::print(int indent) {
 	printIndent(indent);
@@ -182,8 +202,8 @@ void WhileStmt::print(int indent) {
 	}
 }
 
-ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts)  :
-ASTNode(), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
+ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file)  :
+ASTNode(line, col, file), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
 
 void ForStmt::print(int indent) {
 	printIndent(indent);
@@ -203,8 +223,8 @@ void ForStmt::print(int indent) {
 	}
 }
 
-FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams)
-: name(callName), params(std::move(callParams)) {}
+FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file)
+: ASTNode(line, col, file), name(callName), params(std::move(callParams)) {}
 
 void FunctionCall::print(int indent) {
 	printIndent(indent);
@@ -217,7 +237,8 @@ void FunctionCall::print(int indent) {
 	}
 }
 
-ReturnStmt::ReturnStmt(ASTPtr stmtValue) : value(std::move(stmtValue)) {}
+ReturnStmt::ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file)
+: ASTNode(line, col, file), value(std::move(stmtValue)) {}
 
 void ReturnStmt::print(int indent) {
 	printIndent(indent);
@@ -231,8 +252,15 @@ void ReturnStmt::print(int indent) {
 	}
 }
 
-FunctionStmt::FunctionStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue)
-: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
+FunctionStmt::FunctionStmt(
+	std::string stmtName, 
+	std::vector<ASTPtr> stmtParams, 
+	std::vector<ExpressionStmt> stmtStmts, 
+	ASTPtr stmtReturnValue,
+	int line,
+	int col,
+	std::string file
+) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
 
 void FunctionStmt::print(int indent) {
 	printIndent(indent);
@@ -252,8 +280,15 @@ void FunctionStmt::print(int indent) {
 	}
 }
 
-InlineStmt::InlineStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue)
-: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
+InlineStmt::InlineStmt(
+	std::string stmtName, 
+	std::vector<ASTPtr> stmtParams, 
+	std::vector<ExpressionStmt> stmtStmts, 
+	ASTPtr stmtReturnValue,
+	int line,
+	int col,
+	std::string file
+) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
 
 void InlineStmt::print(int indent) {
 	printIndent(indent);
@@ -273,8 +308,14 @@ void InlineStmt::print(int indent) {
 	}
 }
 
-ClassStmt::ClassStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts)
-: name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)) {}
+ClassStmt::ClassStmt(
+	std::string stmtName, 
+	std::vector<ASTPtr> stmtParams, 
+	std::vector<ExpressionStmt> stmtStmts,
+	int line,
+	int col,
+	std::string file
+) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)) {}
 
 void ClassStmt::print(int indent) {
 	printIndent(indent);
@@ -295,11 +336,14 @@ void ClassStmt::print(int indent) {
 }
 
 ExpressionStmt::ExpressionStmt(
-		ASTPtr stmtExpr,
-		bool stmtNoOp,
-		bool exprIsBreak,
-		bool exprIsContinue
-) : ASTNode(), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+	ASTPtr stmtExpr,
+	bool stmtNoOp,
+	bool exprIsBreak,
+	bool exprIsContinue,
+	int line,
+	int col,
+	std::string file
+) : ASTNode(line, col, file), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);
@@ -313,7 +357,8 @@ void ExpressionStmt::print(int indent) {
 	}
 }
 
-Program::Program(std::vector<ExpressionStmt>&& programStatements) : ASTNode(), statements(std::move(programStatements)) {}
+Program::Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file)
+: ASTNode(line, col, file), statements(std::move(programStatements)) {}
 
 void Program::print(int indent) {
 	printIndent(indent);

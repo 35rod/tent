@@ -88,7 +88,7 @@ ASTPtr Parser::parse_program() {
 		}
 	}
 
-	return std::make_unique<Program>(std::move(stmts));
+	return std::make_unique<Program>(std::move(stmts), -1, -1, filename);
 }
 
 std::vector<ExpressionStmt> Parser::parse_block() {
@@ -168,9 +168,9 @@ ExpressionStmt Parser::parse_statement() {
 
 			Parser parser(lexer.tokens, output, fname, file_search_dirs);
 
-			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements));
+			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements), -1, -1, filename);
 
-			return ExpressionStmt(std::move(imported_program));
+			return ExpressionStmt(std::move(imported_program), false, false, false, current().lineNo, current().colNo, filename);
 		}
 
 		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
@@ -229,11 +229,11 @@ ExpressionStmt Parser::parse_statement() {
 
 		nativeLibs.push_back(fname);
 
-		return ExpressionStmt(std::make_unique<NoOp>(), true);
+		return ExpressionStmt(std::make_unique<NoOp>(), true, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 
-		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), true);
+		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), true, false, false, current().lineNo, current().colNo, filename);
 
 		return expressionStmt;
 	} else if (token.kind == TokenType::FORM || token.kind == TokenType::INLINE || token.kind == TokenType::CLASS) {
@@ -260,7 +260,7 @@ ExpressionStmt Parser::parse_statement() {
 
 			Token param = expect(TokenType::IDENT);
 
-			params.push_back(std::make_unique<Variable>(param.text, nullptr));
+			params.push_back(std::make_unique<Variable>(param.text, nullptr, current().lineNo, current().colNo, filename));
 
 			advance();
 
@@ -279,14 +279,14 @@ ExpressionStmt Parser::parse_statement() {
 		ASTPtr res = nullptr;
 
 		if (token.kind == TokenType::FORM) {
-			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts), nullptr, current().lineNo, current().colNo, filename);
 		} else if (token.kind == TokenType::INLINE) {
-			res = std::make_unique<InlineStmt>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<InlineStmt>(name.text, std::move(params), std::move(stmts), nullptr, current().lineNo, current().colNo, filename);
 		} else {
-			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts));
+			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts), current().lineNo, current().colNo, filename);
 		}
 		
-		return ExpressionStmt(std::move(res));
+		return ExpressionStmt(std::move(res), false, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::RETURN) {
 		advance();
 
@@ -306,9 +306,9 @@ ExpressionStmt Parser::parse_statement() {
 			exit(1);
 		}
 
-		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value));
+		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value), current().lineNo, current().colNo, filename);
 
-		return ExpressionStmt(std::move(returnStmt));
+		return ExpressionStmt(std::move(returnStmt), false, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::WHILE) {
 		advance();
 		ASTPtr condition = parse_expression(0);
@@ -322,9 +322,9 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr whileStmt = std::make_unique<WhileStmt>(std::move(condition), std::move(stmts));
+		ASTPtr whileStmt = std::make_unique<WhileStmt>(std::move(condition), std::move(stmts), current().lineNo, current().colNo, filename);
 
-		return ExpressionStmt(std::move(whileStmt));
+		return ExpressionStmt(std::move(whileStmt), false, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::FOR) {
 		advance();
 		ASTPtr var = parse_expression(0);
@@ -342,9 +342,9 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts));
+		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts), current().lineNo, current().colNo, filename);
 
-		return ExpressionStmt(std::move(forStmt));
+		return ExpressionStmt(std::move(forStmt), false, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::IF) {
 		advance();
 
@@ -360,9 +360,9 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		if (current().kind != TokenType::ELSE) {
-			ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts));
+			ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::vector<ExpressionStmt>(), current().lineNo, current().colNo, filename);
 
-			return ExpressionStmt(std::move(ifStmt));
+			return ExpressionStmt(std::move(ifStmt), false, false, false, current().lineNo, current().colNo, filename);
 		}
 
 		advance();
@@ -373,9 +373,9 @@ ExpressionStmt Parser::parse_statement() {
 			elseStmts = parse_block();
 		}
 
-		ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::move(elseStmts));
+		ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::move(elseStmts), current().lineNo, current().colNo, filename);
 
-		return ExpressionStmt(std::move(ifStmt));
+		return ExpressionStmt(std::move(ifStmt), false, false, false, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::BREAK || token.kind == TokenType::CONTINUE) {
 		if (peek().kind == TokenType::SEM)
 			advance();
@@ -391,7 +391,7 @@ ExpressionStmt Parser::parse_statement() {
 			exit(1);
 		}
 
-		return ExpressionStmt(std::make_unique<NoOp>(), true, true, token.kind == TokenType::CONTINUE);
+		return ExpressionStmt(std::make_unique<NoOp>(), true, true, token.kind == TokenType::CONTINUE, current().lineNo, current().colNo, filename);
 	}
 
 	ASTPtr expr = parse_expression(0);
@@ -410,7 +410,7 @@ ExpressionStmt Parser::parse_statement() {
 		exit(1);
 	}
 
-	return ExpressionStmt(std::move(expr));
+	return ExpressionStmt(std::move(expr), false, false, false, current().lineNo, current().colNo, filename);
 }
 
 ASTPtr Parser::parse_expression(int min_bp) {
@@ -427,7 +427,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		TokenType new_token_type = (token.kind == TokenType::SUB)
 			? TokenType::NEGATE
 			: token.kind;
-		left = std::make_unique<UnaryOp>(new_token_type, std::move(operand));
+		left = std::make_unique<UnaryOp>(new_token_type, std::move(operand), current().lineNo, current().colNo, filename);
 	} else if (token.kind >= TokenType::INT_HEX && token.kind <= TokenType::INT_BIN) {
 		int8_t base = -1;
 		if (token.kind == TokenType::INT_HEX)
@@ -450,29 +450,29 @@ ASTPtr Parser::parse_expression(int min_bp) {
 			exit(1);
 		}
 
-		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base));
+		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base), current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::FLOAT) {
-		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL));
+		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL), current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::STR) {
-		left = std::make_unique<StrLiteral>(read_escape(token.text));
+		left = std::make_unique<StrLiteral>(read_escape(token.text), current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_INT) {
-		left = std::make_unique<TypeInt>();
+		left = std::make_unique<TypeInt>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_FLOAT) {
-		left = std::make_unique<TypeFloat>();
+		left = std::make_unique<TypeFloat>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_STR) {
-		left = std::make_unique<TypeStr>();
+		left = std::make_unique<TypeStr>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_BOOL) {
-		left = std::make_unique<TypeBool>();
+		left = std::make_unique<TypeBool>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_VEC) {
-		left = std::make_unique<TypeVec>();
+		left = std::make_unique<TypeVec>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::TYPE_DIC) {
-	    left = std::make_unique<TypeDic>();
+	    left = std::make_unique<TypeDic>(current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::CHR) {
 		char c = 0;
 		get_escape(token.text, &c);
-		left = std::make_unique<IntLiteral>(c);
+		left = std::make_unique<IntLiteral>(c, current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::BOOL) {
-		left = std::make_unique<BoolLiteral>(token.text == "true");
+		left = std::make_unique<BoolLiteral>(token.text == "true", current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::OPEN_BRACKET) {
 		advance();
 
@@ -504,7 +504,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 			advance();
 		}
 		
-		left = std::make_unique<VecLiteral>(std::move(elems));
+		left = std::make_unique<VecLiteral>(std::move(elems), current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::OPEN_BRAC) {
 	    advance();
 
@@ -540,7 +540,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 	        advance();
 	    }
 
-	    left = std::make_unique<DicLiteral>(std::move(dic));
+	    left = std::make_unique<DicLiteral>(std::move(dic), current().lineNo, current().colNo, filename);
 	} else if (token.kind == TokenType::IDENT) {
 		if (peek().kind == TokenType::OPEN_PAREN) {
 			advance(2);
@@ -573,11 +573,11 @@ ASTPtr Parser::parse_expression(int min_bp) {
 				advance();
 			}
 
-			ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params));
+			ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params), current().lineNo, current().colNo, filename);
 
 			left = std::move(call);
 		} else {
-			left = std::make_unique<Variable>(token.text);
+			left = std::make_unique<Variable>(token.text, nullptr, current().lineNo, current().colNo, filename);
 		}
 	} else if (token.kind == TokenType::OPEN_PAREN) {
 		advance();
@@ -603,7 +603,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		if (nextToken.kind == TokenType::INCREMENT || nextToken.kind == TokenType::DECREMENT) {
 			advance();
 
-			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left));
+			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left), current().lineNo, current().colNo, filename);
 			continue;
 		}
 
@@ -624,7 +624,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		advance();
 
 		ASTPtr right = parse_expression(isRightAssoc(op.kind) ? bp : bp+1);
-		left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right));
+		left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right), current().lineNo, current().colNo, filename);
 	}
 
 	return left;

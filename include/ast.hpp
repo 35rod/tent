@@ -44,7 +44,7 @@ class IntLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		IntLiteral(tn_int_t literalValue);
+		IntLiteral(tn_int_t literalValue, int line, int col, std::string file);
 };
 
 class FloatLiteral : public ASTNode {
@@ -53,7 +53,7 @@ class FloatLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		FloatLiteral(tn_dec_t literalValue);
+		FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file);
 };
 
 class StrLiteral : public ASTNode {
@@ -62,7 +62,7 @@ class StrLiteral : public ASTNode {
 		
 		void print(int indent) override;
 
-		StrLiteral(std::string literalValue);
+		StrLiteral(std::string literalValue, int line, int col, std::string file);
 };
 
 class BoolLiteral : public ASTNode {
@@ -71,7 +71,7 @@ class BoolLiteral : public ASTNode {
 		
 		void print(int indent) override;
 
-		BoolLiteral(tn_bool_t literalValue);
+		BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file);
 };
 
 class VecLiteral : public ASTNode {
@@ -80,7 +80,7 @@ class VecLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		VecLiteral(std::vector<ASTPtr> literalValue);
+		VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file);
 };
 
 class DicLiteral : public ASTNode {
@@ -89,49 +89,49 @@ class DicLiteral : public ASTNode {
 
         void print(int indent) override;
 
-        DicLiteral(std::map<ASTPtr, ASTPtr> literalDic);
+        DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
 };
 
 class TypeInt : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeInt();
+		TypeInt(int line, int col, std::string file);
 };
 
 class TypeFloat : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeFloat();
+		TypeFloat(int line, int col, std::string file);
 };
 
 class TypeStr : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeStr();
+		TypeStr(int line, int col, std::string file);
 };
 
 class TypeBool : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeBool();
+		TypeBool(int line, int col, std::string file);
 };
 
 class TypeVec : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeVec();
+		TypeVec(int line, int col, std::string file);
 };
 
 class TypeDic : public ASTNode {
     public:
         void print(int indent) override;
 
-        TypeDic();
+        TypeDic(int line, int col, std::string file);
 };
 
 class Variable : public ASTNode {
@@ -141,7 +141,7 @@ class Variable : public ASTNode {
 
 		void print(int indent) override;
 
-		Variable(std::string varName, ASTPtr varValue=nullptr);
+		Variable(std::string varName, ASTPtr varValue=nullptr, int line=-1, int col=-1, std::string file="");
 };
 
 class UnaryOp : public ASTNode {
@@ -151,7 +151,7 @@ class UnaryOp : public ASTNode {
 
 		void print(int indent) override;
 
-		UnaryOp(TokenType opOp, ASTPtr opOperand);
+		UnaryOp(TokenType opOp, ASTPtr opOperand, int line, int col, std::string file);
 };
 
 class BinaryOp : public ASTNode {
@@ -162,7 +162,7 @@ class BinaryOp : public ASTNode {
 
 		void print(int indent) override;
 
-		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight);
+		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file);
 };
 
 class ExpressionStmt : public ASTNode {
@@ -175,10 +175,14 @@ class ExpressionStmt : public ASTNode {
 		void print(int indent) override;
 
 		ExpressionStmt(
-                ASTPtr expr,
-                bool exprNoOp=false,
-                bool exprIsBreak=false,
-                bool exprIsContinue=false);
+			ASTPtr expr,
+			bool exprNoOp=false,
+			bool exprIsBreak=false,
+			bool exprIsContinue=false,
+			int line = -1,
+			int col = -1,
+			std::string file = ""
+		);
 };
 
 class IfStmt : public ASTNode {
@@ -189,7 +193,14 @@ class IfStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		IfStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> thenStmts, std::vector<ExpressionStmt> elseStmts={});
+		IfStmt(
+			ASTPtr stmtCondition, 
+			std::vector<ExpressionStmt> thenStmts, 
+			std::vector<ExpressionStmt> elseStmts={},
+			int line=-1,
+			int col=-1,
+			std::string file=""
+		);
 };
 
 class WhileStmt : public ASTNode {
@@ -199,7 +210,7 @@ class WhileStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts);
+		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file);
 };
 
 class ForStmt : public ASTNode {
@@ -210,7 +221,14 @@ class ForStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts);
+		ForStmt(
+			std::string stmtVar, 
+			ASTPtr stmtIter, 
+			std::vector<ExpressionStmt> stmtStmts,
+			int line,
+			int col,
+			std::string file
+		);
 };
 
 class FunctionCall : public ASTNode {
@@ -220,7 +238,7 @@ class FunctionCall : public ASTNode {
 
 		void print(int indent) override;
 
-		FunctionCall(std::string callName, std::vector<ASTPtr> callParams);
+		FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file);
 };
 
 class ReturnStmt : public ASTNode {
@@ -229,7 +247,7 @@ class ReturnStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		ReturnStmt(ASTPtr stmtValue);
+		ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file);
 };
 
 class FunctionStmt : public ASTNode {
@@ -241,7 +259,15 @@ class FunctionStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		FunctionStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue=nullptr);
+		FunctionStmt(
+			std::string stmtName, 
+			std::vector<ASTPtr> stmtParams, 
+			std::vector<ExpressionStmt> stmtStmts, 
+			ASTPtr stmtReturnValue=nullptr,
+			int line=-1,
+			int col=-1,
+			std::string file=""
+		);
 };
 
 class InlineStmt : public ASTNode {
@@ -253,7 +279,15 @@ class InlineStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		InlineStmt(std::string stmtName, std::vector<ASTPtr> stmtParams, std::vector<ExpressionStmt> stmtStmts, ASTPtr stmtReturnValue=nullptr);
+		InlineStmt(
+			std::string stmtName, 
+			std::vector<ASTPtr> stmtParams, 
+			std::vector<ExpressionStmt> stmtStmts, 
+			ASTPtr stmtReturnValue=nullptr,
+			int line=-1,
+			int col=-1,
+			std::string file=""
+		);
 };
 
 class ClassStmt : public ASTNode {
@@ -264,7 +298,14 @@ class ClassStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		ClassStmt(std::string literalName, std::vector<ASTPtr> literalParams, std::vector<ExpressionStmt> literalStmts);
+		ClassStmt(
+			std::string literalName, 
+			std::vector<ASTPtr> literalParams, 
+			std::vector<ExpressionStmt> literalStmts,
+			int line,
+			int col,
+			std::string file
+		);
 };
 
 class Program : public ASTNode {
@@ -273,5 +314,5 @@ class Program : public ASTNode {
 
 		void print(int indent) override;
 
-		Program(std::vector<ExpressionStmt>&& programStatements);
+		Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file);
 };

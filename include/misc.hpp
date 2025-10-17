@@ -7,7 +7,14 @@ inline void printIndent(int indent) {
 }
 
 class ASTNode {
+	protected:
+		int lineNo;
+		int colNo;
+		std::string filename;
 	public:
+		ASTNode(int line = -1, int col = -1, std::string file = "")
+		: lineNo(line), colNo(col), filename(file) {}
+
 		virtual void print(int indent) {
 			printIndent(indent);
 			std::cout << "ASTNode()" << std::endl;
