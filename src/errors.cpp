@@ -1,5 +1,8 @@
 #include "errors.hpp"
 
+#include <iostream>
+#include <sstream>
+
 Error::Error(
     std::string msg,
     int line,
@@ -7,7 +10,7 @@ Error::Error(
     std::string file,
     std::string hintMsg,
     std::string lineSrc
-) : message(msg), lineNo(line), colNo(col), filename(file), hint(hintMsg), lineText(lineSrc) {}
+) : message(msg), filename(file), hint(hintMsg), lineText(lineSrc), lineNo(line), colNo(col) {}
 
 std::string Error::getClassName() const {
     return "Error";

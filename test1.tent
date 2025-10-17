@@ -1,5 +1,5 @@
 load "io";
 
-for i $ ["h", "i"] {
+for i $ ['h', 'i h {
 	print(i);
 }

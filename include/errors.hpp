@@ -1,9 +1,6 @@
 #pragma once
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
+#include <exception>
 #include <string>
-#include <vector>
 
 class Error : public std::exception {
     protected:
