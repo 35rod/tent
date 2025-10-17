@@ -42,6 +42,8 @@ void parse_args(int32_t argc, char **argv) {
 				    SET_FLAG(DEBUG_STOP);
 				else if (strcmp(argv[arg_n]+2, "compile") == 0)
 					SET_FLAG(COMPILE);
+				else if (strcmp(argv[arg_n]+2, "repl") == 0)
+					SET_FLAG(REPL);
 				else if (strcmp(argv[arg_n]+2, "help") == 0)
 					print_usage();
 				else if (strncmp(argv[arg_n]+2, "file=", 5) == 0)
@@ -81,6 +83,9 @@ void parse_args(int32_t argc, char **argv) {
 					case 'c':
 						SET_FLAG(COMPILE);
 						break;
+					case 'r':
+						SET_FLAG(REPL);
+						return;
 					case 'h':
 						print_usage();
 						break;
@@ -147,6 +152,7 @@ void print_usage(void)
 			  << "   -d, --debug                        Enable debug output" << std::endl
 			  << "   -ds, --debug_stop                  Enable debug output and stop program before evaluator" << std::endl
 			  << "   -c, --compile                      Compile program" << std::endl
+			  << "   -r, --repl                         Start the interactive REPL" << std::endl
 			  << "   -h, --help                         Display this help message" << std::endl
 			  << "   -f FILENAME, --file=FILENAME       Read program from FILENAME" << std::endl
 		  << "   -S SEARCHDIR                           Permit the `load` statement to also search for files in SEARCHDIR" << std::endl;

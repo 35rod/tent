@@ -6,7 +6,8 @@
 enum {
 	DEBUG = BIT(0),
 	DEBUG_STOP = BIT(1),
-	COMPILE = BIT(2)
+	COMPILE = BIT(2),
+	REPL = BIT(3)
 };
 
 #define IS_FLAG_SET(f) ((runtime_flags & f) != 0)
