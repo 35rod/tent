@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include "token.hpp"
-#include "errors.hpp"
 
 class Lexer {
     std::string source;

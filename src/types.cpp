@@ -1,6 +1,7 @@
+#include "types.hpp"
+
 #include <cstdint>
 
-#include "types.hpp"
 #include "opcodes.hpp"
 
 int64_t ipow(int64_t base, uint8_t exp) {

@@ -1,6 +1,5 @@
 #include "evaluator.hpp"
-#include "errors.hpp"
-#include "ast.hpp"
+
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -9,9 +8,12 @@
 #include <stdexcept>
 #include <string>
 #include <variant>
+
 #include "native.hpp"
-#include "opcodes.hpp"
 #include "types.hpp"
+#include "opcodes.hpp"
+#include "errors.hpp"
+#include "ast.hpp"
 
 Evaluator::Evaluator(std::string input) : source(input) {
 	nativeMethods["type_int"]["parse"] = [&](const Value&, const std::vector<Value>& rhs) {

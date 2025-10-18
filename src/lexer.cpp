@@ -1,7 +1,10 @@
 #include "lexer.hpp"
-#include "types.hpp"
+
 #include <cctype>
+
 #include "opcodes.hpp"
+#include "types.hpp"
+#include "errors.hpp"
 
 void Lexer::nextChar(int num) {
     for (int i = 0; i < num; i++) {

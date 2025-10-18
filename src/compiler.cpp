@@ -1,4 +1,5 @@
 #include <fstream>
+
 #include "compiler.hpp"
 
 std::vector<Instruction> Compiler::compileProgram(ASTPtr program) {

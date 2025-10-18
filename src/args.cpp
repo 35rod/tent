@@ -1,11 +1,11 @@
+#include "args.hpp"
+
 #include <iostream>
 #include <string>
 
 #include <cstring>
 #include <vector>
 #include <cstdio>
-
-#include "args.hpp"
 
 extern std::string SRC_FILENAME, PROG_NAME;
 extern std::vector<std::string> prog_args, search_dirs;

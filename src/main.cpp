@@ -1,11 +1,13 @@
 #include <iostream>
 #include <fstream>
+
 #include <cstdint>
+
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
-#include "evaluator.hpp"
 #include "vm.hpp"
+#include "evaluator.hpp"
 #include "args.hpp"
 
 const std::string RESET = "\033[0m";

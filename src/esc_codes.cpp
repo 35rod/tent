@@ -1,7 +1,9 @@
+#include <string>
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <string>
+
 #include "errors.hpp"
 
 /* subtract '\\' before indexing */
