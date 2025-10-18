@@ -1,5 +1,7 @@
-#include <iostream>
 #include "ast.hpp"
+
+#include <iostream>
+
 #include "misc.hpp"
 
 IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)

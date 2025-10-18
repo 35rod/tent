@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <ostream>
 #include <memory>
 #include "opcodes.hpp"
 #include "types.hpp"

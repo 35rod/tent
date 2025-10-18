@@ -1,7 +1,9 @@
-#include <fstream>
 #include "parser.hpp"
-#include "native.hpp"
+
+#include <fstream>
+
 #include "lexer.hpp"
+#include "native.hpp"
 #include "errors.hpp"
 #include "esc_codes.hpp"
 
