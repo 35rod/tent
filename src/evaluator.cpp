@@ -18,38 +18,37 @@
 Evaluator::Evaluator(std::string input) : source(input) {
 	nativeMethods["type_int"]["parse"] = [&](const Value&, const std::vector<Value>& rhs) {
 		if (!std::holds_alternative<std::string>(rhs[0].v)) {
-			TypeError(
+			throw TypeError(
 				"int.parse(s: str[, b: int]): invalid argument(s) passed: first argument must be 'string'",
 				lineNo,
 				colNo,
 				filename,
 				"",
 				getLineText(source, lineNo)
-			).print();
-			exit(1);
+			);
 		}
 
 		int base = 0; // special value that allows for 0x10 or 0b010 or the like
 		if (rhs.size() == 2 && std::holds_alternative<tn_int_t>(rhs[1].v))
 			base = std::get<tn_int_t>(rhs[1].v);
 		else if (rhs.size() == 2) {
-			TypeError(
+			throw TypeError(
 				"int.parse(s: str[, b: int]): invalid argument(s) passed: second argument must be 'int', if present",
 				lineNo,
 				colNo,
 				filename,
 				"",
 				getLineText(source, lineNo)
-			).print();
-			exit(1);
+			);
 		}
 
 		try {
 			return Value(tn_int_t(std::stoi(std::get<std::string>(rhs[0].v), nullptr, base)));
 		} catch (std::exception&) {
-			// should probably return an exception or error value but we don't have those yet, so this is what I've got
-			return Value();
+			throw TypeError("error converting string to integer");
 		}
+
+		return Value();
 	};
 
 	nativeMethods["type_vec"]["fill"] = [&](const Value&, const std::vector<Value>& rhs) {
@@ -58,15 +57,14 @@ Evaluator::Evaluator(std::string input) : source(input) {
 
 		if (rhs.size() > 1) {
 			if (!is_primitive_val(rhs[1])) {
-				TypeError(
+				throw TypeError(
 					"vec.fill(n: int[, v: any\\class_instance]): invalid argument(s) passed: second argument is of an invalid type for this function",
 					lineNo,
 					colNo,
 					filename,
 					"",
 					getLineText(source, lineNo)
-				).print();
-				exit(1);
+				);
 			}
 
 			std::fill(ret->begin(), ret->end(), rhs[1]);
@@ -111,15 +109,14 @@ Evaluator::Evaluator(std::string input) : source(input) {
 		Value::VecT vec = std::get<Value::VecT>(lhs.v);
 
 		if (vec->size() < 1) {
-			Error(
+			throw Error(
 				"attempted to pop an element back from an empty vector",
 				lineNo,
 				colNo,
 				filename,
 				"",
 				getLineText(source, lineNo)
-			).print();
-			exit(1);
+			);
 		}
 
 		Value ret = vec->back();
@@ -154,13 +151,13 @@ Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args
 Value Evaluator::evalStmt(ExpressionStmt& stmt) {
 	ASTNode* expr = stmt.expr.get();
 	
-	if (!expr) throw std::runtime_error("Invalid expression");
+	if (!expr) throw Error("Invalid expression");
 
 	return evalExpr(expr);
 }
 
 Value Evaluator::evalExpr(ASTNode* node) {
-	if (!node) throw std::runtime_error("Null AST node in evaluator");
+	if (!node) throw Error("Null AST node in evaluator");
 
 	if (auto il = dynamic_cast<IntLiteral*>(node)) {
 		return Value(il->value);
@@ -185,15 +182,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		for (auto& pair : dl->dic) {
 			const Value first_in_pair = evalExpr(pair.first.get());
 			if (!std::holds_alternative<std::string>(first_in_pair.v)) {
-				Error(
+				throw Error(
 					"dictionary key must be a string",
 					dl->lineNo,
 					dl->colNo,
 					dl->filename,
 					"",
 					getLineText(source, dl->lineNo)
-				).print();
-				exit(1);
+				);
 			}
 
 			dic[std::get<std::string>(first_in_pair.v)] = evalExpr(pair.second.get());
@@ -396,15 +392,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				for (const auto& param : fc->params) {
 					if (!param)  {
-						Error(
+						throw Error(
 							"Null parameter AST Node",
 							param->lineNo,
 							param->colNo,
 							param->filename,
 							"",
 							getLineText(source, fc->lineNo)
-						).print();
-						exit(1);
+						);
 					}
 
 					evalArgs.push_back(evalExpr(param.get()));
@@ -412,27 +407,25 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				return nit->second(evalArgs);
 			} else {
-				Error(
+				throw Error(
 					"Undefined function: " + fc->name,
 					fc->lineNo,
 					fc->colNo,
 					fc->filename,
 					"",
 					getLineText(source, fc->lineNo)
-				).print();
-				exit(1);
+				);
 			}
 		}
 
 		if (fc->params.size() != func->params.size()) {
-			Error(
+			throw Error(
 				"Parameter count mismatch in function call to " + fc->name,
 				fc->lineNo,
 				fc->colNo,
 				fc->filename,
 				getLineText(source, fc->lineNo)
-			).print();
-			exit(1);
+			);
 		}
 
 		CallFrame frame;
@@ -440,15 +433,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		for (size_t i = 0; i < func->params.size(); i++) {
 			Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
 			if (!formalParam) {
-				Error(
+				throw Error(
 					"Function parameter is not a variable",
 					formalParam->lineNo,
 					formalParam->colNo,
 					formalParam->filename,
 					"",
 					getLineText(source, formalParam->lineNo)
-				).print();
-				exit(1);
+				);
 			}
 			
 			Value evalValue = evalExpr(fc->params[i].get());
@@ -487,15 +479,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		if (variables.count(v->name)) {
 			return variables[v->name];
 		} else {
-			SyntaxError(
+			throw SyntaxError(
 				"Undefined variable: " + v->name,
 				v->lineNo,
 				v->colNo,
 				v->filename,
 				"",
 				getLineText(source, v->lineNo)
-			).print();
-			exit(1);
+			);
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {
@@ -504,15 +495,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 		if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
 			if (variables.count(var->name) != 1) {
-				SyntaxError(
+				throw SyntaxError(
 					"Undefined variable: " + var->name,
 					var->lineNo,
 					var->colNo,
 					var->filename,
 					"",
 					getLineText(source, var->lineNo)
-				).print();
-				exit(1);
+				);
 			}
 			
 			if (std::holds_alternative<tn_int_t>(variables[var->name].v)) {
@@ -523,15 +513,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 				}
 			}
 		} else {
-			TypeError(
+			throw TypeError(
 				"Increment/decrement operator applied to non-variable",
 				var->lineNo,
 				var->colNo,
 				var->filename,
 				"",
 				getLineText(source, var->lineNo)
-			).print();
-			exit(1);
+			);
 		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
 		if (isRightAssoc(bin->op)) {
@@ -545,31 +534,37 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							auto vecPtr = std::get<Value::VecT>(holder.v);
 
 							if (!vecPtr) {
-								Error(
+								throw Error(
 									"null vector",
 									vecVar->lineNo,
 									vecVar->colNo,
 									vecVar->filename,
 									"",
 									getLineText(source, vecVar->lineNo)
-								).print();
-								exit(1);
+								);
 							}
 
 							Value idxVal = evalExpr(leftIndex->right.get());
-							if (!std::holds_alternative<tn_int_t>(idxVal.v)) TypeError("index must be integer", -1);
+							if (!std::holds_alternative<tn_int_t>(idxVal.v)) throw TypeError(
+								"index must be an integer",
+								vecVar->lineNo,
+								vecVar->colNo,
+								vecVar->filename,
+								"",
+								getLineText(source, vecVar->lineNo)
+							);
+
 							tn_int_t idx = std::get<tn_int_t>(idxVal.v);
 
 							if (idx < 0 || (size_t)idx >= vecPtr->size()) {
-								Error(
+								throw Error(
 									"index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()) + ".",
 									vecVar->lineNo,
 									vecVar->colNo,
 									vecVar->filename,
 									"",
 									getLineText(source, vecVar->lineNo)
-								).print();
-								exit(1);
+								);
 							}
 
 							Value rhs = evalExpr(bin->right.get());
@@ -580,34 +575,40 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							auto dictPtr = std::get<Value::DicT>(holder.v);
 
 							if (!dictPtr) {
-								Error(
+								throw Error(
 									"null dictionary",
 									vecVar->lineNo,
 									vecVar->colNo,
 									vecVar->filename,
 									"",
 									getLineText(source, vecVar->lineNo)
-								).print();
-								exit(1);
+								);
 							}
 
 							Value idxVal = evalExpr(leftIndex->right.get());
-							if (!std::holds_alternative<std::string>(idxVal.v)) TypeError("dictionary key must be a string", -1);
+							if (!std::holds_alternative<std::string>(idxVal.v)) throw TypeError(
+								"dictionary key must be a string",
+								vecVar->lineNo,
+								vecVar->colNo,
+								vecVar->filename,
+								"",
+								getLineText(source, vecVar->lineNo)
+							);
+
 							std::string idx = std::get<std::string>(idxVal.v);
 
 							Value rhs = evalExpr(bin->right.get());
 							(*dictPtr)[idx] = rhs;
 						}
 					} else {
-						TypeError(
+						throw TypeError(
 							"Left-hand side of indexed assignment must be a variable",
 							leftIndex->left->lineNo,
 							leftIndex->left->colNo,
 							leftIndex->left->filename,
 							"",
 							getLineText(source, leftIndex->left->lineNo)
-						).print();
-						exit(1);
+						);
 					}
 				}
 			} else if (auto* varNode = dynamic_cast<Variable*>(bin->left.get())) {
@@ -685,15 +686,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return result;
 					} else {
-						TypeError(
+						throw TypeError(
 							"Unknown method '" + name + "' for class '" + inst->name + "'",
 							fc->lineNo,
 							fc->colNo,
 							fc->filename,
 							"",
 							getLineText(source, fc->lineNo)
-						).print();
-						exit(1);
+						);
 					}
 				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
 					if (nativeMethods["str"].count(name)) {
@@ -702,15 +702,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return nativeMethods["str"][name](*strPtr, args);
 					} else {
-						TypeError(
+						throw TypeError(
 							"Unknown string method: " + name,
 							fc->lineNo,
 							fc->colNo,
 							fc->filename,
 							"",
 							getLineText(source, fc->lineNo)
-						).print();
-						exit(1);
+						);
 					}
 				} else if (auto vecPtr = std::get_if<Value::VecT>(&lhs.v)) {
 					if (nativeMethods["vec"].count(name)) {
@@ -719,15 +718,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return nativeMethods["vec"][name](*vecPtr, args);
 					} else {
-						TypeError(
+						throw TypeError(
 							"Unknown vector method: " + name,
 							fc->lineNo,
 							fc->colNo,
 							fc->filename,
 							"",
 							getLineText(source, fc->lineNo)
-						).print();
-						exit(1);
+						);
 					}
 				} else if (std::get_if<NullLiteral>(&lhs.v)) {
 					if (lhs.typeInt) {
@@ -746,15 +744,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 						}
 					}
 				} else {
-					TypeError(
+					throw TypeError(
 						"Method call not supported on this type",
 						fc->lineNo,
 						fc->colNo,
 						fc->filename,
 						"",
 						getLineText(source, fc->lineNo)
-					).print();
-					exit(1);
+					);
 				}
 			} else if (auto var = dynamic_cast<Variable*>(bin->right.get())) {
 				std::string propName = var->name;
@@ -766,13 +763,34 @@ Value Evaluator::evalExpr(ASTNode* node) {
 						return fieldIt->second;
 					}
 
-					TypeError("Unknown property '" + propName + "' for class '" + inst->name + "'", -1);
+					throw TypeError(
+						"Unknown property '" + propName + "' for class '" + inst->name + "'",
+						var->lineNo,
+						var->colNo,
+						var->filename,
+						"",
+						getLineText(source, var->lineNo)
+					);
 				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
 					if (propName == "length") return tn_int_t(strPtr->length());
 
-					TypeError("Unknown string poperty: " + propName, -1);
+					throw TypeError(
+						"Unknown string property: " + propName,
+						var->lineNo,
+						var->colNo,
+						var->filename,
+						"",
+						getLineText(source, var->lineNo)
+					);
 				} else {
-					TypeError("Property access not supported on this type", -1);
+					throw TypeError(
+						"Property access not supported on this type",
+						var->lineNo,
+						var->colNo,
+						var->filename,
+						"",
+						getLineText(source, var->lineNo)
+					);
 				}
 			}
 		}
@@ -782,7 +800,14 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		
 		return evalBinaryOp(std::move(left), std::move(right), bin->op);
 	} else {
-		throw std::runtime_error("Unknown AST node type in evaluator");
+		throw Error(
+			"Unknown AST node type in evaluator",
+			node->lineNo,
+			node->colNo,
+			node->filename,
+			"",
+			getLineText(source, node->lineNo)
+		);
 	}
 
 	return Value();

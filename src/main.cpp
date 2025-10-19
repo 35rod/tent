@@ -8,6 +8,7 @@
 #include "compiler.hpp"
 #include "vm.hpp"
 #include "evaluator.hpp"
+#include "errors.hpp"
 #include "args.hpp"
 
 const std::string RESET = "\033[0m";
@@ -127,8 +128,16 @@ int32_t main(int32_t argc, char **argv) {
 		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".tnc");
 	} else {
 	    if (!IS_FLAG_SET(DEBUG_STOP)) {
-            Evaluator evaluator(output);
-            evaluator.evalProgram(std::move(program), prog_args);
+			try {
+				Evaluator evaluator(output);
+				evaluator.evalProgram(std::move(program), prog_args);
+			} catch (const Error& e) {
+				e.print();
+				return 1;
+			} catch (const std::exception& e) {
+				std::cerr << "Unexpected error: " << e.what() << std::endl;
+				return 1;
+			}
         }
 	}
 

@@ -1,7 +1,8 @@
 load "io";
 
-form add(5, b) {
-    return a + b;
+form greet(name) {
+    println("Hello, ", name, "!");
 }
 
-println(add(3));
+greet();
+println("Hello!");
