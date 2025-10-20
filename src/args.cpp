@@ -1,5 +1,6 @@
 #include "args.hpp"
 
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
@@ -22,7 +23,9 @@ void parse_args(int32_t argc, char **argv) {
 
 	search_dirs.push_back("/usr/lib/tent");
 	search_dirs.push_back("/usr/local/lib/tent");
-	search_dirs.push_back("~/.local/lib/tent");
+	const char *home;
+	if ((home = std::getenv("HOME")) != NULL)
+		search_dirs.push_back(std::string(home) + "/.local/lib/tent");
 
 	bool doing_prog_args = false;
 
