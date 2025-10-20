@@ -31,3 +31,47 @@ if(MSVC)
 else()
 	target_compile_options(tent PRIVATE -O3 -Wall -Wextra -Wpedantic)
 endif()
+
+install(
+    TARGETS tent
+    RUNTIME DESTINATION bin
+    BUNDLE DESTINATION bin
+)
+
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
+    DESTINATION lib
+    FILES_MATCHING
+    PATTERN "*.dll"
+)
+
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
+    DESTINATION lib
+    FILES_MATCHING
+    PATTERN "*.so"
+)
+
+install(
+    DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
+    DESTINATION lib
+    FILES_MATCHING
+    PATTERN "*.dylib"
+)
+
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "tent")
+set(CPACK_PACKAGE_VENDOR "35rod")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Tent Programming Language")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+
+if(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+elseif(APPLE)
+    set(CPACK_GENERATOR "TGZ")
+else()
+    set(CPACK_GENERATOR "TGZ;DEB")
+endif()
+
+set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};ALL;/")
