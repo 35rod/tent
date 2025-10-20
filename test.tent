@@ -1,8 +1,13 @@
 load "io";
 
-form greet(name) {
-    println("Hello, ", name, "!");
+for i $ 100 {
+    println(i);
 }
 
-greet();
-println("Hello!");
+nums = [[1, 2, 3], [4, 5, 6], [7, 8, 9, 10]];
+
+for i $ nums {
+   for j $ i {
+    println(j);
+   } 
+}

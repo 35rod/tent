@@ -1,0 +1,6 @@
+load "io";
+load "time";
+
+println("Hello World!");
+sleep(1);
+println("Hello after one second!");
