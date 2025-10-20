@@ -4,7 +4,7 @@ First, you'll have to build the `tent` program. This project uses the CMake buil
 ```sh
 # in project root directory
 mkdir -p build
-cmake -B build
+cmake --build build
 make -C build
 ```
 The `tent` executable should be available in `build/tent`. You can leave it there or move it elsewhere (I suggest moving it to the project root to follow along with this tutorial, as it will
@@ -16,6 +16,21 @@ This will be written as `tent` from here on for brevity.
 Edit: a `build.zig` file was added, so you can build with just `zig build` now. The executable is placed in (by default) `zig-out/bin/tent`, and core libraries are in `zig-out/lib/`. You'll
 probably have to add `-S zig-out/lib` to your execution command if you're using core libraries.
 
+Edit: a local installation step has been added to both the `zig build` and CMake build systems.
+Assuming you want to install to `~/.local/bin/tent` and `~/.local/lib/tent/*` for the executable and libraries, here are the commands for each build system:
+#### CMake
+```sh
+cmake --build build
+make -C build
+cmake --install build --prefix ~/.local
+```
+
+#### `zig build`
+```sh
+zig build --prefix ~/.local
+```
+
+There is not yet an uninstall capability for either build system, so to uninstall, you would have to manually delete the executable and library files from the installation path.
 
 ## Tutorial!
 Let's jump right in! We'll start with the classic "Hello World!". Note that if you want to follow along with this tutorial, you'll need to clone the repo

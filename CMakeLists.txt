@@ -40,21 +40,21 @@ install(
 
 install(
     DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
-    DESTINATION lib
+    DESTINATION lib/tent
     FILES_MATCHING
     PATTERN "*.dll"
 )
 
 install(
     DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
-    DESTINATION lib
+    DESTINATION lib/tent
     FILES_MATCHING
     PATTERN "*.so"
 )
 
 install(
     DIRECTORY ${CMAKE_SOURCE_DIR}/lib/
-    DESTINATION lib
+    DESTINATION lib/tent
     FILES_MATCHING
     PATTERN "*.dylib"
 )

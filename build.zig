@@ -40,8 +40,7 @@ pub fn build(b: *std.Build) void {
         return;
     }) |entry| {
         if (entry.kind != .file or entry.name.len < 5 or !std.mem.eql(u8, entry.name[entry.name.len-4..], ".cpp")) continue;
-        const full_path = std.fmt.allocPrint(std.heap.page_allocator, "lib/{s}", .{entry.name}) catch @panic("OEM");
-        defer std.heap.page_allocator.free(full_path);
+        const full_path = b.fmt("lib/{s}", .{entry.name});
         
         var libentry_mod = b.createModule(.{
             .root_source_file = null,
@@ -60,7 +59,9 @@ pub fn build(b: *std.Build) void {
             .flags = &cxx_compiler_flags,
             .language = .cpp,
         });
-        b.installArtifact(libentry);
+        installArtifactOptions(b, libentry, .{
+            .dest_dir = .{ .override = .{ .custom = "lib/tent" } },
+        });
     }
 
     // EXECUTABLE
@@ -82,4 +83,8 @@ pub fn build(b: *std.Build) void {
     });
 
     b.installArtifact(tent_exe);
+}
+
+fn installArtifactOptions(b: *std.Build, artifact: *std.Build.Step.Compile, options: std.Build.Step.InstallArtifact.Options) void {
+    b.getInstallStep().dependOn(&b.addInstallArtifact(artifact, options).step);
 }

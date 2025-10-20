@@ -19,6 +19,11 @@ void parse_args(int32_t argc, char **argv) {
 	search_dirs.push_back("lib");
 	search_dirs.push_back("..");
 	search_dirs.push_back("../lib");
+
+	search_dirs.push_back("/usr/lib/tent");
+	search_dirs.push_back("/usr/local/lib/tent");
+	search_dirs.push_back("~/.local/lib/tent");
+
 	bool doing_prog_args = false;
 
 	for (int32_t arg_n = 1; arg_n < argc; ++arg_n)
