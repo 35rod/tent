@@ -1,13 +1,12 @@
 load "io";
+load "keyboard";
 
-for i $ 100 {
-    println(i);
+init();
+
+while true {
+    if (isPressed()) {
+        println(getKey());
+    }
 }
 
-nums = [[1, 2, 3], [4, 5, 6], [7, 8, 9, 10]];
-
-for i $ nums {
-   for j $ i {
-    println(j);
-   } 
-}
+end();
