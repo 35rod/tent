@@ -1,11 +1,11 @@
 // time_native.cpp
 #include "native.hpp"
 #include <chrono>
+#include <cmath>
 #include <thread>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
-#include <memory>
 #include <unordered_map>
 
 using namespace std::chrono;
