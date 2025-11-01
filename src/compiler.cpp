@@ -36,7 +36,12 @@ llvm::Value* Compiler::genExpr(ASTNode* node) {
 
 			llvm::FunctionCallee printfFunc = module->getOrInsertFunction("printf", printfType);
 
-			llvm::Value* fmt = builder.CreateGlobalStringPtr("%s\n");
+			llvm::Value* fmt = nullptr;
+
+			if (arg->getType()->isIntegerTy())
+				fmt = builder.CreateGlobalStringPtr("%d\n");
+			else
+				fmt = builder.CreateGlobalStringPtr("%s\n");
 
 			return builder.CreateCall(printfFunc, {fmt, arg});
 		}
