@@ -46,8 +46,6 @@ println("Hello World!"); ~ prints Hello World
 
 Note that comments are denoted using the tilde ('~') character. To run this code, simply run `tent -f <filename>.tent`, and replace `<filename>`
 with the filename of your tent file. That's if you want to run it using the evaluator. However, tent also comes with a compiler and VM!
-To compile this code, run `tent -c -f <filename>.tent`, replacing `<filename>` with the filename of your tent file once again. Then, you can run
-the compiled file with `tent -f <filename>.tnc`, replacing `<filename>` with the filename of your tent file.
+To compile this code, run `tent -c -f <filename>.tent`, replacing `<filename>` with the filename of your tent file once again.
 
-The compiler and VM doesn't have as much capability as the evaluator, so for this tutorial, it's best to stick with the evaluator for now. Don't worry, eventually
-the compiler and VM will have the same capability as the evaluator, it's something that is still being worked on.
+NOTE: LLVM support is being integrated into tent currently, so it's best to stick with the evaluator for now, as the compiler is a work-in-progress.
