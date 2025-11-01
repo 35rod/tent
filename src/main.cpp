@@ -115,9 +115,8 @@ int32_t main(int32_t argc, char **argv) {
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		Compiler cr("TentModule");
-		cr.generate(static_cast<Program*>(program.get()));
-		cr.module->print(llvm::outs(), nullptr);
+		Compiler compiler;
+		compiler.compile(static_cast<Program*>(program.get()));
 
 		return 0;
 	} else {

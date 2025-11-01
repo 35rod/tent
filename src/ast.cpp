@@ -1,11 +1,21 @@
 #include "ast.hpp"
 
 #include <iostream>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/IR/Value.h>
 
 #include "misc.hpp"
 
 IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
+
+llvm::Value* IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
+	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+	return llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
+}
 
 void IntLiteral::print(int indent) {
 	printIndent(indent);
@@ -22,6 +32,11 @@ void FloatLiteral::print(int indent) {
 
 StrLiteral::StrLiteral(std::string literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
+
+llvm::Value* StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+	return builder.CreateGlobalStringPtr(value, "str");
+}
 
 void StrLiteral::print(int indent) {
 	printIndent(indent);
@@ -228,6 +243,33 @@ void ForStmt::print(int indent) {
 FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file)
 : ASTNode(line, col, file), name(callName), params(std::move(callParams)) {}
 
+llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	if (name == "print" && !params.empty()) {
+		llvm::Value* argVal = params[0]->codegen(ctx, builder, module);
+
+		llvm::FunctionType* printfType = llvm::FunctionType::get(
+			llvm::Type::getInt32Ty(ctx),
+			llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+			true
+		);
+
+		llvm::FunctionCallee printfFunc = module.getOrInsertFunction("printf", printfType);
+
+		llvm::Value* fmt = nullptr;
+
+		if (argVal->getType()->isIntegerTy())
+			fmt = builder.CreateGlobalStringPtr("%lld\n", "fmt_int");
+		else
+			fmt = builder.CreateGlobalStringPtr("%s\n", "fmt_str");
+		
+		return builder.CreateCall(printfFunc, {fmt, argVal});
+	}
+
+	return nullptr;
+}
+
 void FunctionCall::print(int indent) {
 	printIndent(indent);
 	std::cout << "FunctionCall(name=" << name << ", parameters=" << params.size() << ")\n";
@@ -347,6 +389,13 @@ ExpressionStmt::ExpressionStmt(
 	std::string file
 ) : ASTNode(line, col, file), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
+llvm::Value* ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	if (expr)
+		return expr->codegen(ctx, builderBase, module);
+	
+	return nullptr;
+}
+
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "ExpressionStmt(break=" << (isBreak ? "true" : "false") << ")" << std::endl;
@@ -361,6 +410,26 @@ void ExpressionStmt::print(int indent) {
 
 Program::Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file)
 : ASTNode(line, col, file), statements(std::move(programStatements)) {}
+
+llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	llvm::FunctionType* mainType = llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), false);
+	llvm::Function* mainFunc = llvm::Function::Create(mainType, llvm::Function::ExternalLinkage, "main", &module);
+
+	llvm::BasicBlock* entry = llvm::BasicBlock::Create(ctx, "entry", mainFunc);
+	builder.SetInsertPoint(entry);
+
+	for (auto& stmt : statements)
+		stmt.codegen(ctx, builder, module);
+	
+	builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
+
+	llvm::verifyFunction(*mainFunc);
+	llvm::verifyModule(module);
+
+	return mainFunc;
+}
 
 void Program::print(int indent) {
 	printIndent(indent);

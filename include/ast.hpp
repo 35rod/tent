@@ -6,40 +6,13 @@
 #include "opcodes.hpp"
 #include "types.hpp"
 
-enum class NodeType : uint8_t {
-	Program = 0xC0,
-	ExpressionStmt,
-	IntLiteral,
-	FloatLiteral,
-	StrLiteral,
-	BoolLiteral,
-	VecLiteral,
-	TypeInt,
-	TypeFloat,
-	TypeStr,
-	TypeBool,
-	TypeVec,
-	Variable,
-	UnaryOp,
-	BinaryOp,
-	IfStmt,
-	WhileStmt,
-	ForStmt,
-	FunctionCall,
-	ReturnStmt,
-	FunctionStmt,
-	InlineStmt,
-	ClassStmt,
-	NullLiteral,
-	NoOp,
-	ASTNode
-};
-
 using ASTPtr = std::unique_ptr<ASTNode>;
 
 class IntLiteral : public ASTNode {
 	public:
 		tn_int_t value;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
@@ -50,6 +23,8 @@ class FloatLiteral : public ASTNode {
 	public:
 		tn_dec_t value;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file);
@@ -58,6 +33,8 @@ class FloatLiteral : public ASTNode {
 class StrLiteral : public ASTNode {
 	public:
 		std::string value;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 		
 		void print(int indent) override;
 
@@ -67,6 +44,8 @@ class StrLiteral : public ASTNode {
 class BoolLiteral : public ASTNode {
 	public:
 		tn_bool_t value;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 		
 		void print(int indent) override;
 
@@ -77,6 +56,8 @@ class VecLiteral : public ASTNode {
 	public:
 		std::vector<ASTPtr> elems;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file);
@@ -86,6 +67,8 @@ class DicLiteral : public ASTNode {
     public:
         std::map<ASTPtr, ASTPtr> dic;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
         void print(int indent) override;
 
         DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
@@ -93,6 +76,8 @@ class DicLiteral : public ASTNode {
 
 class TypeInt : public ASTNode {
 	public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		TypeInt(int line, int col, std::string file);
@@ -100,6 +85,8 @@ class TypeInt : public ASTNode {
 
 class TypeFloat : public ASTNode {
 	public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		TypeFloat(int line, int col, std::string file);
@@ -107,6 +94,8 @@ class TypeFloat : public ASTNode {
 
 class TypeStr : public ASTNode {
 	public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		TypeStr(int line, int col, std::string file);
@@ -114,6 +103,8 @@ class TypeStr : public ASTNode {
 
 class TypeBool : public ASTNode {
 	public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		TypeBool(int line, int col, std::string file);
@@ -121,6 +112,8 @@ class TypeBool : public ASTNode {
 
 class TypeVec : public ASTNode {
 	public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		TypeVec(int line, int col, std::string file);
@@ -128,6 +121,8 @@ class TypeVec : public ASTNode {
 
 class TypeDic : public ASTNode {
     public:
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
         void print(int indent) override;
 
         TypeDic(int line, int col, std::string file);
@@ -138,6 +133,8 @@ class Variable : public ASTNode {
 		std::string name;
 		ASTPtr value;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		Variable(std::string varName, ASTPtr varValue=nullptr, int line=-1, int col=-1, std::string file="");
@@ -147,6 +144,8 @@ class UnaryOp : public ASTNode {
 	public:
 		TokenType op;
 		ASTPtr operand;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -159,6 +158,8 @@ class BinaryOp : public ASTNode {
 		ASTPtr left;
 		ASTPtr right;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file);
@@ -170,6 +171,8 @@ class ExpressionStmt : public ASTNode {
 		bool noOp;
 		bool isBreak;
 		bool isContinue;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
@@ -190,6 +193,8 @@ class IfStmt : public ASTNode {
 		std::vector<ExpressionStmt> thenClauseStmts;
 		std::vector<ExpressionStmt> elseClauseStmts;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		IfStmt(
@@ -207,6 +212,8 @@ class WhileStmt : public ASTNode {
 		ASTPtr condition;
 		std::vector<ExpressionStmt> stmts;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file);
@@ -217,6 +224,8 @@ class ForStmt : public ASTNode {
 		std::string var;
 		ASTPtr iter;
 		std::vector<ExpressionStmt> stmts;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -235,6 +244,8 @@ class FunctionCall : public ASTNode {
 		std::string name;
 		std::vector<ASTPtr> params;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
+
 		void print(int indent) override;
 
 		FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file);
@@ -243,6 +254,8 @@ class FunctionCall : public ASTNode {
 class ReturnStmt : public ASTNode {
 	public:
 		ASTPtr value;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -255,6 +268,8 @@ class FunctionStmt : public ASTNode {
 		std::vector<ASTPtr> params;
 		std::vector<ExpressionStmt> stmts;
 		ASTPtr returnValue;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -276,6 +291,8 @@ class InlineStmt : public ASTNode {
 		std::vector<ExpressionStmt> stmts;
 		ASTPtr returnValue;
 
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
 		void print(int indent) override;
 
 		InlineStmt(
@@ -294,6 +311,8 @@ class ClassStmt : public ASTNode {
 		std::string name;
 		std::vector<ASTPtr> params;
 		std::vector<ExpressionStmt> stmts;
+		
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -310,6 +329,8 @@ class ClassStmt : public ASTNode {
 class Program : public ASTNode {
 	public:
 		std::vector<ExpressionStmt> statements;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
