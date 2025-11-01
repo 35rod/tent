@@ -36,7 +36,7 @@ class ASTNode {
 
 class NullLiteral : public ASTNode {
     public:
-		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override {}
+		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
 
         void print(int indent) override {
             printIndent(indent);
@@ -46,7 +46,7 @@ class NullLiteral : public ASTNode {
 
 class NoOp : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override {}
+		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
 
 		void print(int indent) override {
 			printIndent(indent);

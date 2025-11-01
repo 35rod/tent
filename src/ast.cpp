@@ -149,6 +149,81 @@ void UnaryOp::print(int indent) {
 BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file)
 : ASTNode(line, col, file), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 
+llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+    llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+    llvm::Value* L = left->codegen(ctx, builder, module);
+    llvm::Value* R = right->codegen(ctx, builder, module);
+
+    if (!L || !R) return nullptr;
+
+    auto isIntOrFloat = [](llvm::Value* v) {
+        return v->getType()->isIntegerTy() || v->getType()->isFloatingPointTy();
+    };
+
+    auto isString = [](llvm::Value* v) {
+        return v->getType()->isPointerTy() &&
+               v->getType()->isIntegerTy(8);
+    };
+
+    if (isIntOrFloat(L) && isIntOrFloat(R)) {
+        bool useFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
+        if (useFloat) {
+            if (!L->getType()->isFloatingPointTy()) L = builder.CreateSIToFP(L, llvm::Type::getDoubleTy(ctx));
+            if (!R->getType()->isFloatingPointTy()) R = builder.CreateSIToFP(R, llvm::Type::getDoubleTy(ctx));
+        }
+
+        switch(op) {
+            case TokenType::ADD: return useFloat ? builder.CreateFAdd(L, R, "addtmp") : builder.CreateAdd(L, R, "addtmp");
+            case TokenType::SUB: return useFloat ? builder.CreateFSub(L, R, "subtmp") : builder.CreateSub(L, R, "subtmp");
+            case TokenType::MUL: return useFloat ? builder.CreateFMul(L, R, "multmp") : builder.CreateMul(L, R, "multmp");
+            case TokenType::DIV: return useFloat ? builder.CreateFDiv(L, R, "divtmp") : builder.CreateSDiv(L, R, "divtmp");
+            case TokenType::EQEQ: return useFloat ? builder.CreateFCmpUEQ(L, R, "eqtmp") : builder.CreateICmpEQ(L, R, "eqtmp");
+            case TokenType::NOTEQ: return useFloat ? builder.CreateFCmpUNE(L, R, "netmp") : builder.CreateICmpNE(L, R, "netmp");
+            case TokenType::LESS: return useFloat ? builder.CreateFCmpULT(L, R, "lttmp") : builder.CreateICmpSLT(L, R, "lttmp");
+            case TokenType::LESSEQ: return useFloat ? builder.CreateFCmpULE(L, R, "letmp") : builder.CreateICmpSLE(L, R, "letmp");
+            case TokenType::GREATER: return useFloat ? builder.CreateFCmpUGT(L, R, "gttmp") : builder.CreateICmpSGT(L, R, "gttmp");
+            case TokenType::GREATEREQ: return useFloat ? builder.CreateFCmpUGE(L, R, "getmp") : builder.CreateICmpSGE(L, R, "getmp");
+            default: return nullptr;
+        }
+    }
+
+    if (isString(L) && isString(R)) {
+        if (op == TokenType::EQEQ || op == TokenType::NOTEQ) {
+            llvm::FunctionCallee strcmpFunc = module.getOrInsertFunction(
+                "strcmp",
+                llvm::FunctionType::get(
+                    llvm::Type::getInt32Ty(ctx),
+                    {llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0)},
+                    false
+                )
+            );
+
+            llvm::Value* cmp = builder.CreateCall(strcmpFunc, {L, R}, "strcmpcall");
+            llvm::Value* eq = builder.CreateICmpEQ(cmp, llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
+            if (op == TokenType::NOTEQ) eq = builder.CreateNot(eq);
+            return eq;
+        }
+		
+        if (op == TokenType::ADD) {
+            llvm::FunctionCallee strcatFunc = module.getOrInsertFunction(
+                "strcat",
+                llvm::FunctionType::get(
+                    llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+                    {llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0)},
+                    false
+                )
+            );
+
+            return builder.CreateCall(strcatFunc, {L, R}, "strcatcall");
+        }
+
+        return nullptr;
+    }
+
+    return nullptr;
+}
+
 void BinaryOp::print(int indent) {
 	printIndent(indent);
 	std::cout << "BinaryOp(op=\"" << (uint16_t)op << "\")" << std::endl;

@@ -158,7 +158,7 @@ class BinaryOp : public ASTNode {
 		ASTPtr left;
 		ASTPtr right;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
