@@ -6,6 +6,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "evaluator.hpp"
+#include "compiler.hpp"
 #include "errors.hpp"
 #include "args.hpp"
 
@@ -114,7 +115,11 @@ int32_t main(int32_t argc, char **argv) {
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		// ADD COMPILATION WITH LLVM HERE
+		Compiler cr("TentModule");
+		cr.generate(static_cast<Program*>(program.get()));
+		cr.module->print(llvm::outs(), nullptr);
+
+		return 0;
 	} else {
 	    if (!IS_FLAG_SET(DEBUG_STOP)) {
 			try {
