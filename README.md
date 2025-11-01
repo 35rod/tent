@@ -12,5 +12,6 @@ Tent now supports LLVM for compilation! In order to test it out, try this sample
 print("Hello World!");
 ```
 
-Run it with: `./tent -c -f <path to tent file>`. Now, copy the output into a .ll file. Finally, you can compile that .ll file with the command: `clang <filename>.ll -o <whatever you want the executable to be called>`. And watch as a beautiful
-native executable pops into view. Note that we're still working on cross-platform support for other compilers.
+Run it with: `./tent -c -f <path to tent file>`. You should see the generated executable `a.out`!
+
+IMPORTANT: Unfortunately, tent only supports the clang compiler, and it can only compile on Unix-based systems, we're still working on support for Windows.
