@@ -1,4 +1,5 @@
 const std = @import("std");
+const zcc = @import("compile_commands");
 
 const include_path: []const u8 = "include";
 const lib_path: []const u8 = "lib";
@@ -26,6 +27,8 @@ const cxx_compiler_flags = [_][]const u8 {
 };
 
 pub fn build(b: *std.Build) void {
+    var build_targets_list = std.ArrayListUnmanaged(*std.Build.Step.Compile){};
+
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
@@ -62,6 +65,7 @@ pub fn build(b: *std.Build) void {
         installArtifactOptions(b, libentry, .{
             .dest_dir = .{ .override = .{ .custom = "lib/tent" } },
         });
+        build_targets_list.append(b.allocator, libentry) catch @panic("OOM");
     }
 
     // EXECUTABLE
@@ -83,6 +87,9 @@ pub fn build(b: *std.Build) void {
     });
 
     b.installArtifact(tent_exe);
+    build_targets_list.append(b.allocator, tent_exe) catch @panic("OOM");
+
+    _ = zcc.createStep(b, "cdb", build_targets_list.toOwnedSlice(b.allocator) catch @panic("OOM"));
 }
 
 fn installArtifactOptions(b: *std.Build, artifact: *std.Build.Step.Compile, options: std.Build.Step.InstallArtifact.Options) void {
