@@ -2,9 +2,11 @@
 
 #include "ast.hpp"
 
+static const std::string defaultOutputExeName = "t.out";
+
 class Compiler {
 	public:
-		Compiler() = default;
+		Compiler() = delete;
 
-		void compile(Program* program, const std::string& moduleName = "TentProgram", const std::string& outputExe = "a.out");
+		static void compile(Program* program, const std::string& outputExe = defaultOutputExeName, const std::string& moduleName = "TentProgram");
 };
