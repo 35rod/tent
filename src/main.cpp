@@ -5,8 +5,6 @@
 
 #include "lexer.hpp"
 #include "parser.hpp"
-#include "compiler.hpp"
-#include "vm.hpp"
 #include "evaluator.hpp"
 #include "errors.hpp"
 #include "args.hpp"
@@ -104,28 +102,19 @@ int32_t main(int32_t argc, char **argv) {
 
 	ASTPtr program = nullptr;
 
-	if (SRC_FILENAME.find(".tnc") != std::string::npos) {
-		VM vm;
-		auto bytecode = vm.loadFile(SRC_FILENAME, search_dirs);
-		vm.run(bytecode);
-		exit(0);
-	} else {
-		Lexer lexer(output, SRC_FILENAME);
+	Lexer lexer(output, SRC_FILENAME);
 
-		lexer.nextChar();
-		lexer.getTokens();
+	lexer.nextChar();
+	lexer.getTokens();
 
-		Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
-		program = parser.parse_program();
-	}
+	Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
+	program = parser.parse_program();
 
 	if (IS_FLAG_SET(DEBUG))
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		Compiler compiler;
-		std::vector<Instruction> bytecode = compiler.compileProgram(std::move(program));
-		compiler.saveToFile(bytecode, SRC_FILENAME.substr(0, SRC_FILENAME.rfind(".")) + ".tnc");
+		// ADD COMPILATION WITH LLVM HERE
 	} else {
 	    if (!IS_FLAG_SET(DEBUG_STOP)) {
 			try {

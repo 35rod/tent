@@ -4,6 +4,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(tent)
 
+find_package(LLVM REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+llvm_map_components_to_libnames(LLVM_LIBS
+    Core
+    Support
+    IRReader
+    ExecutionEngine
+    Target
+)
+
 include_directories(include)
 
 set(SOURCE_FILES
@@ -25,6 +41,8 @@ set(SOURCE_FILES
 add_subdirectory(lib)
 
 add_executable(tent ${SOURCE_FILES})
+
+target_link_libraries(tent PRIVATE ${LLVM_LIBS})
 
 if(MSVC)
 	target_compile_options(tent PRIVATE -O3 /W4 /WX)

@@ -1,12 +1,3 @@
 load "io";
-load "keyboard";
 
-init();
-
-while true {
-    if (isPressed()) {
-        println(getKey());
-    }
-}
-
-end();
+println("Hello World!");
