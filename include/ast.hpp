@@ -23,7 +23,7 @@ class FloatLiteral : public ASTNode {
 	public:
 		tn_dec_t value;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
@@ -45,7 +45,7 @@ class BoolLiteral : public ASTNode {
 	public:
 		tn_bool_t value;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 		
 		void print(int indent) override;
 
@@ -56,7 +56,7 @@ class VecLiteral : public ASTNode {
 	public:
 		std::vector<ASTPtr> elems;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 

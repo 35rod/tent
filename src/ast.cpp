@@ -25,6 +25,10 @@ void IntLiteral::print(int indent) {
 FloatLiteral::FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
+llvm::Value* FloatLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
+	return llvm::ConstantFP::get(ctx, llvm::APFloat(value));
+}
+
 void FloatLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "FloatLiteral(value=" << value << ")\n";
@@ -46,6 +50,10 @@ void StrLiteral::print(int indent) {
 BoolLiteral::BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
+llvm::Value* BoolLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
+	return llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx), value, false);
+}
+
 void BoolLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "BoolLiteral(value=" << (value ? "true" : "false") << ")\n";
@@ -53,6 +61,10 @@ void BoolLiteral::print(int indent) {
 
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), elems(std::move(literalValue)) {}
+
+llvm::Value* VecLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+}
 
 void VecLiteral::print(int indent) {
 	printIndent(indent);
