@@ -13,7 +13,6 @@ const tent_exe_sources = [_][]const u8 {
     "src/lexer.cpp",
     "src/evaluator.cpp",
     "src/compiler.cpp",
-    "src/vm.cpp",
     "src/parser.cpp",
     "src/errors.cpp",
     "src/token.cpp",
@@ -85,6 +84,7 @@ pub fn build(b: *std.Build) void {
         .flags = &cxx_compiler_flags,
         .language = .cpp, // dunno if this is necessary but i'll be specific
     });
+    tent_exe_mod.linkSystemLibrary("LLVM", .{});
 
     b.installArtifact(tent_exe);
     build_targets_list.append(b.allocator, tent_exe) catch @panic("OOM");

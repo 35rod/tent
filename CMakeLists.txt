@@ -31,7 +31,6 @@ set(SOURCE_FILES
     src/lexer.cpp
     src/evaluator.cpp
     src/compiler.cpp
-    src/vm.cpp
     src/parser.cpp
     src/errors.cpp
     src/token.cpp

@@ -3,9 +3,11 @@
 
 #include <cstdint>
 
+#define TENT_MAIN_CPP_FILE
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "evaluator.hpp"
+#include "compiler.hpp"
 #include "errors.hpp"
 #include "args.hpp"
 
@@ -20,7 +22,7 @@ const std::string GRAY  = "\033[90m";
 
 uint64_t runtime_flags = 0;
 
-std::string SRC_FILENAME, PROG_NAME;
+std::string SRC_FILENAME, OUT_FILENAME, PROG_NAME;
 std::vector<std::string> prog_args, search_dirs;
 
 void start_repl(const std::vector<std::string>& search_dirs) {
@@ -114,9 +116,11 @@ int32_t main(int32_t argc, char **argv) {
 		program->print(0);
 
 	if (IS_FLAG_SET(COMPILE)) {
-		// ADD COMPILATION WITH LLVM HERE
+		Compiler::compile(static_cast<Program*>(program.get()), OUT_FILENAME);
+
+		return 0;
 	} else {
-	    if (!IS_FLAG_SET(DEBUG_STOP)) {
+		if (!IS_FLAG_SET(DRY_RUN)) {
 			try {
 				Evaluator evaluator(output);
 				evaluator.evalProgram(std::move(program), prog_args);
@@ -127,7 +131,7 @@ int32_t main(int32_t argc, char **argv) {
 				std::cerr << "Unexpected error: " << e.what() << std::endl;
 				return 1;
 			}
-        }
+		}
 	}
 
 	return 0;
