@@ -7,11 +7,33 @@ namespace llvm {
 	class IRBuilderBase;
 	class Module;
 	class Value;
+	class Type;
 }
 
 inline void printIndent(int indent) {
 	printf("%*s", indent, " ");
 }
+
+struct CValue {
+	enum class Kind {
+		Int,
+		Float,
+		Bool,
+		String,
+		Dynamic,
+		Void
+	};
+
+	llvm::Value* value;
+	llvm::Type* type;
+	Kind kind;
+
+	CValue() : value(nullptr), type(nullptr), kind(Kind::Void) {}
+	CValue(llvm::Value* v, llvm::Type* t, Kind k) : value(v), type(t), kind(k) {}
+
+	bool isDynamic() const { return kind == Kind::Dynamic; }
+	bool isPrimitive() const { return kind == Kind::Int || kind == Kind::Float || kind == Kind::Bool; }
+};
 
 class ASTNode {
 	protected:
@@ -22,7 +44,7 @@ class ASTNode {
 		ASTNode(int line = -1, int col = -1, std::string file = "")
 		: lineNo(line), colNo(col), filename(file) {}
 
-		virtual llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) = 0;
+		virtual CValue codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) = 0;
 
 		virtual void print(int indent) {
 			printIndent(indent);
@@ -36,7 +58,7 @@ class ASTNode {
 
 class NullLiteral : public ASTNode {
     public:
-		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
+		CValue codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return CValue(); }
 
         void print(int indent) override {
             printIndent(indent);
@@ -46,7 +68,7 @@ class NullLiteral : public ASTNode {
 
 class NoOp : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
+		CValue codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return CValue(); }
 
 		void print(int indent) override {
 			printIndent(indent);

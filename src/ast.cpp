@@ -12,9 +12,11 @@
 IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
-llvm::Value* IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-	return llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
+CValue IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
+	llvm::Value* llvmVal = llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
+	llvm::Type* llvmType = llvmVal->getType();
+
+	return CValue(llvmVal, llvmType, CValue::Kind::Int);
 }
 
 void IntLiteral::print(int indent) {
@@ -25,8 +27,11 @@ void IntLiteral::print(int indent) {
 FloatLiteral::FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
-llvm::Value* FloatLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
-	return llvm::ConstantFP::get(ctx, llvm::APFloat(value));
+CValue FloatLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
+	llvm::Value* llvmVal = llvm::ConstantFP::get(ctx, llvm::APFloat(value));
+	llvm::Type* llvmType = llvmVal->getType();
+
+	return CValue(llvmVal, llvmType, CValue::Kind::Float);
 }
 
 void FloatLiteral::print(int indent) {
@@ -37,9 +42,13 @@ void FloatLiteral::print(int indent) {
 StrLiteral::StrLiteral(std::string literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
-llvm::Value* StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+CValue StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-	return builder.CreateGlobalStringPtr(value, "str");
+
+	llvm::Value* llvmVal = builder.CreateGlobalStringPtr(value, "str");
+	llvm::Type* llvmType = llvmVal->getType();
+
+	return CValue(llvmVal, llvmType, CValue::Kind::String);
 }
 
 void StrLiteral::print(int indent) {
@@ -50,8 +59,11 @@ void StrLiteral::print(int indent) {
 BoolLiteral::BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
-llvm::Value* BoolLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
-	return llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx), value, false);
+CValue BoolLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
+	llvm::Value* llvmVal = llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx), value, false);
+	llvm::Type* llvmType = llvmVal->getType();
+
+	return CValue(llvmVal, llvmType, CValue::Kind::Bool);
 }
 
 void BoolLiteral::print(int indent) {
