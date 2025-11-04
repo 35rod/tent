@@ -57,7 +57,7 @@ class VecLiteral : public ASTNode {
 	public:
 		std::vector<ASTPtr> elems;
 
-		CValue codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
+		CValue codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override { return CValue(); }
 
 		void print(int indent) override;
 

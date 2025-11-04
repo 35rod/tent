@@ -74,10 +74,6 @@ void BoolLiteral::print(int indent) {
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), elems(std::move(literalValue)) {}
 
-llvm::Value* VecLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-}
-
 void VecLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
@@ -173,45 +169,70 @@ void UnaryOp::print(int indent) {
 BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file)
 : ASTNode(line, col, file), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 
-llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+CValue BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
     llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
 
-    llvm::Value* L = left->codegen(ctx, builder, module);
-    llvm::Value* R = right->codegen(ctx, builder, module);
+    CValue L = left->codegen(ctx, builder, module);
+    CValue R = right->codegen(ctx, builder, module);
 
-    if (!L || !R) return nullptr;
+    if (!L.value || !R.value) 
+        return CValue();
 
-    auto isIntOrFloat = [](llvm::Value* v) {
-        return v->getType()->isIntegerTy() || v->getType()->isFloatingPointTy();
+    auto isIntOrFloat = [](const CValue& v) {
+        return v.kind == CValue::Kind::Int || v.kind == CValue::Kind::Float;
     };
 
-    auto isString = [](llvm::Value* v) {
-        return v->getType()->isPointerTy() &&
-               v->getType()->isIntegerTy(8);
+    auto isString = [](const CValue& v) {
+        return v.kind == CValue::Kind::String;
     };
 
     if (isIntOrFloat(L) && isIntOrFloat(R)) {
-        bool useFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
+        bool useFloat = (L.kind == CValue::Kind::Float || R.kind == CValue::Kind::Float);
+
+        llvm::Value* lhsVal = L.value;
+        llvm::Value* rhsVal = R.value;
+
         if (useFloat) {
-            if (!L->getType()->isFloatingPointTy()) L = builder.CreateSIToFP(L, llvm::Type::getDoubleTy(ctx));
-            if (!R->getType()->isFloatingPointTy()) R = builder.CreateSIToFP(R, llvm::Type::getDoubleTy(ctx));
+            if (L.kind == CValue::Kind::Int) lhsVal = builder.CreateSIToFP(lhsVal, llvm::Type::getDoubleTy(ctx));
+            if (R.kind == CValue::Kind::Int) rhsVal = builder.CreateSIToFP(rhsVal, llvm::Type::getDoubleTy(ctx));
         }
 
         switch(op) {
-            case TokenType::ADD: return useFloat ? builder.CreateFAdd(L, R, "addtmp") : builder.CreateAdd(L, R, "addtmp");
-            case TokenType::SUB: return useFloat ? builder.CreateFSub(L, R, "subtmp") : builder.CreateSub(L, R, "subtmp");
-            case TokenType::MUL: return useFloat ? builder.CreateFMul(L, R, "multmp") : builder.CreateMul(L, R, "multmp");
-            case TokenType::DIV: return useFloat ? builder.CreateFDiv(L, R, "divtmp") : builder.CreateSDiv(L, R, "divtmp");
-            case TokenType::EQEQ: return useFloat ? builder.CreateFCmpUEQ(L, R, "eqtmp") : builder.CreateICmpEQ(L, R, "eqtmp");
-            case TokenType::NOTEQ: return useFloat ? builder.CreateFCmpUNE(L, R, "netmp") : builder.CreateICmpNE(L, R, "netmp");
-            case TokenType::LESS: return useFloat ? builder.CreateFCmpULT(L, R, "lttmp") : builder.CreateICmpSLT(L, R, "lttmp");
-            case TokenType::LESSEQ: return useFloat ? builder.CreateFCmpULE(L, R, "letmp") : builder.CreateICmpSLE(L, R, "letmp");
-            case TokenType::GREATER: return useFloat ? builder.CreateFCmpUGT(L, R, "gttmp") : builder.CreateICmpSGT(L, R, "gttmp");
-            case TokenType::GREATEREQ: return useFloat ? builder.CreateFCmpUGE(L, R, "getmp") : builder.CreateICmpSGE(L, R, "getmp");
-            default: return nullptr;
+            case TokenType::ADD: return CValue(useFloat ? builder.CreateFAdd(lhsVal, rhsVal, "addtmp") : builder.CreateAdd(lhsVal, rhsVal, "addtmp"), 
+                                               useFloat ? llvm::Type::getDoubleTy(ctx) : llvm::Type::getInt64Ty(ctx),
+                                               useFloat ? CValue::Kind::Float : CValue::Kind::Int);
+            case TokenType::SUB: return CValue(useFloat ? builder.CreateFSub(lhsVal, rhsVal, "subtmp") : builder.CreateSub(lhsVal, rhsVal, "subtmp"), 
+                                               useFloat ? llvm::Type::getDoubleTy(ctx) : llvm::Type::getInt64Ty(ctx),
+                                               useFloat ? CValue::Kind::Float : CValue::Kind::Int);
+            case TokenType::MUL: return CValue(useFloat ? builder.CreateFMul(lhsVal, rhsVal, "multmp") : builder.CreateMul(lhsVal, rhsVal, "multmp"), 
+                                               useFloat ? llvm::Type::getDoubleTy(ctx) : llvm::Type::getInt64Ty(ctx),
+                                               useFloat ? CValue::Kind::Float : CValue::Kind::Int);
+            case TokenType::DIV: return CValue(useFloat ? builder.CreateFDiv(lhsVal, rhsVal, "divtmp") : builder.CreateSDiv(lhsVal, rhsVal, "divtmp"), 
+                                               useFloat ? llvm::Type::getDoubleTy(ctx) : llvm::Type::getInt64Ty(ctx),
+                                               useFloat ? CValue::Kind::Float : CValue::Kind::Int);
+            case TokenType::EQEQ: return CValue(useFloat ? builder.CreateFCmpUEQ(lhsVal, rhsVal, "eqtmp") : builder.CreateICmpEQ(lhsVal, rhsVal, "eqtmp"),
+                                                llvm::Type::getInt1Ty(ctx),
+                                                CValue::Kind::Bool);
+            case TokenType::NOTEQ: return CValue(useFloat ? builder.CreateFCmpUNE(lhsVal, rhsVal, "netmp") : builder.CreateICmpNE(lhsVal, rhsVal, "netmp"),
+                                                 llvm::Type::getInt1Ty(ctx),
+                                                 CValue::Kind::Bool);
+            case TokenType::LESS: return CValue(useFloat ? builder.CreateFCmpULT(lhsVal, rhsVal, "lttmp") : builder.CreateICmpSLT(lhsVal, rhsVal, "lttmp"),
+                                                llvm::Type::getInt1Ty(ctx),
+                                                CValue::Kind::Bool);
+            case TokenType::LESSEQ: return CValue(useFloat ? builder.CreateFCmpULE(lhsVal, rhsVal, "letmp") : builder.CreateICmpSLE(lhsVal, rhsVal, "letmp"),
+                                                  llvm::Type::getInt1Ty(ctx),
+                                                  CValue::Kind::Bool);
+            case TokenType::GREATER: return CValue(useFloat ? builder.CreateFCmpUGT(lhsVal, rhsVal, "gttmp") : builder.CreateICmpSGT(lhsVal, rhsVal, "gttmp"),
+                                                   llvm::Type::getInt1Ty(ctx),
+                                                   CValue::Kind::Bool);
+            case TokenType::GREATEREQ: return CValue(useFloat ? builder.CreateFCmpUGE(lhsVal, rhsVal, "getmp") : builder.CreateICmpSGE(lhsVal, rhsVal, "getmp"),
+                                                    llvm::Type::getInt1Ty(ctx),
+                                                    CValue::Kind::Bool);
+            default: return CValue();
         }
     }
 
+    // String operations
     if (isString(L) && isString(R)) {
         if (op == TokenType::EQEQ || op == TokenType::NOTEQ) {
             llvm::FunctionCallee strcmpFunc = module.getOrInsertFunction(
@@ -223,12 +244,12 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
                 )
             );
 
-            llvm::Value* cmp = builder.CreateCall(strcmpFunc, {L, R}, "strcmpcall");
+            llvm::Value* cmp = builder.CreateCall(strcmpFunc, {L.value, R.value}, "strcmpcall");
             llvm::Value* eq = builder.CreateICmpEQ(cmp, llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
             if (op == TokenType::NOTEQ) eq = builder.CreateNot(eq);
-            return eq;
+            return CValue(eq, llvm::Type::getInt1Ty(ctx), CValue::Kind::Bool);
         }
-		
+
         if (op == TokenType::ADD) {
             llvm::FunctionCallee strcatFunc = module.getOrInsertFunction(
                 "strcat",
@@ -239,13 +260,13 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
                 )
             );
 
-            return builder.CreateCall(strcatFunc, {L, R}, "strcatcall");
+            return CValue(builder.CreateCall(strcatFunc, {L.value, R.value}, "strcatcall"), L.value->getType(), CValue::Kind::String);
         }
 
-        return nullptr;
+        return CValue();
     }
 
-    return nullptr;
+    return CValue();
 }
 
 void BinaryOp::print(int indent) {
@@ -342,31 +363,42 @@ void ForStmt::print(int indent) {
 FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file)
 : ASTNode(line, col, file), name(callName), params(std::move(callParams)) {}
 
-llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+CValue FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
 
-	if (name == "print" && !params.empty()) {
-		llvm::Value* argVal = params[0]->codegen(ctx, builder, module);
+	llvm::Function* calleeFunc = module.getFunction(name);
 
-		llvm::FunctionType* printfType = llvm::FunctionType::get(
-			llvm::Type::getInt32Ty(ctx),
-			llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
-			true
-		);
-
-		llvm::FunctionCallee printfFunc = module.getOrInsertFunction("printf", printfType);
-
-		llvm::Value* fmt = nullptr;
-
-		if (argVal->getType()->isIntegerTy())
-			fmt = builder.CreateGlobalStringPtr("%lld\n", "fmt_int");
-		else
-			fmt = builder.CreateGlobalStringPtr("%s\n", "fmt_str");
-		
-		return builder.CreateCall(printfFunc, {fmt, argVal});
+	if (!calleeFunc) {
+		std::cerr << "[Error] Undefined function: " << name << std::endl;
+		return CValue();
 	}
 
-	return nullptr;
+	std::vector<llvm::Value*> argValues;
+	argValues.reserve(params.size());
+
+	for (auto& param : params) {
+		CValue argVal = param->codegen(ctx, builder, module);
+
+		if (!argVal.value) {
+			std::cerr << "[Error] Null argument in call to " << name << std::endl;
+			return CValue();
+		}
+
+		argValues.push_back(argVal.value);
+	}
+
+	llvm::Value* callResult = builder.CreateCall(calleeFunc, argValues, name + "_call");
+	llvm::Type* retType = calleeFunc->getReturnType();
+
+    CValue::Kind kind = CValue::Kind::Dynamic;
+
+    if (retType->isVoidTy()) kind = CValue::Kind::Void;
+    else if (retType->isIntegerTy(1)) kind = CValue::Kind::Bool;
+    else if (retType->isIntegerTy()) kind = CValue::Kind::Int;
+    else if (retType->isFloatingPointTy()) kind = CValue::Kind::Float;
+    else if (retType->isPointerTy()) kind = CValue::Kind::String;
+
+    return CValue(callResult, retType, kind);
 }
 
 void FunctionCall::print(int indent) {
@@ -488,11 +520,14 @@ ExpressionStmt::ExpressionStmt(
 	std::string file
 ) : ASTNode(line, col, file), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
-llvm::Value* ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	if (expr)
-		return expr->codegen(ctx, builderBase, module);
-	
-	return nullptr;
+CValue ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	if (expr) {
+		CValue val = expr->codegen(ctx, builderBase, module);
+
+		return val;
+	}
+
+	return CValue(nullptr, llvm::Type::getVoidTy(ctx), CValue::Kind::Void);
 }
 
 void ExpressionStmt::print(int indent) {
@@ -510,24 +545,26 @@ void ExpressionStmt::print(int indent) {
 Program::Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file)
 : ASTNode(line, col, file), statements(std::move(programStatements)) {}
 
-llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+CValue Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
 
 	llvm::FunctionType* mainType = llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), false);
-	llvm::Function* mainFunc = llvm::Function::Create(mainType, llvm::Function::ExternalLinkage, "main", &module);
+	llvm::Function* mainFunc = llvm::Function::Create(mainType, llvm::Function::ExternalLinkage, "main", module);
 
 	llvm::BasicBlock* entry = llvm::BasicBlock::Create(ctx, "entry", mainFunc);
 	builder.SetInsertPoint(entry);
 
-	for (auto& stmt : statements)
+	for (auto& stmt : statements) {
 		stmt.codegen(ctx, builder, module);
-	
-	builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
+	}
+
+	llvm::Value* retVal = llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0);
+	builder.CreateRet(retVal);
 
 	llvm::verifyFunction(*mainFunc);
 	llvm::verifyModule(module);
 
-	return mainFunc;
+	return CValue(mainFunc, mainType, CValue::Kind::Int);
 }
 
 void Program::print(int indent) {

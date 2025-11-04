@@ -17,6 +17,16 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 	llvm::IRBuilder<> builder(ctx);
 	llvm::Module module(moduleName, ctx);
 
+	{
+		llvm::FunctionType* printfType = llvm::FunctionType::get(
+			llvm::Type::getInt32Ty(ctx),
+			{ llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0) },
+			true
+		);
+
+		llvm::Function::Create(printfType, llvm::Function::ExternalLinkage, "printf", module);
+	}
+
 	program->codegen(ctx, builder, module);
 
 	std::error_code EC;
