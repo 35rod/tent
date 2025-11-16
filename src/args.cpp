@@ -11,24 +11,20 @@
 
 #define strlit(s) s, (sizeof(s)-1)
 
-extern std::string SRC_FILENAME, OUT_FILENAME, PROG_NAME, SYSTEM_COMPILER;
-extern std::vector<std::string> prog_args, search_dirs;
-extern uint64_t runtime_flags;
-
-void parse_args(int32_t argc, char **argv) {
-	PROG_NAME = std::string(argv[0]);
+void parse_args(int32_t argc, char **argv, Config& config) {
+	config.prog_name = std::string(argv[0]);
 
 	// add some sensible defaults (the '..' ones are for 35rod)
-	search_dirs.push_back(".");
-	search_dirs.push_back("lib");
-	search_dirs.push_back("..");
-	search_dirs.push_back("../lib");
+	config.search_dirs.push_back(".");
+	config.search_dirs.push_back("lib");
+	config.search_dirs.push_back("..");
+	config.search_dirs.push_back("../lib");
 
-	search_dirs.push_back("/usr/lib/tent");
-	search_dirs.push_back("/usr/local/lib/tent");
+	config.search_dirs.push_back("/usr/lib/tent");
+	config.search_dirs.push_back("/usr/local/lib/tent");
 	const char *home = std::getenv("HOME");
 	if (home != nullptr)
-		search_dirs.push_back(std::string(home) + "/.local/lib/tent");
+		config.search_dirs.push_back(std::string(home) + "/.local/lib/tent");
 
 	bool doing_prog_args = false;
 	std::string command;
@@ -44,9 +40,9 @@ void parse_args(int32_t argc, char **argv) {
 	}
 
 	if (command == "compile")
-		SET_FLAG(COMPILE);
+		config.set_flag(COMPILE);
 	else if (command == "repl")
-		SET_FLAG(REPL);
+		config.set_flag(REPL);
 	else if (command == "help")
 		print_usage();
 	
@@ -54,7 +50,7 @@ void parse_args(int32_t argc, char **argv) {
 		std::string arg = argv[arg_i];
 
 		if (doing_prog_args) {
-			prog_args.push_back(arg);
+			config.prog_args.push_back(arg);
 			continue;
 		}
 
@@ -64,28 +60,28 @@ void parse_args(int32_t argc, char **argv) {
 		}
 
 		if (arg == "-d" || arg == "--debug")
-			SET_FLAG(DEBUG);
+			config.set_flag(DEBUG);
 		else if (arg == "--dry") {
-			SET_FLAG(DRY_RUN);
-			SET_FLAG(DEBUG);
+			config.set_flag(DRY_RUN);
+			config.set_flag(DEBUG);
 		} else if (arg == "-s" || arg == "--save-temps")
-			SET_FLAG(SAVE_TEMPS);
+			config.set_flag(SAVE_TEMPS);
 		else if (arg.rfind("--system-compiler=", 0) == 0)
-			SYSTEM_COMPILER = arg.substr(18);
+			config.system_compiler = arg.substr(18);
 		else if (arg == "-o") {
 			if (arg_i + 1 >= argc) {
 				std::cerr << "Missing output filename after '-o'\n";
 				print_usage();
 			}
 
-			OUT_FILENAME = argv[arg_i++];
+			config.out_filename = argv[arg_i++];
 		} else if (arg.rfind("--out=", 0) == 0)
-			OUT_FILENAME = arg.substr(6);
+			config.out_filename = arg.substr(6);
 		else if (arg.rfind("-S", 0) == 0) {
 			if (arg.size() > 2)
-				search_dirs.push_back(arg.substr(2));
+				config.search_dirs.push_back(arg.substr(2));
 			else if (arg_i + 1 < argc)
-				search_dirs.push_back(argv[arg_i++]);
+				config.search_dirs.push_back(argv[arg_i++]);
 			else {
 				std::cerr << "Missing path after '-S'\n";
 				print_usage();
@@ -93,30 +89,30 @@ void parse_args(int32_t argc, char **argv) {
 		} else if (arg[0] == '-') {
 			std::cerr << "Unknown option: " << arg << "\n";
 			print_usage();
-		} else if (SRC_FILENAME.empty())
-			SRC_FILENAME = arg;
+		} else if (config.src_filename.empty())
+			config.src_filename = arg;
 		else
-			prog_args.push_back(arg);
+			config.prog_args.push_back(arg);
 	}
 
-	if (command.empty() && SRC_FILENAME.empty())
-		SET_FLAG(REPL);
+	if (command.empty() && config.src_filename.empty())
+		config.set_flag(REPL);
 	
-	if (IS_FLAG_SET(COMPILE)) {
-		if (SRC_FILENAME.empty()) {
+	if (config.is_flag_set(COMPILE)) {
+		if (config.src_filename.empty()) {
 			std::cerr << "Compile mode requires a source file\n";
 			print_usage();
 		}
 
-		if (OUT_FILENAME.empty())
-			OUT_FILENAME = defaultOutputExeName;
-	} else if (IS_FLAG_SET(REPL)) {
-		if (!SRC_FILENAME.empty()) {
+		if (config.out_filename.empty())
+			config.out_filename = defaultOutputExeName;
+	} else if (config.is_flag_set(REPL)) {
+		if (!config.src_filename.empty()) {
 			std::cerr << "REPL mode does not take a file argument\n";
 			print_usage();
 		}
 	} else {
-		if (SRC_FILENAME.empty()) {
+		if (config.src_filename.empty()) {
 			std::cerr << "No input file specified\n";
 			print_usage();
 		}
@@ -126,10 +122,10 @@ void parse_args(int32_t argc, char **argv) {
 void print_usage(void) {
 	std::cerr
         << "Usage:\n"
-        << "  " << PROG_NAME << " <file> [options]         Run a Tent source file\n"
-        << "  " << PROG_NAME << " compile <file> [options]  Compile Tent source file\n"
-        << "  " << PROG_NAME << " repl                      Start interactive REPL\n"
-        << "  " << PROG_NAME << " help                      Show this help message\n\n"
+        << "  " << "tent" << " <file> [options]         Run a Tent source file\n"
+        << "  " << "tent" << " compile <file> [options]  Compile Tent source file\n"
+        << "  " << "tent" << " repl                      Start interactive REPL\n"
+        << "  " << "tent" << " help                      Show this help message\n\n"
         << "Options:\n"
         << "  -d, --debug                 Enable debug output\n"
         << "  --dry                       Dry run (implies debug)\n"

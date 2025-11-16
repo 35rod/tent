@@ -10,9 +10,7 @@
 
 #include "args.hpp"
 
-std::string SYSTEM_COMPILER = "clang";
-
-void Compiler::compile(Program* program, const std::string& outputExe, const std::string& moduleName) {
+void Compiler::compile(const Config& config, Program* program, const std::string& outputExe, const std::string& moduleName) {
 	llvm::LLVMContext ctx;
 	llvm::IRBuilder<> builder(ctx);
 	llvm::Module module(moduleName, ctx);
@@ -35,12 +33,12 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 	module.print(irFile, nullptr);
 	irFile.close();
 
-	const std::string compileCommand = SYSTEM_COMPILER + " " + LlFileName + " -o " + outputExe;
-	if (IS_FLAG_SET(DEBUG))
+	const std::string compileCommand = config.system_compiler + " " + LlFileName + " -o " + outputExe;
+	if (config.is_flag_set(DEBUG))
 		std::cerr << "compile command: " << compileCommand << std::endl;
 
 	int code = std::system(compileCommand.c_str());
-	if (code == 0 && !IS_FLAG_SET(SAVE_TEMPS))
+	if (code == 0 && !config.is_flag_set(SAVE_TEMPS))
 		std::system(("rm " + LlFileName).c_str());
 	
 	if (code == 0)
