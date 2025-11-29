@@ -346,10 +346,14 @@ llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& 
 
 		llvm::Value* fmt = nullptr;
 
-		if (argVal->getType()->isIntegerTy())
+		if (argVal->getType()->isIntegerTy()) {
 			fmt = builder.CreateGlobalStringPtr("%lld\n", "fmt_int");
-		else
+		} else if (argVal->getType()->isFloatingPointTy()) {
+			fmt = builder.CreateGlobalStringPtr("%g\n", "fmt_float");
+			argVal = builder.CreateFPExt(argVal, llvm::Type::getDoubleTy(ctx));
+		} else {
 			fmt = builder.CreateGlobalStringPtr("%s\n", "fmt_str");
+		}
 		
 		return builder.CreateCall(printfFunc, {fmt, argVal});
 	}

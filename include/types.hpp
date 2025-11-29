@@ -11,7 +11,7 @@
 #include "misc.hpp"
 
 typedef int64_t tn_int_t;
-typedef float tn_dec_t;
+typedef double tn_dec_t;
 typedef bool tn_bool_t;
 
 class FunctionStmt;
