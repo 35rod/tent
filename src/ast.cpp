@@ -39,7 +39,7 @@ StrLiteral::StrLiteral(std::string literalValue, int line, int col, std::string 
 
 llvm::Value* StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-	return builder.CreateGlobalStringPtr(value, "str");
+	return builder.CreateGlobalString(value, "str");
 }
 
 void StrLiteral::print(int indent) {

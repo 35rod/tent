@@ -18,6 +18,7 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 	llvm::Module module(moduleName, ctx);
 
 	program->codegen(ctx, builder, module);
+	module.print(llvm::errs(), nullptr);
 
 	std::error_code EC;
 	const std::string LlFileName = defaultOutputExeName + ".ll";
