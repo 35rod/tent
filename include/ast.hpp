@@ -64,14 +64,14 @@ class VecLiteral : public ASTNode {
 };
 
 class DicLiteral : public ASTNode {
-    public:
-        std::map<ASTPtr, ASTPtr> dic;
+	public:
+		std::map<ASTPtr, ASTPtr> dic;
 
 		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
-        void print(int indent) override;
+		void print(int indent) override;
 
-        DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
+		DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
 };
 
 class TypeInt : public ASTNode {
@@ -120,12 +120,12 @@ class TypeVec : public ASTNode {
 };
 
 class TypeDic : public ASTNode {
-    public:
+	public:
 		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
-        void print(int indent) override;
+		void print(int indent) override;
 
-        TypeDic(int line, int col, std::string file);
+		TypeDic(int line, int col, std::string file);
 };
 
 class Variable : public ASTNode {
@@ -212,7 +212,7 @@ class WhileStmt : public ASTNode {
 		ASTPtr condition;
 		std::vector<ExpressionStmt> stmts;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
@@ -262,6 +262,18 @@ class ReturnStmt : public ASTNode {
 		ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file);
 };
 
+class ContractStmt : public ASTNode {
+	public:
+		std::string name;
+		std::map<ASTPtr, ASTPtr> dic;
+
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+
+		void print(int indent) override;
+
+		ContractStmt(std::string stmtName, std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
+};
+
 class FunctionStmt : public ASTNode {
 	public:
 		std::string name;
@@ -274,28 +286,6 @@ class FunctionStmt : public ASTNode {
 		void print(int indent) override;
 
 		FunctionStmt(
-			std::string stmtName, 
-			std::vector<ASTPtr> stmtParams, 
-			std::vector<ExpressionStmt> stmtStmts, 
-			ASTPtr stmtReturnValue=nullptr,
-			int line=-1,
-			int col=-1,
-			std::string file=""
-		);
-};
-
-class InlineStmt : public ASTNode {
-	public:
-		std::string name;
-		std::vector<ASTPtr> params;
-		std::vector<ExpressionStmt> stmts;
-		ASTPtr returnValue;
-
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
-		void print(int indent) override;
-
-		InlineStmt(
 			std::string stmtName, 
 			std::vector<ASTPtr> stmtParams, 
 			std::vector<ExpressionStmt> stmtStmts, 

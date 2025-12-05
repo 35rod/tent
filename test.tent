@@ -1,5 +1,3 @@
-print(false);
-print(true);
-print(3.5 * 3);
-print(3.5 + 4);
-print(6.7);
+while true {
+	printf("Hello World!");
+}

@@ -48,8 +48,7 @@ enum class TokenType: TokenTypeSize {
 	OPEN_BRACKET, CLOSE_BRACKET,
 	COMMA, SEM, NEWLINE,
 	LOAD,
-	SET,
-	FORM, RETURN,
+	FORM, CONTRACT, WITH, RETURN,
 	IF, ELSE,
 	WHILE, BREAK, CONTINUE,
 	INT_HEX, INT_DEC, INT_OCT, INT_BIN,
@@ -63,11 +62,7 @@ enum class TokenType: TokenTypeSize {
 
 	VAR,
 
-	JUMP_IF_FALSE, JUMP, INLINE, RETURN_INLINE,
-
 	FOR, ITER,
-
-	CALL, CALL_INLINE,
 
 	DOT,
 
@@ -149,8 +144,9 @@ inline std::string tokenTypeToString(TokenType type) {
         case TokenType::SEM: return "semicolon (;)";
         case TokenType::NEWLINE: return "newline";
         case TokenType::LOAD: return "load keyword";
-        case TokenType::SET: return "set keyword";
         case TokenType::FORM: return "form keyword";
+        case TokenType::CONTRACT: return "contract keyword";
+        case TokenType::WITH: return "with keyword";
         case TokenType::RETURN: return "return keyword";
         case TokenType::IF: return "if keyword";
         case TokenType::ELSE: return "else keyword";
@@ -171,14 +167,8 @@ inline std::string tokenTypeToString(TokenType type) {
         case TokenType::INVALID_TOKEN: return "invalid token";
         case TokenType::EOF_TOK: return "end of file";
         case TokenType::VAR: return "variable";
-        case TokenType::JUMP_IF_FALSE: return "jump if false";
-        case TokenType::JUMP: return "jump";
-        case TokenType::INLINE: return "inline keyword";
-        case TokenType::RETURN_INLINE: return "return inline";
         case TokenType::FOR: return "for keyword";
         case TokenType::ITER: return "iterator operator ($)";
-        case TokenType::CALL: return "function call";
-        case TokenType::CALL_INLINE: return "inline function call";
         case TokenType::DOT: return "dot operator (.)";
         case TokenType::CLASS: return "class keyword";
 

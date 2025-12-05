@@ -238,7 +238,7 @@ ExpressionStmt Parser::parse_statement() {
 		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), true, false, false, current().lineNo, current().colNo, filename);
 
 		return expressionStmt;
-	} else if (token.kind == TokenType::FORM || token.kind == TokenType::INLINE || token.kind == TokenType::CLASS) {
+	} else if (token.kind == TokenType::FORM || token.kind == TokenType::CLASS) {
 		advance();
 		Token name = expect(TokenType::IDENT);
 		advance();
@@ -282,13 +282,34 @@ ExpressionStmt Parser::parse_statement() {
 
 		if (token.kind == TokenType::FORM) {
 			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts), nullptr, current().lineNo, current().colNo, filename);
-		} else if (token.kind == TokenType::INLINE) {
-			res = std::make_unique<InlineStmt>(name.text, std::move(params), std::move(stmts), nullptr, current().lineNo, current().colNo, filename);
 		} else {
 			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts), current().lineNo, current().colNo, filename);
 		}
 		
 		return ExpressionStmt(std::move(res), false, false, false, current().lineNo, current().colNo, filename);
+	} else if (token.kind == TokenType::CONTRACT) {
+		advance();
+		Token name = expect(TokenType::IDENT);
+		advance();
+		ASTPtr value = parse_expression(0);
+
+		if (auto dl = dynamic_cast<DicLiteral*>(value.get())) {
+			advance();
+
+			ASTPtr contractStmt = std::make_unique<ContractStmt>(name.text, std::move(dl->dic), current().lineNo, current().colNo, filename);
+
+			return ExpressionStmt(std::move(contractStmt), false, false, false, current().lineNo, current().colNo, filename);
+		} else {
+			SyntaxError(
+				"Invalid syntax for contract definition",
+				current().lineNo,
+				current().colNo,
+				filename,
+				"",
+				getLineText(source, current().lineNo)
+			).print();
+			exit(1);
+		}
 	} else if (token.kind == TokenType::RETURN) {
 		advance();
 

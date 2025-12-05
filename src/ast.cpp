@@ -292,6 +292,36 @@ void IfStmt::print(int indent) {
 WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file) :
 ASTNode(line, col, file), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
 
+llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
+
+	llvm::BasicBlock* LoopCondBB = llvm::BasicBlock::Create(ctx, "loop_cond", mainFunc);
+	llvm::BasicBlock* LoopBodyBB = llvm::BasicBlock::Create(ctx, "loop_body", mainFunc);
+	llvm::BasicBlock* LoopExitBB = llvm::BasicBlock::Create(ctx, "loop_exit", mainFunc);
+
+	builder.CreateBr(LoopCondBB);
+	builder.SetInsertPoint(LoopCondBB);
+
+	llvm::Value* cond = condition->codegen(ctx, builder, module);
+
+	builder.CreateCondBr(cond, LoopBodyBB, LoopExitBB);
+	builder.SetInsertPoint(LoopBodyBB);
+
+	for (auto& stmt : stmts) {
+		stmt.codegen(ctx, builder, module);
+	}
+
+	if (!builder.GetInsertBlock()->getTerminator()) {
+		builder.CreateBr(LoopCondBB);
+	}
+
+	builder.SetInsertPoint(LoopExitBB);
+
+	return nullptr;
+}
+
 void WhileStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "WhileStmt(statements=" << stmts.size() << ")\n";
@@ -347,9 +377,9 @@ llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& 
 		llvm::Value* fmt = nullptr;
 
 		if (argVal->getType()->isIntegerTy())
-			fmt = builder.CreateGlobalStringPtr("%lld\n", "fmt_int");
+			fmt = builder.CreateGlobalString("%lld\n", "fmt_int");
 		else
-			fmt = builder.CreateGlobalStringPtr("%s\n", "fmt_str");
+			fmt = builder.CreateGlobalString("%s\n", "fmt_str");
 		
 		return builder.CreateCall(printfFunc, {fmt, argVal});
 	}
@@ -383,6 +413,14 @@ void ReturnStmt::print(int indent) {
 	}
 }
 
+ContractStmt::ContractStmt(std::string stmtName, std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file)
+: ASTNode(line, col, file), name(stmtName), dic(std::move(literalDic)) {}
+
+void ContractStmt::print(int indent) {
+	printIndent(indent);
+	std::cout << "ContractStmt(name=" << name << ", " << "size=" << dic.size() << ")\n";
+}
+
 FunctionStmt::FunctionStmt(
 	std::string stmtName, 
 	std::vector<ASTPtr> stmtParams, 
@@ -396,34 +434,6 @@ FunctionStmt::FunctionStmt(
 void FunctionStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "FunctionStmt(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
-	printIndent(indent+2);
-	std::cout << "Parameters:\n";
-
-	for (const auto& param : params) {
-		param->print(indent+4);
-	}
-
-	printIndent(indent+2);
-	std::cout << "Statements:\n";
-
-	for (ExpressionStmt& stmt: stmts) {
-		stmt.print(indent+4);
-	}
-}
-
-InlineStmt::InlineStmt(
-	std::string stmtName, 
-	std::vector<ASTPtr> stmtParams, 
-	std::vector<ExpressionStmt> stmtStmts, 
-	ASTPtr stmtReturnValue,
-	int line,
-	int col,
-	std::string file
-) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
-
-void InlineStmt::print(int indent) {
-	printIndent(indent);
-	std::cout << "InlineStmt(name=" << name << ", statements=" << stmts.size() << ", parameters=" << params.size() << ")\n";
 	printIndent(indent+2);
 	std::cout << "Parameters:\n";
 
