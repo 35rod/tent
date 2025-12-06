@@ -44,8 +44,8 @@ load "io"; ~ loads core I/O library
 println("Hello World!"); ~ prints Hello World
 ```
 
-Note that comments are denoted using the tilde ('~') character. To run this code, simply run `tent -f <filename>.tent`, and replace `<filename>`
-with the filename of your tent file. That's if you want to run it using the evaluator. However, tent also comes with a compiler and VM!
-To compile this code, run `tent -c -f <filename>.tent`, replacing `<filename>` with the filename of your tent file once again.
+Note that comments are denoted using the tilde ('~') character. To run this code, simply run `tent <filename>.tent`, and replace `<filename>`
+with the filename of your tent file. That's if you want to run it using the evaluator. However, tent now has LLVM support!
+To compile this code, run `tent compile <filename>.tent`, replacing `<filename>` with the filename of your tent file once again.
 
 NOTE: LLVM support is being integrated into tent currently, but it's best to stick with the evaluator for now, as the compiler is still a work-in-progress.
