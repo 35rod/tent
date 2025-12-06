@@ -12,6 +12,9 @@ Tent now supports LLVM for compilation! In order to test it out, try this sample
 print("Hello World!");
 ```
 
-Compile it with: `./tent -c -f <path to tent file>`. You should see the generated executable `t.out`!
+Compile it with: `./tent compile <path to tent file>`. You should see the generated executable `t.out`!
 
-IMPORTANT: Unfortunately, tent can only compile on Unix-based systems (Linux, MacOS, etc.); we're still working on support for Windows.
+## Update with LLVM
+
+While loops, if then else statements, and the break and continue statements are now supported. Note that variables are still not quite ready yet, but are on the way!
+Also, note that unfortunately, tent can only compile on Unix-based systems (Linux, MacOS, etc.); we're still working on support for Windows.
