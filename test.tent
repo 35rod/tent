@@ -1,3 +1,11 @@
 while true {
-	print("Hello World!");
+	print("starting");
+
+	if true {
+		break;
+	}
+
+	print("should not print this");
 }
+
+print("Finished!");

@@ -9,6 +9,9 @@
 
 #include "misc.hpp"
 
+std::vector<llvm::BasicBlock*> BreakBlockStack;
+std::vector<llvm::BasicBlock*> ContinueBlockStack;
+
 IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), value(literalValue) {}
 
@@ -269,6 +272,45 @@ IfStmt::IfStmt(
 	std::string file
 ) : ASTNode(line, col, file), condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
+llvm::Value* IfStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	llvm::Value* cond = condition->codegen(ctx, builder, module);
+	if (!cond) return nullptr;
+
+	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
+
+	llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(ctx, "then", mainFunc);
+	llvm::BasicBlock* ElseBB = llvm::BasicBlock::Create(ctx, "else", mainFunc);
+	llvm::BasicBlock* IfContBB = llvm::BasicBlock::Create(ctx, "ifcont");
+
+	builder.CreateCondBr(cond, ThenBB, ElseBB);
+	builder.SetInsertPoint(ThenBB);
+
+	for (auto& stmt : thenClauseStmts) {
+		stmt.codegen(ctx, builder, module);
+	}
+
+	if (!builder.GetInsertBlock()->getTerminator()) {
+		builder.CreateBr(IfContBB);
+	}
+
+	builder.SetInsertPoint(ElseBB);
+
+	for (auto& stmt : elseClauseStmts) {
+		stmt.codegen(ctx, builder, module);
+	}
+
+	if (!builder.GetInsertBlock()->getTerminator()) {
+		builder.CreateBr(IfContBB);
+	}
+
+	mainFunc->insert(mainFunc->end(), IfContBB);
+	builder.SetInsertPoint(IfContBB);
+
+	return nullptr;
+}
+
 void IfStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "IfStmt(thenStmts=" << thenClauseStmts.size() << ", elseStmts=" << elseClauseStmts.size() << ")\n";
@@ -299,14 +341,19 @@ llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& bui
 
 	llvm::BasicBlock* LoopCondBB = llvm::BasicBlock::Create(ctx, "loop_cond", mainFunc);
 	llvm::BasicBlock* LoopBodyBB = llvm::BasicBlock::Create(ctx, "loop_body", mainFunc);
-	llvm::BasicBlock* LoopExitBB = llvm::BasicBlock::Create(ctx, "loop_exit", mainFunc);
+	llvm::BasicBlock* LoopExitBB = llvm::BasicBlock::Create(ctx, "loop_exit");
 
 	builder.CreateBr(LoopCondBB);
 	builder.SetInsertPoint(LoopCondBB);
 
 	llvm::Value* cond = condition->codegen(ctx, builder, module);
+	if (!cond) return nullptr;
 
 	builder.CreateCondBr(cond, LoopBodyBB, LoopExitBB);
+
+	BreakBlockStack.push_back(LoopExitBB);
+	ContinueBlockStack.push_back(LoopCondBB);
+
 	builder.SetInsertPoint(LoopBodyBB);
 
 	for (auto& stmt : stmts) {
@@ -317,6 +364,10 @@ llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& bui
 		builder.CreateBr(LoopCondBB);
 	}
 
+	BreakBlockStack.pop_back();
+	ContinueBlockStack.pop_back();
+
+	mainFunc->insert(mainFunc->end(), LoopExitBB);
 	builder.SetInsertPoint(LoopExitBB);
 
 	return nullptr;
@@ -487,9 +538,42 @@ ExpressionStmt::ExpressionStmt(
 ) : ASTNode(line, col, file), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 llvm::Value* ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	if (expr)
+	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
+
+	if (isBreak) {
+		if (BreakBlockStack.empty()) {
+			std::cerr << "Error: 'break' statement outside of loop" << std::endl;
+			return nullptr;
+		}
+
+		builder.CreateBr(BreakBlockStack.back());
+
+		llvm::BasicBlock* nextBB = llvm::BasicBlock::Create(ctx, "unreachable_break", mainFunc);
+		builder.SetInsertPoint(nextBB);
+
+		return nullptr;
+	}
+
+	if (isContinue) {
+		if (ContinueBlockStack.empty()) {
+			std::cerr << "Error: 'continue' statement outside of loop" << std::endl;
+			return nullptr;
+		}
+
+		builder.CreateBr(ContinueBlockStack.back());
+
+		llvm::BasicBlock* nextBB = llvm::BasicBlock::Create(ctx, "unreachable_continue", mainFunc);
+		builder.SetInsertPoint(nextBB);
+
+		return nullptr;
+	}
+
+	if (expr) {
 		return expr->codegen(ctx, builderBase, module);
-	
+	}
+
 	return nullptr;
 }
 

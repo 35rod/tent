@@ -193,7 +193,7 @@ class IfStmt : public ASTNode {
 		std::vector<ExpressionStmt> thenClauseStmts;
 		std::vector<ExpressionStmt> elseClauseStmts;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 
