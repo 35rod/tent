@@ -271,19 +271,6 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 				llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
 				allocaInst = CreateEntryBlockAlloca(mainFunc, varNode->name);
 				NamedValues[varNode->name] = allocaInst;
-			} else {
-				llvm::StructType* dynamicType = getDynamicValueType(ctx);
-				llvm::Value* Old_Boxed_Value = builder.CreateLoad(dynamicType, allocaInst, varNode->name + ".old_dynamic_value");
-
-				llvm::FunctionType* freeTy = llvm::FunctionType::get(
-					llvm::Type::getVoidTy(ctx),
-					{dynamicType},
-					false
-				);
-
-				llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
-				
-				builder.CreateCall(freeFunc, {Old_Boxed_Value});
 			}
 
 			llvm::StructType* dynamicType = getDynamicValueType(ctx);
@@ -353,7 +340,23 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 	llvm::Value* LB = L->getType() == dynamicType ? L : boxPrimitive(L, ctx, builder, module);
 	llvm::Value* RB = R->getType() == dynamicType ? R : boxPrimitive(R, ctx, builder, module);
 
-	return builder.CreateCall(binOpFunc, {LB, RB}, funcName + "_result");
+	llvm::Value* res = builder.CreateCall(binOpFunc, {LB, RB}, funcName + "_result");
+
+	llvm::FunctionType* freeTy = llvm::FunctionType::get(
+		llvm::Type::getVoidTy(ctx),
+		{dynamicType},
+		false
+	);
+
+	llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
+
+	if (L->getType() != dynamicType) {
+		builder.CreateCall(freeFunc, {LB});
+	} if (R->getType() != dynamicType) {
+		builder.CreateCall(freeFunc, {RB});
+	}
+
+	return res;
 }
 
 void BinaryOp::print(int indent) {
@@ -766,6 +769,22 @@ llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& build
 
 	for (auto& stmt : statements)
 		stmt.codegen(ctx, builder, module);
+	
+	llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+	llvm::FunctionType* freeTy = llvm::FunctionType::get(
+		llvm::Type::getVoidTy(ctx),
+		{dynamicType},
+		false
+	);
+
+	llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
+	
+	for (auto& [name, allocaInst] : NamedValues) {
+		llvm::Value* val = builder.CreateLoad(dynamicType, allocaInst);
+		llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
+		builder.CreateCall(freeFunc, {val});
+	}
 	
 	builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
 
