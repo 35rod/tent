@@ -16,7 +16,7 @@ llvm::StructType* getDynamicValueType(llvm::LLVMContext& ctx) {
 
 	std::vector<llvm::Type*> fields = {
 		llvm::Type::getInt32Ty(ctx),
-		llvm::Type::getInt64Ty(ctx)
+		llvm::PointerType::get(ctx, 0)
 	};
 
 	DynamicValueTy = llvm::StructType::create(ctx, fields, "DynamicValue");
@@ -33,8 +33,58 @@ llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function* mainFunc, const std::st
 	return TmpBuilder.CreateAlloca(dynamicType, nullptr, varName.c_str());
 }
 
+llvm::Value* boxPrimitive(llvm::Value* val, llvm::LLVMContext& ctx, llvm::IRBuilder<>& builder, llvm::Module& module) {
+	llvm::StructType* dynamicType = getDynamicValueType(ctx);
+	
+	llvm::FunctionCallee boxFunc;
+	llvm::Value* arg = val;
+
+	if (val->getType()->isIntegerTy(64)) {
+		boxFunc = module.getOrInsertFunction(
+			"box_int",
+			llvm::FunctionType::get(
+				dynamicType,
+				{llvm::Type::getInt64Ty(ctx)},
+				false
+			)
+		);
+	} else if (val->getType()->isDoubleTy()) {
+		boxFunc = module.getOrInsertFunction(
+			"box_float",
+			llvm::FunctionType::get(
+				dynamicType,
+				{llvm::Type::getDoubleTy(ctx)},
+				false
+			)
+		);
+	} else if (val->getType()->isPointerTy()) {
+		boxFunc = module.getOrInsertFunction(
+			"box_string",
+			llvm::FunctionType::get(
+				dynamicType,
+				{llvm::Type::getInt8Ty(ctx)->getPointerTo()},
+				false
+			)
+		);
+	} else if (val->getType()->isIntegerTy(1)) {
+		boxFunc = module.getOrInsertFunction(
+			"box_bool",
+			llvm::FunctionType::get(
+				dynamicType,
+				{llvm::Type::getInt1Ty(ctx)},
+				false
+			)
+		);
+	}
+
+	return builder.CreateCall(boxFunc, {arg});
+}
+
 enum TypeTag {
-	INT
+	INT,
+	FLOAT,
+	STRING,
+	BOOL
 };
 
 std::map<std::string, llvm::AllocaInst*> NamedValues;
@@ -171,63 +221,9 @@ llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 		return nullptr;
 	}
 
-	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
 	llvm::StructType* dynamicType = getDynamicValueType(ctx);
 
-	llvm::Value* type_addr = builder.CreateStructGEP(dynamicType, allocaInst, 0, name + ".load_type_addr");
-	llvm::Value* loaded_type = builder.CreateLoad(dynamicType->getElementType(0), type_addr, name + ".loaded_type");
-
-	llvm::BasicBlock* SuccessBB = llvm::BasicBlock::Create(ctx, name + ".success", mainFunc);
-	llvm::BasicBlock* ErrorBB = llvm::BasicBlock::Create(ctx, name + ".type_error", mainFunc);
-	llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(ctx, name + ".merge");
-
-	llvm::Value* is_int_cond = builder.CreateICmpEQ(
-		loaded_type,
-		builder.getInt32(TypeTag::INT),
-		name + ".is_int"
-	);
-
-	builder.CreateCondBr(is_int_cond, SuccessBB, ErrorBB);
-
-	builder.SetInsertPoint(SuccessBB);
-
-	{
-		llvm::Value* data_addr = builder.CreateStructGEP(dynamicType, allocaInst, 1, name + ".load_data_addr");
-		builder.CreateLoad(dynamicType->getElementType(1), data_addr, name + ".unboxed_int");
-
-		builder.CreateBr(MergeBB);
-		SuccessBB = builder.GetInsertBlock();
-	}
-
-	builder.SetInsertPoint(ErrorBB);
-
-	{
-		llvm::Value* error_str = builder.CreateGlobalString("Type error: variable %s is not of type int\n", "err_fmt");
-		llvm::Value* var_name_str = builder.CreateGlobalString(name.c_str(), "var_name_str");
-
-		llvm::FunctionType* printfType = llvm::FunctionType::get(
-			llvm::Type::getInt32Ty(ctx),
-			llvm::PointerType::get(ctx, 0),
-			true
-		);
-
-		llvm::FunctionCallee printfFunc = module.getOrInsertFunction("printf", printfType);
-
-		builder.CreateCall(printfFunc, {error_str, var_name_str}, "print_type_error");
-		
-		builder.CreateBr(MergeBB);
-		ErrorBB = builder.GetInsertBlock();
-	}
-
-	mainFunc->insert(mainFunc->end(), MergeBB);
-	builder.SetInsertPoint(MergeBB);
-
-	llvm::PHINode* result = builder.CreatePHI(llvm::Type::getInt64Ty(ctx), 2, name + ".final_value");
-
-	result->addIncoming(SuccessBB->getTerminator()->getPrevNode(), SuccessBB);
-	result->addIncoming(llvm::UndefValue::get(llvm::Type::getInt64Ty(ctx)), ErrorBB);
-
-	return result;
+	return builder.CreateLoad(dynamicType, allocaInst, name + ".loaded_dynamic_value");
 }
 
 void Variable::print(int indent) {
@@ -275,22 +271,27 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 				llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
 				allocaInst = CreateEntryBlockAlloca(mainFunc, varNode->name);
 				NamedValues[varNode->name] = allocaInst;
+			} else {
+				llvm::StructType* dynamicType = getDynamicValueType(ctx);
+				llvm::Value* Old_Boxed_Value = builder.CreateLoad(dynamicType, allocaInst, varNode->name + ".old_dynamic_value");
+
+				llvm::FunctionType* freeTy = llvm::FunctionType::get(
+					llvm::Type::getVoidTy(ctx),
+					{dynamicType},
+					false
+				);
+
+				llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
+				
+				builder.CreateCall(freeFunc, {Old_Boxed_Value});
 			}
 
 			llvm::StructType* dynamicType = getDynamicValueType(ctx);
 
-			if (RHS_Value->getType()->isIntegerTy(64)) {
-				llvm::Value* type_addr = builder.CreateStructGEP(dynamicType, allocaInst, 0, varNode->name + ".assign_type_addr");
-				builder.CreateStore(builder.getInt32(TypeTag::INT), type_addr);
+			llvm::Value* boxedRHS = (RHS_Value->getType() == dynamicType) ? RHS_Value : boxPrimitive(RHS_Value, ctx, builder, module);
+			builder.CreateStore(boxedRHS, allocaInst);
 
-				llvm::Value* data_addr = builder.CreateStructGEP(dynamicType, allocaInst, 1, varNode->name + ".assign_data_addr");
-				builder.CreateStore(RHS_Value, data_addr);
-
-				return RHS_Value;
-			} else {
-				std::cerr << "Variable assignment only supports i64 currently" << std::endl;
-				return nullptr;
-			}
+			return boxedRHS;
 		}
 	}
 
@@ -299,71 +300,60 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 
     if (!L || !R) return nullptr;
 
-    auto isIntOrFloat = [](llvm::Value* v) {
-        return v->getType()->isIntegerTy() || v->getType()->isFloatingPointTy();
-    };
+	if (L->getType()->isIntegerTy(64) && R->getType()->isIntegerTy(64)) {
+		switch (op) {
+			case TokenType::ADD: return builder.CreateAdd(L, R, "add_i64");
+			case TokenType::SUB: return builder.CreateSub(L, R, "sub_i64");
+			case TokenType::MUL: return builder.CreateMul(L, R, "mul_i64");
+			case TokenType::DIV: return builder.CreateSDiv(L, R, "div_i64");
+			default: break;
+		}
+	} else if ((L->getType()->isDoubleTy() || L->getType()->isIntegerTy(64)) &&
+		(R->getType()->isDoubleTy() || R->getType()->isIntegerTy(64))) {
+			llvm::Value* Lf = L->getType()->isDoubleTy() ? L : builder.CreateSIToFP(L, llvm::Type::getDoubleTy(ctx));
+			llvm::Value* Rf = R->getType()->isDoubleTy() ? R : builder.CreateSIToFP(R, llvm::Type::getDoubleTy(ctx));
 
-    auto isString = [](llvm::Value* v) {
-        return v->getType()->isPointerTy() &&
-               v->getType()->isIntegerTy(8);
-    };
+			switch (op) {
+				case TokenType::ADD: return builder.CreateFAdd(Lf, Rf, "add_f64");
+				case TokenType::SUB: return builder.CreateFSub(Lf, Rf, "sub_f64");
+				case TokenType::MUL: return builder.CreateFMul(Lf, Rf, "mul_f64");
+				case TokenType::DIV: return builder.CreateFDiv(Lf, Rf, "div_f64");
+				default: break;
+			}
+		}
 
-    if (isIntOrFloat(L) && isIntOrFloat(R)) {
-        bool useFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
-        if (useFloat) {
-            if (!L->getType()->isFloatingPointTy()) L = builder.CreateSIToFP(L, llvm::Type::getDoubleTy(ctx));
-            if (!R->getType()->isFloatingPointTy()) R = builder.CreateSIToFP(R, llvm::Type::getDoubleTy(ctx));
-        }
+    llvm::StructType* dynamicType = getDynamicValueType(ctx);
+	llvm::FunctionType* binOpTy = llvm::FunctionType::get(
+		dynamicType,
+		{dynamicType, dynamicType},
+		false
+	);
 
-        switch(op) {
-            case TokenType::ADD: return useFloat ? builder.CreateFAdd(L, R, "addtmp") : builder.CreateAdd(L, R, "addtmp");
-            case TokenType::SUB: return useFloat ? builder.CreateFSub(L, R, "subtmp") : builder.CreateSub(L, R, "subtmp");
-            case TokenType::MUL: return useFloat ? builder.CreateFMul(L, R, "multmp") : builder.CreateMul(L, R, "multmp");
-            case TokenType::DIV: return useFloat ? builder.CreateFDiv(L, R, "divtmp") : builder.CreateSDiv(L, R, "divtmp");
-            case TokenType::EQEQ: return useFloat ? builder.CreateFCmpUEQ(L, R, "eqtmp") : builder.CreateICmpEQ(L, R, "eqtmp");
-            case TokenType::NOTEQ: return useFloat ? builder.CreateFCmpUNE(L, R, "netmp") : builder.CreateICmpNE(L, R, "netmp");
-            case TokenType::LESS: return useFloat ? builder.CreateFCmpULT(L, R, "lttmp") : builder.CreateICmpSLT(L, R, "lttmp");
-            case TokenType::LESSEQ: return useFloat ? builder.CreateFCmpULE(L, R, "letmp") : builder.CreateICmpSLE(L, R, "letmp");
-            case TokenType::GREATER: return useFloat ? builder.CreateFCmpUGT(L, R, "gttmp") : builder.CreateICmpSGT(L, R, "gttmp");
-            case TokenType::GREATEREQ: return useFloat ? builder.CreateFCmpUGE(L, R, "getmp") : builder.CreateICmpSGE(L, R, "getmp");
-            default: return nullptr;
-        }
-    }
+	llvm::FunctionCallee binOpFunc;
+	std::string funcName;
 
-    if (isString(L) && isString(R)) {
-        if (op == TokenType::EQEQ || op == TokenType::NOTEQ) {
-            llvm::FunctionCallee strcmpFunc = module.getOrInsertFunction(
-                "strcmp",
-                llvm::FunctionType::get(
-                    llvm::Type::getInt32Ty(ctx),
-                    {llvm::PointerType::get(ctx, 0), llvm::PointerType::get(ctx, 0)},
-                    false
-                )
-            );
+	switch (op) {
+		case TokenType::ADD: funcName = "dynamic_add"; break;
+		case TokenType::SUB: funcName = "dynamic_sub"; break;
+		case TokenType::MUL: funcName = "dynamic_mul"; break;
+		case TokenType::DIV: funcName = "dynamic_div"; break;
+		case TokenType::EQEQ: funcName = "dynamic_eqeq"; break;
+		case TokenType::NOTEQ: funcName = "dynamic_noteq"; break;
+		case TokenType::LESS: funcName = "dynamic_less"; break;
+		case TokenType::GREATER: funcName = "dynamic_greater"; break;
+		case TokenType::LESSEQ: funcName = "dynamic_lesseq"; break;
+		case TokenType::GREATEREQ: funcName = "dynamic_greatereq"; break;
+		default:
+			std::cerr << "Error: Dynamic operation " << tokenTypeToString(op) << " not implemented" << std::endl;
+			return nullptr;
+	}
 
-            llvm::Value* cmp = builder.CreateCall(strcmpFunc, {L, R}, "strcmpcall");
-            llvm::Value* eq = builder.CreateICmpEQ(cmp, llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
-            if (op == TokenType::NOTEQ) eq = builder.CreateNot(eq);
-            return eq;
-        }
-		
-        if (op == TokenType::ADD) {
-            llvm::FunctionCallee strcatFunc = module.getOrInsertFunction(
-                "strcat",
-                llvm::FunctionType::get(
-                    llvm::PointerType::get(ctx, 0),
-                    {llvm::PointerType::get(ctx, 0), llvm::PointerType::get(ctx, 0)},
-                    false
-                )
-            );
+	binOpFunc = module.getOrInsertFunction(funcName, binOpTy);
 
-            return builder.CreateCall(strcatFunc, {L, R}, "strcatcall");
-        }
+	llvm::Value* LB = L->getType() == dynamicType ? L : boxPrimitive(L, ctx, builder, module);
+	llvm::Value* RB = R->getType() == dynamicType ? R : boxPrimitive(R, ctx, builder, module);
 
-        return nullptr;
-    }
-
-    return nullptr;
+	return builder.CreateCall(binOpFunc, {LB, RB}, funcName + "_result");
 }
 
 void BinaryOp::print(int indent) {
@@ -402,8 +392,29 @@ IfStmt::IfStmt(
 llvm::Value* IfStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
 
-	llvm::Value* cond = condition->codegen(ctx, builder, module);
-	if (!cond) return nullptr;
+	llvm::Value* condResult = condition->codegen(ctx, builder, module);
+	if (!condResult) return nullptr;
+
+	llvm::Value* Final_Cond_Value = condResult;
+	llvm::Type* i1Type = llvm::Type::getInt1Ty(ctx);
+	llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+	if (condResult->getType() == dynamicType) {
+		llvm::FunctionType* unboxTy = llvm::FunctionType::get(
+			i1Type,
+			{dynamicType},
+			false
+		);
+
+		llvm::FunctionCallee unboxFunc = module.getOrInsertFunction("unbox_bool", unboxTy);
+
+		Final_Cond_Value = builder.CreateCall(unboxFunc, {condResult}, "final_cond_bool");
+	} else if (condResult->getType() == i1Type) {
+		Final_Cond_Value = condResult;
+	} else {
+		std::cerr << "Error: Conditional expression must resolve to a boolean type" << std::endl;
+		return nullptr;
+	}
 
 	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
 
@@ -411,7 +422,7 @@ llvm::Value* IfStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builde
 	llvm::BasicBlock* ElseBB = llvm::BasicBlock::Create(ctx, "else", mainFunc);
 	llvm::BasicBlock* IfContBB = llvm::BasicBlock::Create(ctx, "ifcont");
 
-	builder.CreateCondBr(cond, ThenBB, ElseBB);
+	builder.CreateCondBr(Final_Cond_Value, ThenBB, ElseBB);
 	builder.SetInsertPoint(ThenBB);
 
 	for (auto& stmt : thenClauseStmts) {
@@ -543,27 +554,48 @@ llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& 
 
 	if (name == "print" && !params.empty()) {
 		llvm::Value* argVal = params[0]->codegen(ctx, builder, module);
+		if (!argVal) return nullptr;
 
-		llvm::FunctionType* printfType = llvm::FunctionType::get(
-			llvm::Type::getInt32Ty(ctx),
-			llvm::PointerType::get(ctx, 0),
-			true
+		llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+		if (argVal->getType() != dynamicType) {
+			llvm::FunctionCallee printfFunc = module.getOrInsertFunction(
+				"printf",
+				llvm::FunctionType::get(
+					llvm::Type::getInt32Ty(ctx),
+					llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+					true
+				)
+			);
+
+			llvm::Value* formatStr = nullptr;
+			llvm::Value* argToPrint = argVal;
+
+			if (argVal->getType()->isIntegerTy(64)) {
+				formatStr = builder.CreateGlobalString("%lld\n", "intFormat");
+			} else if (argVal->getType()->isDoubleTy()) {
+				formatStr = builder.CreateGlobalString("%g\n", "floatFormat");
+			} else if (argVal->getType()->isPointerTy()) {
+				formatStr = builder.CreateGlobalString("%s\n", "strFormat");
+			} else if (argVal->getType()->isIntegerTy(1)) {
+				llvm::Value* trueStr = builder.CreateGlobalString("true");
+				llvm::Value* falseStr = builder.CreateGlobalString("false");
+				argToPrint = builder.CreateSelect(argVal, trueStr, falseStr);
+				formatStr = builder.CreateGlobalString("%s\n", "boolFormat");
+			}
+
+			return builder.CreateCall(printfFunc, {formatStr, argToPrint});
+		}
+
+		llvm::FunctionType* printTy = llvm::FunctionType::get(
+			llvm::Type::getVoidTy(ctx),
+			{dynamicType},
+			false
 		);
 
-		llvm::FunctionCallee printfFunc = module.getOrInsertFunction("printf", printfType);
+		llvm::FunctionCallee printFunc = module.getOrInsertFunction("print_dynamic_value", printTy);
 
-		llvm::Value* fmt = nullptr;
-
-		if (argVal->getType()->isIntegerTy()) {
-			fmt = builder.CreateGlobalString("%lld\n", "fmt_int");
-		} else if (argVal->getType()->isFloatingPointTy()) {
-			fmt = builder.CreateGlobalString("%g\n", "fmt_float");
-			argVal = builder.CreateFPExt(argVal, llvm::Type::getDoubleTy(ctx));
-		} else {
-			fmt = builder.CreateGlobalString("%s\n", "fmt_str");
-		}
-		
-		return builder.CreateCall(printfFunc, {fmt, argVal});
+		return builder.CreateCall(printFunc, {argVal});
 	}
 
 	return nullptr;

@@ -37,11 +37,12 @@ set(SOURCE_FILES
     src/esc_codes.cpp
 )
 
+add_subdirectory(runtime)
 add_subdirectory(lib)
 
 add_executable(tent ${SOURCE_FILES})
 
-target_link_libraries(tent PRIVATE ${LLVM_LIBS})
+target_link_libraries(tent PRIVATE ${LLVM_LIBS} RuntimeLib)
 
 if(MSVC)
 	target_compile_options(tent PRIVATE -O3 /W4 /WX)

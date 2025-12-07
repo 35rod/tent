@@ -14,7 +14,7 @@
 
 #include "args.hpp"
 
-std::string SYSTEM_COMPILER = "clang";
+std::string SYSTEM_COMPILER = "clang++";
 
 void Compiler::compile(Program* program, const std::string& outputExe, const std::string& moduleName) {
 	llvm::LLVMContext ctx;
@@ -50,7 +50,9 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 	module.print(irFile, nullptr);
 	irFile.close();
 
-	const std::string compileCommand = SYSTEM_COMPILER + " " + LlFileName + " -o " + outputExe;
+	const std::string rtLibPath = "../runtime/libRuntimeLib.a";
+
+	const std::string compileCommand = SYSTEM_COMPILER + " " + LlFileName + " " + rtLibPath + " -o " + outputExe;
 	if (IS_FLAG_SET(DEBUG))
 		std::cerr << "compile command: " << compileCommand << std::endl;
 

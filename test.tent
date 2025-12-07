@@ -1,11 +1,14 @@
-i = 0;
-acc = 0;
-limit = 500000000;
+name = "Version";
+version_num = 1;
+version_dec = 0.5;
+total_version = version_num + version_dec;
+print(name);
 
-while i < limit {
-	temp = i * 3;
-	acc = acc + temp + (i / 10);
-	i = i + 1;
+total_version = total_version + 2;
+print(total_version);
+
+if total_version == 3.5 {
+	total_version = 4;
+	print("New integer version:");
+	print(total_version);
 }
-
-print(acc);
