@@ -45,7 +45,6 @@ IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string fil
 : ASTNode(line, col, file), value(literalValue) {}
 
 llvm::Value* IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
 	return llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
 }
 
@@ -95,7 +94,7 @@ VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std:
 : ASTNode(line, col, file), elems(std::move(literalValue)) {}
 
 llvm::Value* VecLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+	// TODO: IMPLEMENT THIS
 }
 
 void VecLiteral::print(int indent) {
@@ -194,7 +193,7 @@ llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 
 	{
 		llvm::Value* data_addr = builder.CreateStructGEP(dynamicType, allocaInst, 1, name + ".load_data_addr");
-		llvm::Value* unboxed_data = builder.CreateLoad(dynamicType->getElementType(1), data_addr, name + ".unboxed_int");
+		builder.CreateLoad(dynamicType->getElementType(1), data_addr, name + ".unboxed_int");
 
 		builder.CreateBr(MergeBB);
 		SuccessBB = builder.GetInsertBlock();
@@ -208,7 +207,7 @@ llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
 
 		llvm::FunctionType* printfType = llvm::FunctionType::get(
 			llvm::Type::getInt32Ty(ctx),
-			llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+			llvm::PointerType::get(ctx, 0),
 			true
 		);
 
@@ -337,7 +336,7 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
                 "strcmp",
                 llvm::FunctionType::get(
                     llvm::Type::getInt32Ty(ctx),
-                    {llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0)},
+                    {llvm::PointerType::get(ctx, 0), llvm::PointerType::get(ctx, 0)},
                     false
                 )
             );
@@ -352,8 +351,8 @@ llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& buil
             llvm::FunctionCallee strcatFunc = module.getOrInsertFunction(
                 "strcat",
                 llvm::FunctionType::get(
-                    llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
-                    {llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0)},
+                    llvm::PointerType::get(ctx, 0),
+                    {llvm::PointerType::get(ctx, 0), llvm::PointerType::get(ctx, 0)},
                     false
                 )
             );
@@ -547,7 +546,7 @@ llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& 
 
 		llvm::FunctionType* printfType = llvm::FunctionType::get(
 			llvm::Type::getInt32Ty(ctx),
-			llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+			llvm::PointerType::get(ctx, 0),
 			true
 		);
 
