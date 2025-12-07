@@ -4,6 +4,10 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
@@ -18,6 +22,27 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 	llvm::Module module(moduleName, ctx);
 
 	program->codegen(ctx, builder, module);
+
+	llvm::PassBuilder passBuilder;
+	llvm::LoopAnalysisManager loopAnalysisManager;
+	llvm::FunctionAnalysisManager functionAnalysisManager;
+	llvm::CGSCCAnalysisManager cGSCCAnalysisManager;
+	llvm::ModuleAnalysisManager moduleAnalysisManager;
+
+	passBuilder.registerModuleAnalyses(moduleAnalysisManager);
+	passBuilder.registerCGSCCAnalyses(cGSCCAnalysisManager);
+	passBuilder.registerFunctionAnalyses(functionAnalysisManager);
+	passBuilder.registerLoopAnalyses(loopAnalysisManager);
+
+	passBuilder.crossRegisterProxies(
+		loopAnalysisManager,
+		functionAnalysisManager,
+		cGSCCAnalysisManager,
+		moduleAnalysisManager
+	);
+
+	llvm::ModulePassManager modulePassManager = passBuilder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+	modulePassManager.run(module, moduleAnalysisManager);
 	
 	std::error_code EC;
 	const std::string LlFileName = defaultOutputExeName + ".ll";

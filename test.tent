@@ -1,6 +1,11 @@
 i = 0;
+acc = 0;
+limit = 500000000;
 
-while i < 10 {
-	print(i);
+while i < limit {
+	temp = i * 3;
+	acc = acc + temp + (i / 10);
 	i = i + 1;
 }
+
+print(acc);

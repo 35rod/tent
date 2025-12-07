@@ -16,8 +16,8 @@ llvm_map_components_to_libnames(LLVM_LIBS
     Core
     Support
     IRReader
-    ExecutionEngine
-    Target
+    Analysis
+    Passes
 )
 
 include_directories(include)
