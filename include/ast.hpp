@@ -6,6 +6,13 @@
 #include "opcodes.hpp"
 #include "types.hpp"
 
+namespace llvm {
+	class LLVMContext;
+	class StructType;
+}
+
+llvm::StructType* getDynamicValueType(llvm::LLVMContext& ctx);
+
 using ASTPtr = std::unique_ptr<ASTNode>;
 
 class IntLiteral : public ASTNode {
@@ -133,7 +140,7 @@ class Variable : public ASTNode {
 		std::string name;
 		ASTPtr value;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
+		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
 
 		void print(int indent) override;
 

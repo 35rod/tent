@@ -9,6 +9,35 @@
 
 #include "misc.hpp"
 
+llvm::StructType* DynamicValueTy = nullptr;
+
+llvm::StructType* getDynamicValueType(llvm::LLVMContext& ctx) {
+	if (DynamicValueTy) return DynamicValueTy;
+
+	std::vector<llvm::Type*> fields = {
+		llvm::Type::getInt32Ty(ctx),
+		llvm::Type::getInt64Ty(ctx)
+	};
+
+	DynamicValueTy = llvm::StructType::create(ctx, fields, "DynamicValue");
+
+	return DynamicValueTy;
+}
+
+llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function* mainFunc, const std::string& varName) {
+	llvm::BasicBlock& entryBlock = mainFunc->getEntryBlock();
+	llvm::IRBuilder<> TmpBuilder(&entryBlock, entryBlock.begin());
+
+	llvm::StructType* dynamicType = getDynamicValueType(mainFunc->getContext());
+
+	return TmpBuilder.CreateAlloca(dynamicType, nullptr, varName.c_str());
+}
+
+enum TypeTag {
+	INT
+};
+
+std::map<std::string, llvm::AllocaInst*> NamedValues;
 std::vector<llvm::BasicBlock*> BreakBlockStack;
 std::vector<llvm::BasicBlock*> ContinueBlockStack;
 
@@ -133,6 +162,75 @@ void TypeDic::print(int indent) {
 Variable::Variable(std::string varName, ASTPtr varValue, int line, int col, std::string file)
 : ASTNode(line, col, file), name(varName), value(std::move(varValue)) {}
 
+llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
+	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	llvm::AllocaInst* allocaInst = NamedValues.count(name) ? NamedValues.at(name) : nullptr;
+
+	if (!allocaInst) {
+		std::cerr << "Error: Undefined variable: " << name << std::endl;
+		return nullptr;
+	}
+
+	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
+	llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+	llvm::Value* type_addr = builder.CreateStructGEP(dynamicType, allocaInst, 0, name + ".load_type_addr");
+	llvm::Value* loaded_type = builder.CreateLoad(dynamicType->getElementType(0), type_addr, name + ".loaded_type");
+
+	llvm::BasicBlock* SuccessBB = llvm::BasicBlock::Create(ctx, name + ".success", mainFunc);
+	llvm::BasicBlock* ErrorBB = llvm::BasicBlock::Create(ctx, name + ".type_error", mainFunc);
+	llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(ctx, name + ".merge");
+
+	llvm::Value* is_int_cond = builder.CreateICmpEQ(
+		loaded_type,
+		builder.getInt32(TypeTag::INT),
+		name + ".is_int"
+	);
+
+	builder.CreateCondBr(is_int_cond, SuccessBB, ErrorBB);
+
+	builder.SetInsertPoint(SuccessBB);
+
+	{
+		llvm::Value* data_addr = builder.CreateStructGEP(dynamicType, allocaInst, 1, name + ".load_data_addr");
+		llvm::Value* unboxed_data = builder.CreateLoad(dynamicType->getElementType(1), data_addr, name + ".unboxed_int");
+
+		builder.CreateBr(MergeBB);
+		SuccessBB = builder.GetInsertBlock();
+	}
+
+	builder.SetInsertPoint(ErrorBB);
+
+	{
+		llvm::Value* error_str = builder.CreateGlobalString("Type error: variable %s is not of type int\n", "err_fmt");
+		llvm::Value* var_name_str = builder.CreateGlobalString(name.c_str(), "var_name_str");
+
+		llvm::FunctionType* printfType = llvm::FunctionType::get(
+			llvm::Type::getInt32Ty(ctx),
+			llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
+			true
+		);
+
+		llvm::FunctionCallee printfFunc = module.getOrInsertFunction("printf", printfType);
+
+		builder.CreateCall(printfFunc, {error_str, var_name_str}, "print_type_error");
+		
+		builder.CreateBr(MergeBB);
+		ErrorBB = builder.GetInsertBlock();
+	}
+
+	mainFunc->insert(mainFunc->end(), MergeBB);
+	builder.SetInsertPoint(MergeBB);
+
+	llvm::PHINode* result = builder.CreatePHI(llvm::Type::getInt64Ty(ctx), 2, name + ".final_value");
+
+	result->addIncoming(SuccessBB->getTerminator()->getPrevNode(), SuccessBB);
+	result->addIncoming(llvm::UndefValue::get(llvm::Type::getInt64Ty(ctx)), ErrorBB);
+
+	return result;
+}
+
 void Variable::print(int indent) {
 	printIndent(indent);
 	std::cout << "Variable(name=" << name << ")\n";
@@ -166,6 +264,36 @@ BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int 
 
 llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
     llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
+
+	if (op == TokenType::ASSIGN) {
+		if (Variable* varNode = dynamic_cast<Variable*>(left.get())) {
+			llvm::Value* RHS_Value = right->codegen(ctx, builder, module);
+			if (!RHS_Value) return nullptr;
+
+			llvm::AllocaInst* allocaInst = NamedValues.count(varNode->name) ? NamedValues.at(varNode->name) : nullptr;
+
+			if (!allocaInst) {
+				llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
+				allocaInst = CreateEntryBlockAlloca(mainFunc, varNode->name);
+				NamedValues[varNode->name] = allocaInst;
+			}
+
+			llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+			if (RHS_Value->getType()->isIntegerTy(64)) {
+				llvm::Value* type_addr = builder.CreateStructGEP(dynamicType, allocaInst, 0, varNode->name + ".assign_type_addr");
+				builder.CreateStore(builder.getInt32(TypeTag::INT), type_addr);
+
+				llvm::Value* data_addr = builder.CreateStructGEP(dynamicType, allocaInst, 1, varNode->name + ".assign_data_addr");
+				builder.CreateStore(RHS_Value, data_addr);
+
+				return RHS_Value;
+			} else {
+				std::cerr << "Variable assignment only supports i64 currently" << std::endl;
+				return nullptr;
+			}
+		}
+	}
 
     llvm::Value* L = left->codegen(ctx, builder, module);
     llvm::Value* R = right->codegen(ctx, builder, module);
@@ -428,12 +556,12 @@ llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& 
 		llvm::Value* fmt = nullptr;
 
 		if (argVal->getType()->isIntegerTy()) {
-			fmt = builder.CreateGlobalStringPtr("%lld\n", "fmt_int");
+			fmt = builder.CreateGlobalString("%lld\n", "fmt_int");
 		} else if (argVal->getType()->isFloatingPointTy()) {
-			fmt = builder.CreateGlobalStringPtr("%g\n", "fmt_float");
+			fmt = builder.CreateGlobalString("%g\n", "fmt_float");
 			argVal = builder.CreateFPExt(argVal, llvm::Type::getDoubleTy(ctx));
 		} else {
-			fmt = builder.CreateGlobalStringPtr("%s\n", "fmt_str");
+			fmt = builder.CreateGlobalString("%s\n", "fmt_str");
 		}
 		
 		return builder.CreateCall(printfFunc, {fmt, argVal});

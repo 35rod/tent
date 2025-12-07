@@ -1,11 +1,6 @@
-while true {
-	print("starting");
+i = 0;
 
-	if true {
-		break;
-	}
-
-	print("should not print this");
+while i < 10 {
+	print(i);
+	i = i + 1;
 }
-
-print("Finished!");
