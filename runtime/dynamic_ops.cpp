@@ -74,6 +74,17 @@ extern "C" DynamicValue dynamic_noteq(DynamicValue L, DynamicValue R) {
 	}
 }
 
+extern "C" DynamicValue dynamic_less(DynamicValue L, DynamicValue R) {
+	if ((L.tag == TypeTag::INT || L.tag == TypeTag::FLOAT) &&
+		(R.tag == TypeTag::INT || R.tag == TypeTag::FLOAT)
+	) {
+		return compare_floats(L, R, "<");
+	} else {
+		std::cerr << "Cannot compare these two types" << std::endl;
+		exit(1);
+	}
+}
+
 // NEED TO IMPLEMENT OTHER COMPARISON OPERATORS, BUT FOR NOW, THIS WORKS :)
 
 extern "C" DynamicValue dynamic_add(DynamicValue L, DynamicValue R) {

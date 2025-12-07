@@ -487,10 +487,31 @@ llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& bui
 	builder.CreateBr(LoopCondBB);
 	builder.SetInsertPoint(LoopCondBB);
 
-	llvm::Value* cond = condition->codegen(ctx, builder, module);
-	if (!cond) return nullptr;
+	llvm::Value* condResult = condition->codegen(ctx, builder, module);
+	if (!condResult) return nullptr;
 
-	builder.CreateCondBr(cond, LoopBodyBB, LoopExitBB);
+	llvm::Value* Final_Cond_Value = condResult;
+	llvm::Type* i1Type = llvm::Type::getInt1Ty(ctx);
+	llvm::StructType* dynamicType = getDynamicValueType(ctx);
+
+	if (condResult->getType() == dynamicType) {
+		llvm::FunctionType* unboxTy = llvm::FunctionType::get(
+			i1Type,
+			{dynamicType},
+			false
+		);
+
+		llvm::FunctionCallee unboxFunc = module.getOrInsertFunction("unbox_bool", unboxTy);
+
+		Final_Cond_Value = builder.CreateCall(unboxFunc, {condResult}, "final_cond_bool");
+	} else if (condResult->getType() == i1Type) {
+		Final_Cond_Value = condResult;
+	} else {
+		std::cerr << "Error: Conditional expression must resolve to a boolean type" << std::endl;
+		return nullptr;
+	}
+
+	builder.CreateCondBr(Final_Cond_Value, LoopBodyBB, LoopExitBB);
 
 	BreakBlockStack.push_back(LoopExitBB);
 	ContinueBlockStack.push_back(LoopCondBB);
@@ -769,22 +790,6 @@ llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& build
 
 	for (auto& stmt : statements)
 		stmt.codegen(ctx, builder, module);
-	
-	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-	llvm::FunctionType* freeTy = llvm::FunctionType::get(
-		llvm::Type::getVoidTy(ctx),
-		{dynamicType},
-		false
-	);
-
-	llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
-	
-	for (auto& [name, allocaInst] : NamedValues) {
-		llvm::Value* val = builder.CreateLoad(dynamicType, allocaInst);
-		llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
-		builder.CreateCall(freeFunc, {val});
-	}
 	
 	builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
 

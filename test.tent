@@ -1,14 +1,19 @@
-name = "Version";
-version_num = 1;
-version_dec = 0.5;
-total_version = version_num + version_dec;
-print(name);
+n = 35;
+a = 0;
+b = 1;
+count = 0;
 
-total_version = total_version + 2;
-print(total_version);
+while (count < n) {
+	if count == 0 {
+		print(a);
+	} else if (count == 1) {
+		print(b);
+	} else {
+		next_term = a + b;
+		print(next_term);
+		a = b;
+		b = next_term;
+	}
 
-if total_version == 3.5 {
-	total_version = 4;
-	print("New integer version:");
-	print(total_version);
+	count = count + 1;
 }
