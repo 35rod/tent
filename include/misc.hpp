@@ -22,7 +22,7 @@ class ASTNode {
 		ASTNode(int line = -1, int col = -1, std::string file = "")
 		: lineNo(line), colNo(col), filename(file) {}
 
-		virtual llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) = 0;
+		virtual llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) { return nullptr; }
 
 		virtual void print(int indent) {
 			printIndent(indent);

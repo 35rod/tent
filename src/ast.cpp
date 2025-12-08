@@ -143,9 +143,7 @@ void BoolLiteral::print(int indent) {
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file)
 : ASTNode(line, col, file), elems(std::move(literalValue)) {}
 
-llvm::Value* VecLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	// TODO: IMPLEMENT THIS
-}
+
 
 void VecLiteral::print(int indent) {
 	printIndent(indent);

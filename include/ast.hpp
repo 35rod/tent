@@ -63,8 +63,6 @@ class VecLiteral : public ASTNode {
 	public:
 		std::vector<ASTPtr> elems;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override;
-
 		void print(int indent) override;
 
 		VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file);
@@ -74,8 +72,6 @@ class DicLiteral : public ASTNode {
 	public:
 		std::map<ASTPtr, ASTPtr> dic;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
@@ -83,8 +79,6 @@ class DicLiteral : public ASTNode {
 
 class TypeInt : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeInt(int line, int col, std::string file);
@@ -92,8 +86,6 @@ class TypeInt : public ASTNode {
 
 class TypeFloat : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeFloat(int line, int col, std::string file);
@@ -101,8 +93,6 @@ class TypeFloat : public ASTNode {
 
 class TypeStr : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeStr(int line, int col, std::string file);
@@ -110,8 +100,6 @@ class TypeStr : public ASTNode {
 
 class TypeBool : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeBool(int line, int col, std::string file);
@@ -119,8 +107,6 @@ class TypeBool : public ASTNode {
 
 class TypeVec : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeVec(int line, int col, std::string file);
@@ -128,8 +114,6 @@ class TypeVec : public ASTNode {
 
 class TypeDic : public ASTNode {
 	public:
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		TypeDic(int line, int col, std::string file);
@@ -151,8 +135,6 @@ class UnaryOp : public ASTNode {
 	public:
 		TokenType op;
 		ASTPtr operand;
-
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -232,8 +214,6 @@ class ForStmt : public ASTNode {
 		ASTPtr iter;
 		std::vector<ExpressionStmt> stmts;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		ForStmt(
@@ -262,8 +242,6 @@ class ReturnStmt : public ASTNode {
 	public:
 		ASTPtr value;
 
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file);
@@ -273,8 +251,6 @@ class ContractStmt : public ASTNode {
 	public:
 		std::string name;
 		std::map<ASTPtr, ASTPtr> dic;
-
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -287,8 +263,6 @@ class FunctionStmt : public ASTNode {
 		std::vector<ASTPtr> params;
 		std::vector<ExpressionStmt> stmts;
 		ASTPtr returnValue;
-
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
 
 		void print(int indent) override;
 
@@ -309,8 +283,6 @@ class ClassStmt : public ASTNode {
 		std::vector<ASTPtr> params;
 		std::vector<ExpressionStmt> stmts;
 		
-		llvm::Value* codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builder, llvm::Module& module) override {}
-
 		void print(int indent) override;
 
 		ClassStmt(
