@@ -209,7 +209,7 @@ ExpressionStmt Parser::parse_statement() {
 			if (!handle) handle = dlopen((dir + "/lib" + fname + ".dylib").c_str(), RTLD_LAZY);
 			if (!handle) handle = dlopen((dir + "/lib" + fname + ".so").c_str(), RTLD_LAZY);
 		}
-		
+
 		if (!handle) {
 			char *err_str = dlerror();
 			std::cerr << "Failed to load library: " << fname <<

@@ -150,19 +150,11 @@ void printUsage(void) {
     exit(1);
 }
 
-std::optional<std::pair<std::string, std::string>> checkSearchPathsFor(std::string suffix, const std::vector<std::string>& search_paths, bool is_dylib_prefix) {
+std::optional<std::pair<std::string, std::string>> checkSearchPathsFor(std::string suffix, const std::vector<std::string>& search_paths) {
 	for (const std::string& dir : search_paths) {
 		const std::string full_path = dir + "/" + suffix;
 		if (std::filesystem::exists(full_path)) {
 			return std::make_pair(dir, suffix);
-		}
-		if (is_dylib_prefix) {
-			for (const std::string& ext : { "dylib", "so", "dll" }) {
-				const std::string full_path_w_ext = full_path + "." + ext;
-				if (std::filesystem::exists(full_path_w_ext)) {
-					return std::make_pair(dir, suffix + "." + ext);
-				}
-			}
 		}
 	}
 	return std::nullopt;
