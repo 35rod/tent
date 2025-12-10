@@ -1,6 +1,6 @@
 load "io";
 
-set count = 0;
+count = 0;
 
 form recurse() {
 	count++;

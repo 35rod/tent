@@ -11,6 +11,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
+#include <optional>
 
 #include "args.hpp"
 
@@ -43,23 +44,21 @@ void Compiler::compile(Program* program, const std::string& outputExe, const std
 
 	llvm::ModulePassManager modulePassManager = passBuilder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
 	modulePassManager.run(module, moduleAnalysisManager);
-	
+
 	std::error_code EC;
 	const std::string LlFileName = defaultOutputExeName + ".ll";
 	llvm::raw_fd_ostream irFile(LlFileName, EC, llvm::sys::fs::OF_None);
 	module.print(irFile, nullptr);
 	irFile.close();
 
-	const std::string rtLibPath = "../runtime/libRuntimeLib.a";
-
-	const std::string compileCommand = SYSTEM_COMPILER + " " + LlFileName + " " + rtLibPath + " -o " + outputExe;
+	const std::string compileCommand = SYSTEM_COMPILER + " " + LlFileName + " -L" + finalLibraryPath + " -lTentRuntime -o " + outputExe;
 	if (IS_FLAG_SET(DEBUG))
 		std::cerr << "compile command: " << compileCommand << std::endl;
 
 	int code = std::system(compileCommand.c_str());
 	if (code == 0 && !IS_FLAG_SET(SAVE_TEMPS))
 		std::system(("rm " + LlFileName).c_str());
-	
+
 	if (code == 0)
 		std::cout << "Executable generated: " << outputExe << "\n";
 	else

@@ -25,7 +25,7 @@ make -C build
 cmake --install build --prefix ~/.local
 ```
 
-#### `zig build`
+#### `zig build` (not functional at the moment)
 ```sh
 zig build --prefix ~/.local --search-prefix <path_to_llvm>
 ```
