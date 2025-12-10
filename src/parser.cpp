@@ -1,11 +1,13 @@
 #include "parser.hpp"
 
+#include <cstdlib>
 #include <fstream>
 
 #include "lexer.hpp"
 #include "native.hpp"
 #include "errors.hpp"
 #include "esc_codes.hpp"
+#include "args.hpp"
 
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
@@ -135,7 +137,7 @@ ExpressionStmt Parser::parse_statement() {
 			advance();
 		} else {
 			MissingTerminatorError(
-				"Missing statement terminator after load statement", 
+				"Missing statement terminator after load statement",
 				current().lineNo,
 				current().colNo,
 				filename,
@@ -146,16 +148,13 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		if (fname.size() >= 5 && fname.substr(fname.size() - 5) == ".tent") {
-			std::ifstream fileHandle(fname);
-
-			for (const std::string& dir : file_search_dirs) {
-				if (fileHandle.is_open()) break;
-				fileHandle = std::ifstream(dir + "/" + fname);
-			}
-
-			if (!fileHandle.is_open()) {
+			const auto foundFile = checkSearchPathsFor(fname, file_search_dirs);
+			if (!foundFile.has_value()) {
 				std::cerr << "File error: could not find file'" << fname << "'" << std::endl;
+				exit(1);
 			}
+
+			std::ifstream fileHandle(foundFile.value().first + "/" + foundFile.value().second);
 
 			std::string output, line;
 
@@ -210,7 +209,7 @@ ExpressionStmt Parser::parse_statement() {
 			if (!handle) handle = dlopen((dir + "/lib" + fname + ".dylib").c_str(), RTLD_LAZY);
 			if (!handle) handle = dlopen((dir + "/lib" + fname + ".so").c_str(), RTLD_LAZY);
 		}
-		
+
 		if (!handle) {
 			char *err_str = dlerror();
 			std::cerr << "Failed to load library: " << fname <<

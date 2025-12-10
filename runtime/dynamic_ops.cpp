@@ -3,8 +3,6 @@
 #include <iostream>
 
 extern "C" void free_dynamic_value(DynamicValue dv) {
-	if (!dv.data) return;
-
 	free(dv.data);
 }
 
@@ -103,6 +101,63 @@ extern "C" DynamicValue dynamic_add(DynamicValue L, DynamicValue R) {
 	std::cout << R.tag << std::endl;
 
 	std::cerr << "Cannot add types" << std::endl;
+	exit(1);
+}
+
+extern "C" DynamicValue dynamic_sub(DynamicValue L, DynamicValue R) {
+	if (L.tag == TypeTag::INT && R.tag == TypeTag::INT) {
+		return box_int(unbox_int(L) - unbox_int(R));
+	} else if ((L.tag == TypeTag::INT || L.tag == TypeTag::FLOAT) &&
+		(R.tag == TypeTag::INT || R.tag == TypeTag::FLOAT)
+	) {
+		DynamicValue FL = coerce_to_float(L);
+		DynamicValue FR = coerce_to_float(R);
+
+		return box_float(unbox_float(FL) - unbox_float(FR));
+	}
+
+	std::cout << L.tag << std::endl;
+	std::cout << R.tag << std::endl;
+
+	std::cerr << "Cannot subtract types" << std::endl;
+	exit(1);
+}
+
+extern "C" DynamicValue dynamic_mul(DynamicValue L, DynamicValue R) {
+	if (L.tag == TypeTag::INT && R.tag == TypeTag::INT) {
+		return box_int(unbox_int(L) * unbox_int(R));
+	} else if ((L.tag == TypeTag::INT || L.tag == TypeTag::FLOAT) &&
+		(R.tag == TypeTag::INT || R.tag == TypeTag::FLOAT)
+	) {
+		DynamicValue FL = coerce_to_float(L);
+		DynamicValue FR = coerce_to_float(R);
+
+		return box_float(unbox_float(FL) * unbox_float(FR));
+	}
+
+	std::cout << L.tag << std::endl;
+	std::cout << R.tag << std::endl;
+
+	std::cerr << "Cannot multiply types" << std::endl;
+	exit(1);
+}
+
+extern "C" DynamicValue dynamic_div(DynamicValue L, DynamicValue R) {
+	if (L.tag == TypeTag::INT && R.tag == TypeTag::INT) {
+		return box_int(unbox_int(L) / unbox_int(R));
+	} else if ((L.tag == TypeTag::INT || L.tag == TypeTag::FLOAT) &&
+		(R.tag == TypeTag::INT || R.tag == TypeTag::FLOAT)
+	) {
+		DynamicValue FL = coerce_to_float(L);
+		DynamicValue FR = coerce_to_float(R);
+
+		return box_float(unbox_float(FL) / unbox_float(FR));
+	}
+
+	std::cout << L.tag << std::endl;
+	std::cout << R.tag << std::endl;
+
+	std::cerr << "Cannot divide types" << std::endl;
 	exit(1);
 }
 

@@ -42,7 +42,7 @@ add_subdirectory(lib)
 
 add_executable(tent ${SOURCE_FILES})
 
-target_link_libraries(tent PRIVATE ${LLVM_LIBS} RuntimeLib)
+target_link_libraries(tent PRIVATE ${LLVM_LIBS} TentRuntime)
 
 if(MSVC)
 	target_compile_options(tent PRIVATE -O3 /W4 /WX)
@@ -75,6 +75,11 @@ install(
     DESTINATION lib/tent
     FILES_MATCHING
     PATTERN "*.dylib"
+)
+
+install(
+    FILES ${CMAKE_SOURCE_DIR}/runtime/libTentRuntime.a
+    DESTINATION lib/tent
 )
 
 include(CPack)

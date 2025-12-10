@@ -2,6 +2,8 @@
 #include <fstream>
 
 #include <cstdint>
+#include <optional>
+#include <string>
 
 #define TENT_MAIN_CPP_FILE
 #include "lexer.hpp"
@@ -24,6 +26,7 @@ uint64_t runtime_flags = 0;
 
 std::string SRC_FILENAME, OUT_FILENAME, PROG_NAME;
 std::vector<std::string> prog_args, search_dirs;
+std::string finalLibraryPath;
 
 void start_repl(const std::vector<std::string>& search_dirs) {
 	std::cout << BOLD << CYAN << "Tent Interactive REPL\n"
@@ -60,7 +63,7 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 
 		if (openBraces >0 || openParens > 0)
 			continue;
-		
+
 		try {
 			Lexer lexer(buffer);
 			lexer.nextChar();
@@ -80,7 +83,18 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-	parse_args(argc, argv);
+	parseArgs(argc, argv);
+	const auto libPathOpt = checkSearchPathsFor("libTentRuntime.a", search_dirs);
+	if (!libPathOpt.has_value()) {
+		std::cerr << "could not find library path with the provided search paths "
+				 "(use '-S <path>' to specify the path)";
+		return 1;
+	}
+	finalLibraryPath = libPathOpt.value().first;
+	if (IS_FLAG_SET(PRINT_LIB_PATH)) {
+		std::cout << finalLibraryPath;
+		return 0;
+	}
 
 	if (IS_FLAG_SET(REPL)) {
 		start_repl(search_dirs);

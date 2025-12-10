@@ -3,42 +3,31 @@
 #include <cstring>
 #include <cstdlib>
 
-static int64_t* alloc_int64(int64_t val) {
-	int64_t* p = (int64_t*)malloc(sizeof(int64_t));
-	*p = val;
-	return p;
-}
-
-static double* alloc_double(double val) {
-	double* p = (double*)malloc(sizeof(double));
-	*p = val;
-	return p;
+template <typename T>
+static T* alloc_with_val(T val) {
+      T* const p = (T*)malloc(sizeof(T));
+      *p = val;
+      return p;
 }
 
 static char* alloc_string_copy(const char* str) {
-	size_t len = strlen(str) + 1;
-	char* copy = (char*)malloc(len);
+	const size_t len = strlen(str) + 1;
+	char* const copy = (char*)malloc(len);
 	if (copy) memcpy(copy, str, len);
 	return copy;
-}
-
-static bool* alloc_bool(bool val) {
-	bool* p = (bool*)malloc(sizeof(bool));
-	*p = val;
-	return p;
 }
 
 extern "C" DynamicValue box_int(int64_t val) {
 	DynamicValue dv;
 	dv.tag = TypeTag::INT;
-	dv.data = alloc_int64(val);
+	dv.data = alloc_with_val(val);
 	return dv;
 }
 
 extern "C" DynamicValue box_float(double val) {
 	DynamicValue dv;
 	dv.tag = TypeTag::FLOAT;
-	dv.data = alloc_double(val);
+	dv.data = alloc_with_val(val);
 	return dv;
 }
 
@@ -52,6 +41,6 @@ extern "C" DynamicValue box_string(const char* val) {
 extern "C" DynamicValue box_bool(bool val) {
 	DynamicValue dv;
 	dv.tag = TypeTag::BOOL;
-	dv.data = alloc_bool(val);
+	dv.data = alloc_with_val(val);
 	return dv;
 }

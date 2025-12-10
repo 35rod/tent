@@ -3,7 +3,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,7 +17,7 @@ extern std::string SRC_FILENAME, OUT_FILENAME, PROG_NAME, SYSTEM_COMPILER;
 extern std::vector<std::string> prog_args, search_dirs;
 extern uint64_t runtime_flags;
 
-void parse_args(int32_t argc, char **argv) {
+void parseArgs(int32_t argc, char **argv) {
 	PROG_NAME = std::string(argv[0]);
 
 	// add some sensible defaults (the '..' ones are for 35rod)
@@ -48,8 +50,8 @@ void parse_args(int32_t argc, char **argv) {
 	else if (command == "repl")
 		SET_FLAG(REPL);
 	else if (command == "help")
-		print_usage();
-	
+		printUsage();
+
 	for (; arg_i < argc; arg_i++) {
 		std::string arg = argv[arg_i];
 
@@ -63,7 +65,11 @@ void parse_args(int32_t argc, char **argv) {
 			continue;
 		}
 
-		if (arg == "-d" || arg == "--debug")
+		if (arg == "--help")
+			printUsage();
+		else if (arg == "--lib-path")
+			SET_FLAG(PRINT_LIB_PATH);
+		else if (arg == "-d" || arg == "--debug")
 			SET_FLAG(DEBUG);
 		else if (arg == "--dry") {
 			SET_FLAG(DRY_RUN);
@@ -75,7 +81,7 @@ void parse_args(int32_t argc, char **argv) {
 		else if (arg == "-o") {
 			if (arg_i + 1 >= argc) {
 				std::cerr << "Missing output filename after '-o'\n";
-				print_usage();
+				printUsage();
 			}
 
 			OUT_FILENAME = argv[arg_i++];
@@ -88,11 +94,11 @@ void parse_args(int32_t argc, char **argv) {
 				search_dirs.push_back(argv[arg_i++]);
 			else {
 				std::cerr << "Missing path after '-S'\n";
-				print_usage();
+				printUsage();
 			}
 		} else if (arg[0] == '-') {
 			std::cerr << "Unknown option: " << arg << "\n";
-			print_usage();
+			printUsage();
 		} else if (SRC_FILENAME.empty())
 			SRC_FILENAME = arg;
 		else
@@ -101,11 +107,11 @@ void parse_args(int32_t argc, char **argv) {
 
 	if (command.empty() && SRC_FILENAME.empty())
 		SET_FLAG(REPL);
-	
+
 	if (IS_FLAG_SET(COMPILE)) {
 		if (SRC_FILENAME.empty()) {
 			std::cerr << "Compile mode requires a source file\n";
-			print_usage();
+			printUsage();
 		}
 
 		if (OUT_FILENAME.empty())
@@ -113,31 +119,43 @@ void parse_args(int32_t argc, char **argv) {
 	} else if (IS_FLAG_SET(REPL)) {
 		if (!SRC_FILENAME.empty()) {
 			std::cerr << "REPL mode does not take a file argument\n";
-			print_usage();
+			printUsage();
 		}
 	} else {
 		if (SRC_FILENAME.empty()) {
 			std::cerr << "No input file specified\n";
-			print_usage();
+			printUsage();
 		}
 	}
 }
 
-void print_usage(void) {
+void printUsage(void) {
 	std::cerr
         << "Usage:\n"
-        << "  " << PROG_NAME << " <file> [options]         Run a Tent source file\n"
+        << "  " << PROG_NAME << " <file> [options]          Run a Tent source file\n"
         << "  " << PROG_NAME << " compile <file> [options]  Compile Tent source file\n"
         << "  " << PROG_NAME << " repl                      Start interactive REPL\n"
         << "  " << PROG_NAME << " help                      Show this help message\n\n"
         << "Options:\n"
         << "  -d, --debug                 Enable debug output\n"
         << "  --dry                       Dry run (implies debug)\n"
+        << "  --lib-path                  Show the library path (found from the provided search paths)\n"
         << "  -s, --save-temps            Keep temporary files (.ll, etc.)\n"
         << "  -o <file>, --out=<file>     Output filename (default: t.out)\n"
         << "  -S <path>                   Add library search path\n"
         << "  --system-compiler=<prog>    Override system compiler (default: clang)\n"
+        << "  --help                      Show this help message"
         << std::endl;
-	
+
     exit(1);
+}
+
+std::optional<std::pair<std::string, std::string>> checkSearchPathsFor(std::string suffix, const std::vector<std::string>& search_paths) {
+	for (const std::string& dir : search_paths) {
+		const std::string full_path = dir + "/" + suffix;
+		if (std::filesystem::exists(full_path)) {
+			return std::make_pair(dir, suffix);
+		}
+	}
+	return std::nullopt;
 }
