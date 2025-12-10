@@ -25,6 +25,8 @@ void parseArgs(int32_t argc, char **argv) {
 	search_dirs.push_back("lib");
 	search_dirs.push_back("..");
 	search_dirs.push_back("../lib");
+	search_dirs.push_back("runtime");
+	search_dirs.push_back("../runtime");
 
 	search_dirs.push_back("/usr/lib/tent");
 	search_dirs.push_back("/usr/local/lib/tent");
