@@ -1,63 +1,48 @@
 #pragma once
+
 #include <exception>
 #include <string>
+#include "span.hpp"
 
-class Error : public std::exception {
+class Error {
     protected:
         std::string message;
-        std::string filename;
+        Span span;
         std::string hint;
-        std::string lineText;
-        int lineNo;
-        int colNo;
-
-        static constexpr const char* RED = "\033[31m";
-        static constexpr const char* YELLOW = "\033[33m";
-        static constexpr const char* CYAN = "\033[36m";
-        static constexpr const char* GRAY = "\033[90m";
-        static constexpr const char* RESET = "\033[0m";
-        static constexpr const char* BOLD = "\033[1m";
+        std::string filename;
     public:
         Error(
             std::string msg, 
-            int line = -1,
-            int col = -1,
-            std::string file = "",
+            Span s,
             std::string hintMsg = "",
-            std::string lineSrc = ""
+            std::string fname = "<stdin>"
         );
 
         virtual std::string getClassName() const;
-        virtual std::string format() const;
-        virtual void print() const;
-        const char* what() const noexcept override;
-        void setHint(const std::string& h);
         virtual ~Error() = default;
+
+        friend class Diagnostics;
 };
 
 class SyntaxError : public Error {
     public:
         SyntaxError(
-            std::string msg,
-            int line = -1,
-            int col = -1,
-            std::string file = "",
+            std::string msg, 
+            Span s,
             std::string hintMsg = "",
-            std::string lineSrc = ""
+            std::string fname = "<stdin>"
         );
 
         std::string getClassName() const override;
 };
 
-class MissingTerminatorError : public SyntaxError {
+class MissingTerminatorError : public Error {
     public:
         MissingTerminatorError(
-            std::string msg,
-            int line = -1,
-            int col = -1,
-            std::string file = "",
+            std::string msg, 
+            Span s,
             std::string hintMsg = "",
-            std::string lineSrc = ""
+            std::string fname = "<stdin>"
         );
 
         std::string getClassName() const override;
@@ -66,26 +51,22 @@ class MissingTerminatorError : public SyntaxError {
 class IdentifierError : public Error {
     public:
         IdentifierError(
-            std::string msg,
-            int line = -1,
-            int col = -1,
-            std::string file = "",
+            std::string msg, 
+            Span s,
             std::string hintMsg = "",
-            std::string lineSrc = ""
+            std::string fname = "<stdin>"
         );
 
-    std::string getClassName() const override;
+        std::string getClassName() const override;
 };
 
 class TypeError : public Error {
     public:
         TypeError(
-            std::string msg,
-            int line = -1,
-            int col = -1,
-            std::string file = "",
+            std::string msg, 
+            Span s,
             std::string hintMsg = "",
-            std::string lineSrc = ""
+            std::string fname = "<stdin>"
         );
 
         std::string getClassName() const override;

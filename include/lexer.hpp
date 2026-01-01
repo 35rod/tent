@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "token.hpp"
+#include "diagnostics.hpp"
 
 class Lexer {
     std::string source;
@@ -11,6 +12,8 @@ class Lexer {
     int lineNo = 1;
     int colNo = 0;
     std::string filename;
+
+    Diagnostics& diags;
 
     char peek();
     void skipWhitespace();
@@ -23,5 +26,5 @@ class Lexer {
         void nextChar(int num = 1);
         void getTokens();
 
-        Lexer(std::string input, std::string file = "<stdin>");
+        Lexer(std::string input, Diagnostics& diagnostics, std::string file = "<stdin>");
 };

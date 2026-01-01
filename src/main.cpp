@@ -7,20 +7,12 @@
 
 #define TENT_MAIN_CPP_FILE
 #include "lexer.hpp"
-#include "parser.hpp"
-#include "evaluator.hpp"
+// #include "parser.hpp"
+// #include "evaluator.hpp"
 #include "compiler.hpp"
+#include "diagnostics.hpp"
 #include "errors.hpp"
 #include "args.hpp"
-
-const std::string RESET = "\033[0m";
-const std::string BOLD  = "\033[1m";
-const std::string CYAN  = "\033[36m";
-const std::string GREEN = "\033[32m";
-const std::string YELLOW = "\033[33m";
-const std::string RED   = "\033[31m";
-const std::string MAGENTA = "\033[35m";
-const std::string GRAY  = "\033[90m";
 
 uint64_t runtime_flags = 0;
 
@@ -36,8 +28,8 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 	int openBraces = 0, openParens = 0;
 
 	while (true) {
-		std::cout << (buffer.empty() ? (BOLD + GREEN + ">> " + RESET)
-		: (BOLD + YELLOW + ".. " + RESET));
+		// std::cout << (buffer.empty() ? (BOLD + GREEN + ">> " + RESET)
+		// : (BOLD + YELLOW + ".. " + RESET));
 
 		std::string line;
 
@@ -65,17 +57,25 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 			continue;
 
 		try {
-			Lexer lexer(buffer);
+			Diagnostics diags;
+
+			Lexer lexer(buffer, diags);
 			lexer.nextChar();
 			lexer.getTokens();
 
-			Parser parser(lexer.tokens, buffer, "<stdin>", search_dirs);
-			ASTPtr program = parser.parse_program();
+			if (diags.has_errors()) {
+				diags.print_errors();
+				buffer.clear();
+				continue;
+			}
 
-			Evaluator evaluator(buffer);
-			evaluator.evalProgram(std::move(program), {});
+			// Parser parser(lexer.tokens, buffer, "<stdin>", search_dirs);
+			// ASTPtr program = parser.parse_program();
+
+			// Evaluator evaluator(buffer);
+			// evaluator.evalProgram(std::move(program), {});
 		} catch (const std::exception& e) {
-			std::cerr << RED << "ERror: " << e.what() << RESET << "\n";
+			std::cerr << RED << "Error: " << e.what() << RESET << "\n";
 		}
 
 		buffer.clear();
@@ -118,35 +118,42 @@ int32_t main(int32_t argc, char **argv) {
 
 	ASTPtr program = nullptr;
 
-	Lexer lexer(output, SRC_FILENAME);
+	Diagnostics diags;
+
+	Lexer lexer(output, diags, SRC_FILENAME);
 
 	lexer.nextChar();
 	lexer.getTokens();
 
-	Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
-	program = parser.parse_program();
-
-	if (IS_FLAG_SET(DEBUG))
-		program->print(0);
-
-	if (IS_FLAG_SET(COMPILE)) {
-		Compiler::compile(static_cast<Program*>(program.get()), OUT_FILENAME);
-
-		return 0;
-	} else {
-		if (!IS_FLAG_SET(DRY_RUN)) {
-			try {
-				Evaluator evaluator(output);
-				evaluator.evalProgram(std::move(program), prog_args);
-			} catch (const Error& e) {
-				e.print();
-				return 1;
-			} catch (const std::exception& e) {
-				std::cerr << "Unexpected error: " << e.what() << std::endl;
-				return 1;
-			}
-		}
+	if (diags.has_errors()) {
+		diags.print_errors();
+		return 1;
 	}
+
+	// Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
+	// program = parser.parse_program();
+
+	// if (IS_FLAG_SET(DEBUG))
+	// 	program->print(0);
+
+	// if (IS_FLAG_SET(COMPILE)) {
+	// 	Compiler::compile(static_cast<Program*>(program.get()), OUT_FILENAME);
+
+	// 	return 0;
+	// } else {
+	// 	if (!IS_FLAG_SET(DRY_RUN)) {
+	// 		try {
+	// 			Evaluator evaluator(output);
+	// 			evaluator.evalProgram(std::move(program), prog_args);
+	// 		} catch (const Error& e) {
+	// 			e.print();
+	// 			return 1;
+	// 		} catch (const std::exception& e) {
+	// 			std::cerr << "Unexpected error: " << e.what() << std::endl;
+	// 			return 1;
+	// 		}
+	// 	}
+	// }
 
 	return 0;
 }

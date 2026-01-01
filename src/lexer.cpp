@@ -231,8 +231,6 @@ Token Lexer::getToken() {
             }
             break;
         case '\"': {
-            int literalStartCol = colNo;
-            std::string lineSrc = getLineText(source, lineNo);
             nextChar();
             int startPos = curPos;
 
@@ -240,23 +238,17 @@ Token Lexer::getToken() {
                 nextChar();
             
             if (curChar == '\0') {
-                MissingTerminatorError(
-                    "Unterminated string literal",
-                    lineNo,
-                    literalStartCol,
-                    filename,
-                    "Did you forget a closing double quote ('\"')?",
-                    lineSrc
-                ).print();
-                exit(1);
+                diags.report<MissingTerminatorError>(
+                    "Unterminated string literal", s,
+                    "Did you forget a closing double quote?",
+                    filename
+                );
             }
 
             token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, s.setEndCol(colNo));
             break;
         }
         case '\'': {
-            int literalStartCol = colNo;
-            std::string lineSrc = getLineText(source, lineNo);
             nextChar();
             int startPos = curPos;
 
@@ -264,15 +256,11 @@ Token Lexer::getToken() {
                 nextChar();
             
             if (curChar == '\0') {
-                MissingTerminatorError(
-                    "Unterminated character/string literal",
-                    lineNo,
-                    literalStartCol,
-                    filename,
-                    "Did you forget a closing single quote (')?.",
-                    lineSrc
-                ).print();
-                exit(1);
+                diags.report<MissingTerminatorError>(
+                    "Unterminated character/string literal", s,
+                    "Did you forget a closing single quote?",
+                    filename
+                );
             }
 
             if (curPos - startPos == 1)
@@ -369,16 +357,11 @@ Token Lexer::getToken() {
                         break;
                     default:
                         if (isalnum(peekChar)) {
-                            SyntaxError(
-                                "Illegal integer literal radix specifier: " +
-                                std::string("0") + peekChar,
-                                lineNo,
-                                colNo,
-                                filename,
+                            diags.report<SyntaxError>(
+                                "Illegal integer literal radix specifier: " + std::string("0") + peekChar, s,
                                 "Use 0x for hex, 0b for binary, 0o for octal, and 0d for decimal.",
-                                getLineText(source, lineNo)
-                            ).print();
-                            exit(1);
+                                filename
+                            );
                         }
                     }
                 }
@@ -391,15 +374,11 @@ Token Lexer::getToken() {
 
                 if (peek() == '.') {
                     if (is_digit_func != is_dec_digit) {
-                        SyntaxError(
-                            "Floating-point literals with specified radixes are not supported.",
-                            lineNo,
-                            colNo,
-                            filename,
+                        diags.report<SyntaxError>(
+                            "Floating-point literals with specified radixes are not supported.", s,
                             "Only normal decimal floats are valid.",
-                            getLineText(source, lineNo)
-                        ).print();
-                        exit(1);
+                            filename
+                        );
                     }
 
                     nextChar();
@@ -443,5 +422,5 @@ void Lexer::getTokens() {
     }
 }
 
-Lexer::Lexer(std::string input, std::string file)
-: source(input), curPos(-1), curChar('\0'), filename(file) {}
+Lexer::Lexer(std::string input, Diagnostics& diagnostics, std::string file)
+: source(input), curPos(-1), curChar('\0'), filename(file), diags(diagnostics) {}
