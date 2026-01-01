@@ -8,8 +8,8 @@ class Lexer {
     std::string source;
     std::string::size_type curPos;
     char curChar;
-    int lineNo = -1;
-    int colNo = -1;
+    int lineNo = 1;
+    int colNo = 0;
     std::string filename;
 
     char peek();

@@ -16,10 +16,10 @@ void Lexer::nextChar(int num) {
         }
 
         curChar = source[curPos];
-        
+
         if (curChar == '\n') {
             lineNo++;
-            colNo = 0;
+            colNo = 1;
         } else {
             colNo++;
         }
@@ -51,29 +51,31 @@ Token Lexer::getToken() {
     skipWhitespace();
     skipComment();
 
-    Token token("", TokenType::INVALID_TOKEN, lineNo, colNo);
+    Span s(lineNo, colNo, colNo, getLineText(source, lineNo));
+
+    Token token("", TokenType::INVALID_TOKEN, s);
 
     switch (curChar) {
         case '+':
             if (peek() == '+') {
                 nextChar();
-                token = Token("++", TokenType::INCREMENT, lineNo, colNo);
+                token = Token("++", TokenType::INCREMENT, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("+=", TokenType::ADD_ASSIGN, lineNo, colNo);
+                token = Token("+=", TokenType::ADD_ASSIGN, s.setEndCol(colNo));
             } else {
-                token = Token("+", TokenType::ADD, lineNo, colNo);
+                token = Token("+", TokenType::ADD, s.setEndCol(colNo));
             }
             break;
         case '-':
             if (peek() == '-') {
                 nextChar();
-                token = Token("--", TokenType::DECREMENT, lineNo, colNo);
+                token = Token("--", TokenType::DECREMENT, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("-=", TokenType::SUB_ASSIGN, lineNo, colNo);
+                token = Token("-=", TokenType::SUB_ASSIGN, s.setEndCol(colNo));
             } else {
-                token = Token("-", TokenType::SUB, lineNo, colNo);
+                token = Token("-", TokenType::SUB, s.setEndCol(colNo));
             }
             break;
         case '*':
@@ -81,14 +83,14 @@ Token Lexer::getToken() {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token("**=", TokenType::POW_ASSIGN, lineNo, colNo);
+                    token = Token("**=", TokenType::POW_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token("**", TokenType::POW, lineNo, colNo);
+                    token = Token("**", TokenType::POW, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("*=", TokenType::MUL_ASSIGN, lineNo, colNo);
+                token = Token("*=", TokenType::MUL_ASSIGN, s.setEndCol(colNo));
             } else {
-                token = Token("*", TokenType::MUL, lineNo, colNo);
+                token = Token("*", TokenType::MUL, s.setEndCol(colNo));
             }
             break;
         case '/':
@@ -96,66 +98,66 @@ Token Lexer::getToken() {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token("//=", TokenType::FLOOR_DIV_ASSIGN, lineNo, colNo);
+                    token = Token("//=", TokenType::FLOOR_DIV_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token("//", TokenType::FLOOR_DIV, lineNo, colNo);
+                    token = Token("//", TokenType::FLOOR_DIV, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("/=", TokenType::DIV_ASSIGN, lineNo, colNo);
+                token = Token("/=", TokenType::DIV_ASSIGN, s.setEndCol(colNo));
             } else {
-                token = Token("/", TokenType::DIV, lineNo, colNo);
+                token = Token("/", TokenType::DIV, s.setEndCol(colNo));
             }
             break;
         case '%':
             if (peek() == '=') {
                 nextChar();
-                token = Token("%=", TokenType::MOD_ASSIGN, lineNo, colNo);
+                token = Token("%=", TokenType::MOD_ASSIGN, s.setEndCol(colNo));
             } else
-                token = Token("%", TokenType::MOD, lineNo, colNo);
+                token = Token("%", TokenType::MOD, s.setEndCol(colNo));
             break;
         case '&':
             if (peek() == '&') {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token("&&=", TokenType::AND_ASSIGN, lineNo, colNo);
+                    token = Token("&&=", TokenType::AND_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token("&&", TokenType::AND, lineNo, colNo);
+                    token = Token("&&", TokenType::AND, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("&=", TokenType::BIT_AND_ASSIGN, lineNo, colNo);
+                token = Token("&=", TokenType::BIT_AND_ASSIGN, s.setEndCol(colNo));
             } else
-                token = Token("&", TokenType::BIT_AND, lineNo, colNo);
+                token = Token("&", TokenType::BIT_AND, s.setEndCol(colNo));
             break;
         case '.':
-            token = Token(".", TokenType::DOT, lineNo, colNo);
+            token = Token(".", TokenType::DOT, s.setEndCol(colNo));
             break;
         case '@':
-            token = Token("@", TokenType::INDEX, lineNo, colNo);
+            token = Token("@", TokenType::INDEX, s.setEndCol(colNo));
             break;
         case '$':
-            token = Token("$", TokenType::ITER, lineNo, colNo);
+            token = Token("$", TokenType::ITER, s.setEndCol(colNo));
             break;
         case '^':
             if (peek() == '=') {
                 nextChar();
-                token = Token("^=", TokenType::BIT_XOR_ASSIGN, lineNo, colNo);
+                token = Token("^=", TokenType::BIT_XOR_ASSIGN, s.setEndCol(colNo));
             } else
-                token = Token("^", TokenType::BIT_XOR, lineNo, colNo);
+                token = Token("^", TokenType::BIT_XOR, s.setEndCol(colNo));
             break;
         case '|':
             if (peek() == '|') {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token("||=", TokenType::OR_ASSIGN, lineNo, colNo);
+                    token = Token("||=", TokenType::OR_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token("||", TokenType::OR, lineNo, colNo);
+                    token = Token("||", TokenType::OR, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("|=", TokenType::BIT_OR_ASSIGN, lineNo, colNo);
+                token = Token("|=", TokenType::BIT_OR_ASSIGN, s.setEndCol(colNo));
             } else
-                token = Token("|", TokenType::BIT_OR, lineNo, colNo);
+                token = Token("|", TokenType::BIT_OR, s.setEndCol(colNo));
             break;
         case '<': {
             char peekChar = peek();
@@ -163,14 +165,14 @@ Token Lexer::getToken() {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token("<<=", TokenType::LSHIFT_ASSIGN, lineNo, colNo);
+                    token = Token("<<=", TokenType::LSHIFT_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token("<<", TokenType::LSHIFT, lineNo, colNo);
+                    token = Token("<<", TokenType::LSHIFT, s.setEndCol(colNo));
             } else if (peekChar == '=') {
                 nextChar();
-                token = Token("<=", TokenType::LESSEQ, lineNo, colNo);
+                token = Token("<=", TokenType::LESSEQ, s.setEndCol(colNo));
             } else
-                token = Token("<", TokenType::LESS, lineNo, colNo);
+                token = Token("<", TokenType::LESS, s.setEndCol(colNo));
             break;
         }
         case '>': {
@@ -179,53 +181,53 @@ Token Lexer::getToken() {
                 nextChar();
                 if (peek() == '=') {
                     nextChar();
-                    token = Token(">>=", TokenType::RSHIFT_ASSIGN, lineNo, colNo);
+                    token = Token(">>=", TokenType::RSHIFT_ASSIGN, s.setEndCol(colNo));
                 } else
-                    token = Token(">>", TokenType::RSHIFT, lineNo, colNo);
+                    token = Token(">>", TokenType::RSHIFT, s.setEndCol(colNo));
             } else if (peekChar == '=') {
                 nextChar();
-                token = Token(">=", TokenType::GREATEREQ, lineNo, colNo);
+                token = Token(">=", TokenType::GREATEREQ, s.setEndCol(colNo));
             } else
-                token = Token(">", TokenType::GREATER, lineNo, colNo);
+                token = Token(">", TokenType::GREATER, s.setEndCol(colNo));
             break;
         }
         case '(':
-            token = Token("(", TokenType::OPEN_PAREN, lineNo, colNo);
+            token = Token("(", TokenType::OPEN_PAREN, s.setEndCol(colNo));
             break;
         case ')':
-            token = Token(")", TokenType::CLOSE_PAREN, lineNo, colNo);
+            token = Token(")", TokenType::CLOSE_PAREN, s.setEndCol(colNo));
             break;
         case '{':
-            token = Token("{", TokenType::OPEN_BRAC, lineNo, colNo);
+            token = Token("{", TokenType::OPEN_BRAC, s.setEndCol(colNo));
             break;
         case '}':
-            token = Token("}", TokenType::CLOSE_BRAC, lineNo, colNo);
+            token = Token("}", TokenType::CLOSE_BRAC, s.setEndCol(colNo));
             break;
         case ',':
-            token = Token(",", TokenType::COMMA, lineNo, colNo);
+            token = Token(",", TokenType::COMMA, s.setEndCol(colNo));
             break;
         case '[':
-            token = Token("[", TokenType::OPEN_BRACKET, lineNo, colNo);
+            token = Token("[", TokenType::OPEN_BRACKET, s.setEndCol(colNo));
             break;
         case ']':
-            token = Token("]", TokenType::CLOSE_BRACKET, lineNo, colNo);
+            token = Token("]", TokenType::CLOSE_BRACKET, s.setEndCol(colNo));
             break;
         case '!':
             if (peek() == '!') {
                 nextChar();
-                token = Token("!!", TokenType::BIT_NOT, lineNo, colNo);
+                token = Token("!!", TokenType::BIT_NOT, s.setEndCol(colNo));
             } else if (peek() == '=') {
                 nextChar();
-                token = Token("!=", TokenType::NOTEQ, lineNo, colNo);
+                token = Token("!=", TokenType::NOTEQ, s.setEndCol(colNo));
             } else
-                token = Token("!", TokenType::NOT, lineNo, colNo);
+                token = Token("!", TokenType::NOT, s.setEndCol(colNo));
             break;
         case '=':
             if (peek() == '=') {
                 nextChar();
-                token = Token("==", TokenType::EQEQ, lineNo, colNo);
+                token = Token("==", TokenType::EQEQ, s.setEndCol(colNo));
             } else {
-                token = Token("=", TokenType::ASSIGN, lineNo, colNo);
+                token = Token("=", TokenType::ASSIGN, s.setEndCol(colNo));
             }
             break;
         case '\"': {
@@ -249,7 +251,7 @@ Token Lexer::getToken() {
                 exit(1);
             }
 
-            token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo, colNo);
+            token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, s.setEndCol(colNo));
             break;
         }
         case '\'': {
@@ -274,24 +276,22 @@ Token Lexer::getToken() {
             }
 
             if (curPos - startPos == 1)
-                token = Token(source.substr(startPos, 1), TokenType::CHR, lineNo, colNo);
+                token = Token(source.substr(startPos, 1), TokenType::CHR, s.setEndCol(colNo));
             else 
-                token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, lineNo, colNo);
+                token = Token(source.substr(startPos, curPos-startPos), TokenType::STR, s.setEndCol(colNo));
             break;
         }
         case ':':
-            token = Token(":", TokenType::COLON, lineNo, colNo);
+            token = Token(":", TokenType::COLON, s.setEndCol(colNo));
             break;
         case ';':
-            token = Token(";", TokenType::SEM, lineNo, colNo);
+            token = Token(";", TokenType::SEM, s.setEndCol(colNo));
             break;
         case '\n':
-            lineNo++;
-
-            token = Token("\\n", TokenType::NEWLINE, lineNo, colNo);
+            token = Token("\\n", TokenType::NEWLINE, s.setEndCol(colNo));
             break;
         case '\0':
-            token = Token("", TokenType::EOF_TOK, lineNo, colNo);
+            token = Token("", TokenType::EOF_TOK, s.setEndCol(colNo));
             break;
         default:
             if (isalpha(curChar) || curChar == '_') {
@@ -346,7 +346,7 @@ Token Lexer::getToken() {
                     kind = TokenType::IDENT;
                 }
 
-                token = Token(text, kind, lineNo, colNo);
+                token = Token(text, kind, s.setEndCol(colNo));
             } else if (is_hex_digit(curChar)) {
                 bool (*is_digit_func) (char) = is_dec_digit;
                 if (curChar == '0') {
@@ -407,7 +407,7 @@ Token Lexer::getToken() {
                     while (isdigit(peek()))
                         nextChar();
 
-                    token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, lineNo, colNo);
+                    token = Token(source.substr(startPos, curPos+1), TokenType::FLOAT, s.setEndCol(colNo));
                 } else {
                     TokenType intlit_type = TokenType::INT_DEC;
 
@@ -418,7 +418,7 @@ Token Lexer::getToken() {
                     else if (is_digit_func == is_bin_digit)
                         intlit_type = TokenType::INT_BIN;
 
-                    token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, lineNo, colNo);
+                    token = Token(source.substr(startPos, curPos-startPos+1), intlit_type, s.setEndCol(colNo));
                 }
             }
             break;

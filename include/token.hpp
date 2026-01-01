@@ -3,15 +3,15 @@
 #include <iostream>
 #include <string>
 #include "opcodes.hpp"
+#include "span.hpp"
 
 class Token {
 	public:
 		std::string text;
 		TokenType kind;
-		int lineNo;
-		int colNo;
+		Span span;
 
 		void print();
 		
-		Token(std::string tokenText, TokenType tokenKind, int line, int col);
+		Token(std::string tokenText, TokenType tokenKind, Span s);
 };
