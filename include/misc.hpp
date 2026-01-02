@@ -28,7 +28,7 @@ class ASTNode {
 		}
 
 		friend class Evaluator;
-		
+
 		virtual ~ASTNode() = default;
 };
 

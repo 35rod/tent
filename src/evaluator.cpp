@@ -335,7 +335,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		if (classes.count(fc->name)) {
 			// class constructor call
 			ClassStmt* classDef = classes[fc->name];
-			
+
 			Value::ClassInstance instance(classDef->name);
 
 			CallFrame frame;
@@ -789,7 +789,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 						break;
 				}
 			}
-			
+
 			if (op >= TokenType::FLOOR_DIV
 			 && op <= TokenType::RSHIFT)
 				diags.report<TypeError>(
@@ -853,7 +853,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 				);
 			}
 			std::string idx = static_cast<std::string>(r);
-			
+
 			try {
 				return dictPtr->at(idx);
 			} catch (std::exception&) {
