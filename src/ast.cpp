@@ -1,11 +1,10 @@
 #include "ast.hpp"
 
 #include <iostream>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
-#include <llvm/IR/Value.h>
 
 #include "misc.hpp"
 
@@ -35,7 +34,7 @@ llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function* mainFunc, const std::st
 
 llvm::Value* boxPrimitive(llvm::Value* val, llvm::LLVMContext& ctx, llvm::IRBuilder<>& builder, llvm::Module& module) {
 	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-	
+
 	llvm::FunctionCallee boxFunc;
 	llvm::Value* arg = val;
 

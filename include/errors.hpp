@@ -1,7 +1,7 @@
 #pragma once
 
-#include <exception>
 #include <string>
+
 #include "span.hpp"
 
 class Error {
@@ -12,7 +12,7 @@ class Error {
         std::string filename;
     public:
         Error(
-            std::string msg, 
+            std::string msg,
             Span s,
             std::string hintMsg = "",
             std::string fname = "<stdin>"
@@ -27,7 +27,7 @@ class Error {
 class SyntaxError : public Error {
     public:
         SyntaxError(
-            std::string msg, 
+            std::string msg,
             Span s,
             std::string hintMsg = "",
             std::string fname = "<stdin>"
@@ -39,7 +39,7 @@ class SyntaxError : public Error {
 class MissingTerminatorError : public Error {
     public:
         MissingTerminatorError(
-            std::string msg, 
+            std::string msg,
             Span s,
             std::string hintMsg = "",
             std::string fname = "<stdin>"
@@ -51,7 +51,7 @@ class MissingTerminatorError : public Error {
 class IdentifierError : public Error {
     public:
         IdentifierError(
-            std::string msg, 
+            std::string msg,
             Span s,
             std::string hintMsg = "",
             std::string fname = "<stdin>"
@@ -63,7 +63,7 @@ class IdentifierError : public Error {
 class TypeError : public Error {
     public:
         TypeError(
-            std::string msg, 
+            std::string msg,
             Span s,
             std::string hintMsg = "",
             std::string fname = "<stdin>"

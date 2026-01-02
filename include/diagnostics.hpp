@@ -1,8 +1,9 @@
 #pragma once
 
 #include <vector>
+#include <memory>
+
 #include "errors.hpp"
-#include "span.hpp"
 
 static constexpr const char* RED = "\033[31m";
 static constexpr const char* YELLOW = "\033[33m";

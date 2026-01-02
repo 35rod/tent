@@ -12,6 +12,6 @@ class Token {
 		Span span;
 
 		void print();
-		
+
 		Token(std::string tokenText, TokenType tokenKind, Span s);
 };

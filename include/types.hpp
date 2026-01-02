@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include <variant>
 #include <vector>
 #include <cstdint>
@@ -59,31 +60,31 @@ inline Value make_vec(const std::vector<Value>& elems) {
 }
 
 inline constexpr bool is_primitive_val(const Value& val) {
-	return !std::holds_alternative<NullLiteral>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
+    return !std::holds_alternative<NullLiteral>(val.v) && !std::holds_alternative<Value::ClassInstance>(val.v);
 }
 
-static inline std::string getLineText(std::string source, int line) {
-    size_t start = 0;
-    int current = 1;
+static inline std::string_view getLineText(const std::string& source, size_t line) {
+    size_t startIndex = 0;
+    size_t currentLine = 1;
 
-    while (current < line) {
-        size_t next_newline = source.find('\n', start);
+    while (currentLine < line) {
+        size_t next_newline = source.find('\n', startIndex);
 
         if (next_newline == std::string::npos) {
-            return ""; 
+            return "";
         }
 
-        start = next_newline + 1;
-        current++;
+        startIndex = next_newline + 1;
+        currentLine++;
     }
 
-    size_t end = source.find('\n', start);
+    size_t end = source.find('\n', startIndex);
 
     if (end == std::string::npos) {
-        return source.substr(start);
+        return std::string_view(source.data() + startIndex);
     }
 
-    return source.substr(start, end - start);
+    return std::string_view(source.data() + startIndex, end - startIndex);
 }
 
 int64_t ipow(int64_t base, uint8_t exp);

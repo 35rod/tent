@@ -1,10 +1,9 @@
 #include <string>
 
+#include <cassert>
+#include <cstring>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
-
-#include "errors.hpp"
 
 /* subtract '\\' before indexing */
 static const char ESC_CHARS[0x76-0x5c + 1] = {
@@ -58,7 +57,7 @@ uint8_t get_escape(const std::string s, char *out_c) {
 			*out_c = ESC_CHARS[s[1]-'\\'];
 			return 2;
 		}
-		
+
 		if (is_oct_dig(s[1])) {
 			temp_buf[0] = s[1];
 			temp_size = 2;
@@ -75,9 +74,8 @@ uint8_t get_escape(const std::string s, char *out_c) {
 		}
 
 		if (s[1] == 'x') {
-			if ((temp_size = s.length()) < 3)
-				// Error("invalid escape sequence starts around '" + s.substr(0, 5) + "'\n", -1);
-			
+			assert((temp_size = s.length()) >= 3);
+
 			if (temp_size < 4) {
 				if (out_c == NULL) return 3;
 				temp_size = 3;
@@ -96,7 +94,7 @@ uint8_t get_escape(const std::string s, char *out_c) {
 
 			return temp_size;
 		}
-	} 
+	}
 
 	if (out_c == NULL) return 1;
 	*out_c = s[0];

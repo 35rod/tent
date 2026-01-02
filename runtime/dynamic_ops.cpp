@@ -1,6 +1,9 @@
+#include <iostream>
+#include <cstring>
+#include <cinttypes>
+
 #include "dynamic_value.hpp"
 #include "box_ops.hpp"
-#include <iostream>
 
 extern "C" void free_dynamic_value(DynamicValue dv) {
 	free(dv.data);
@@ -163,7 +166,7 @@ extern "C" DynamicValue dynamic_div(DynamicValue L, DynamicValue R) {
 
 extern "C" void print_dynamic_value(DynamicValue dv) {
 	switch (dv.tag) {
-		case TypeTag::INT: printf("%lld\n", unbox_int(dv)); break;
+		case TypeTag::INT: printf("%" PRIi64 "\n", unbox_int(dv)); break;
 		case TypeTag::FLOAT: {
 			double val = unbox_float(dv);
 			printf("%g\n", val);

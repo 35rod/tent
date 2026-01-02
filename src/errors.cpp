@@ -1,10 +1,7 @@
 #include "errors.hpp"
 
-#include <iostream>
-#include <sstream>
-
 Error::Error(
-    std::string msg, 
+    std::string msg,
     Span s,
     std::string hintMsg,
     std::string fname
@@ -15,7 +12,7 @@ std::string Error::getClassName() const {
 }
 
 SyntaxError::SyntaxError(
-    std::string msg, 
+    std::string msg,
     Span s,
     std::string hintMsg,
     std::string fname
@@ -26,7 +23,7 @@ std::string SyntaxError::getClassName() const {
 }
 
 MissingTerminatorError::MissingTerminatorError(
-    std::string msg, 
+    std::string msg,
     Span s,
     std::string hintMsg,
     std::string fname
@@ -37,7 +34,7 @@ std::string MissingTerminatorError::getClassName() const {
 }
 
 IdentifierError::IdentifierError(
-    std::string msg, 
+    std::string msg,
     Span s,
     std::string hintMsg,
     std::string fname
@@ -48,7 +45,7 @@ std::string IdentifierError::getClassName() const {
 }
 
 TypeError::TypeError(
-    std::string msg, 
+    std::string msg,
     Span s,
     std::string hintMsg,
     std::string fname
