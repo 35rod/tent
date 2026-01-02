@@ -1,3 +1,5 @@
 load "io";
 
-println(0s);
+form "hello"() {
+	println("Hello World!");
+}

@@ -91,8 +91,8 @@ std::map<std::string, llvm::AllocaInst*> NamedValues;
 std::vector<llvm::BasicBlock*> BreakBlockStack;
 std::vector<llvm::BasicBlock*> ContinueBlockStack;
 
-IntLiteral::IntLiteral(tn_int_t literalValue, int line, int col, std::string file)
-: ASTNode(line, col, file), value(literalValue) {}
+IntLiteral::IntLiteral(tn_int_t literalValue, Span s)
+: ASTNode(s), value(literalValue) {}
 
 llvm::Value* IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
 	return llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
@@ -103,8 +103,8 @@ void IntLiteral::print(int indent) {
 	std::cout << "IntLiteral(value=" << value << ")\n";
 }
 
-FloatLiteral::FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file)
-: ASTNode(line, col, file), value(literalValue) {}
+FloatLiteral::FloatLiteral(tn_dec_t literalValue, Span s)
+: ASTNode(s), value(literalValue) {}
 
 llvm::Value* FloatLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
 	return llvm::ConstantFP::get(ctx, llvm::APFloat(value));
@@ -115,8 +115,8 @@ void FloatLiteral::print(int indent) {
 	std::cout << "FloatLiteral(value=" << value << ")\n";
 }
 
-StrLiteral::StrLiteral(std::string literalValue, int line, int col, std::string file)
-: ASTNode(line, col, file), value(literalValue) {}
+StrLiteral::StrLiteral(std::string literalValue, Span s)
+: ASTNode(s), value(literalValue) {}
 
 llvm::Value* StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -128,8 +128,8 @@ void StrLiteral::print(int indent) {
 	std::cout << "StringLiteral(value=" << value << ")\n";
 }
 
-BoolLiteral::BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file)
-: ASTNode(line, col, file), value(literalValue) {}
+BoolLiteral::BoolLiteral(tn_bool_t literalValue, Span s)
+: ASTNode(s), value(literalValue) {}
 
 llvm::Value* BoolLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
 	return llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx), value, false);
@@ -140,8 +140,8 @@ void BoolLiteral::print(int indent) {
 	std::cout << "BoolLiteral(value=" << (value ? "true" : "false") << ")\n";
 }
 
-VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file)
-: ASTNode(line, col, file), elems(std::move(literalValue)) {}
+VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, Span s)
+: ASTNode(s), elems(std::move(literalValue)) {}
 
 
 
@@ -150,64 +150,64 @@ void VecLiteral::print(int indent) {
 	std::cout << "VecLiteral(size=" << elems.size() << ")\n";
 }
 
-DicLiteral::DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file)
-: ASTNode(line, col, file), dic(std::move(literalDic)) {}
+DicLiteral::DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, Span s)
+: ASTNode(s), dic(std::move(literalDic)) {}
 
 void DicLiteral::print(int indent) {
     printIndent(indent);
     std::cout << "DicLiteral(size=" << dic.size() << ")\n";
 }
 
-TypeInt::TypeInt(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeInt::TypeInt(Span s)
+: ASTNode(s) {}
 
 void TypeInt::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeInt()" << std::endl;
 }
 
-TypeFloat::TypeFloat(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeFloat::TypeFloat(Span s)
+: ASTNode(s) {}
 
 void TypeFloat::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeFloat()" << std::endl;
 }
 
-TypeStr::TypeStr(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeStr::TypeStr(Span s)
+: ASTNode(s) {}
 
 void TypeStr::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeStr()" << std::endl;
 }
 
-TypeBool::TypeBool(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeBool::TypeBool(Span s)
+: ASTNode(s) {}
 
 void TypeBool::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeBool()" << std::endl;
 }
 
-TypeVec::TypeVec(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeVec::TypeVec(Span s)
+: ASTNode(s) {}
 
 void TypeVec::print(int indent) {
 	printIndent(indent);
 	std::cout << "TypeVec()" << std::endl;
 }
 
-TypeDic::TypeDic(int line, int col, std::string file)
-: ASTNode(line, col, file) {}
+TypeDic::TypeDic(Span s)
+: ASTNode(s) {}
 
 void TypeDic::print(int indent) {
     printIndent(indent);
     std::cout << "TypeDic()" << std::endl;
 }
 
-Variable::Variable(std::string varName, ASTPtr varValue, int line, int col, std::string file)
-: ASTNode(line, col, file), name(varName), value(std::move(varValue)) {}
+Variable::Variable(std::string varName, Span s, ASTPtr varValue)
+: ASTNode(s), name(varName), value(std::move(varValue)) {}
 
 llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -235,8 +235,8 @@ void Variable::print(int indent) {
 	}
 }
 
-UnaryOp::UnaryOp(TokenType opOp, ASTPtr opOperand, int line, int col, std::string file)
-: ASTNode(line, col, file), op(opOp), operand(std::move(opOperand)) {}
+UnaryOp::UnaryOp(TokenType opOp, ASTPtr opOperand, Span s)
+: ASTNode(s), op(opOp), operand(std::move(opOperand)) {}
 
 void UnaryOp::print(int indent) {
 	printIndent(indent);
@@ -252,8 +252,8 @@ void UnaryOp::print(int indent) {
 	}
 }
 
-BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file)
-: ASTNode(line, col, file), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
+BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, Span s)
+: ASTNode(s), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
 
 llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
     llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -384,11 +384,9 @@ void BinaryOp::print(int indent) {
 IfStmt::IfStmt(
 	ASTPtr stmtCondition,
 	std::vector<ExpressionStmt> thenStmts,
-	std::vector<ExpressionStmt> elseStmts,
-	int line,
-	int col,
-	std::string file
-) : ASTNode(line, col, file), condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
+	Span s,
+	std::vector<ExpressionStmt> elseStmts
+) : ASTNode(s), condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
 llvm::Value* IfStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -470,8 +468,8 @@ void IfStmt::print(int indent) {
 	}
 }
 
-WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file) :
-ASTNode(line, col, file), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
+WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, Span s) :
+ASTNode(s), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
 
 llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -547,8 +545,8 @@ void WhileStmt::print(int indent) {
 	}
 }
 
-ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file)  :
-ASTNode(line, col, file), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
+ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts, Span s)  :
+ASTNode(s), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
 
 void ForStmt::print(int indent) {
 	printIndent(indent);
@@ -568,8 +566,8 @@ void ForStmt::print(int indent) {
 	}
 }
 
-FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file)
-: ASTNode(line, col, file), name(callName), params(std::move(callParams)) {}
+FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, Span s)
+: ASTNode(s), name(callName), params(std::move(callParams)) {}
 
 llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -634,8 +632,8 @@ void FunctionCall::print(int indent) {
 	}
 }
 
-ReturnStmt::ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file)
-: ASTNode(line, col, file), value(std::move(stmtValue)) {}
+ReturnStmt::ReturnStmt(ASTPtr stmtValue, Span s)
+: ASTNode(s), value(std::move(stmtValue)) {}
 
 void ReturnStmt::print(int indent) {
 	printIndent(indent);
@@ -649,23 +647,13 @@ void ReturnStmt::print(int indent) {
 	}
 }
 
-ContractStmt::ContractStmt(std::string stmtName, std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file)
-: ASTNode(line, col, file), name(stmtName), dic(std::move(literalDic)) {}
-
-void ContractStmt::print(int indent) {
-	printIndent(indent);
-	std::cout << "ContractStmt(name=" << name << ", " << "size=" << dic.size() << ")\n";
-}
-
 FunctionStmt::FunctionStmt(
 	std::string stmtName, 
 	std::vector<ASTPtr> stmtParams, 
-	std::vector<ExpressionStmt> stmtStmts, 
-	ASTPtr stmtReturnValue,
-	int line,
-	int col,
-	std::string file
-) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
+	std::vector<ExpressionStmt> stmtStmts,
+	Span s,
+	ASTPtr stmtReturnValue
+) : ASTNode(s), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)), returnValue(std::move(stmtReturnValue)) {}
 
 void FunctionStmt::print(int indent) {
 	printIndent(indent);
@@ -689,10 +677,8 @@ ClassStmt::ClassStmt(
 	std::string stmtName, 
 	std::vector<ASTPtr> stmtParams, 
 	std::vector<ExpressionStmt> stmtStmts,
-	int line,
-	int col,
-	std::string file
-) : ASTNode(line, col, file), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)) {}
+	Span s
+) : ASTNode(s), name(stmtName), params(std::move(stmtParams)), stmts(std::move(stmtStmts)) {}
 
 void ClassStmt::print(int indent) {
 	printIndent(indent);
@@ -714,13 +700,11 @@ void ClassStmt::print(int indent) {
 
 ExpressionStmt::ExpressionStmt(
 	ASTPtr stmtExpr,
+	Span s,
 	bool stmtNoOp,
 	bool exprIsBreak,
-	bool exprIsContinue,
-	int line,
-	int col,
-	std::string file
-) : ASTNode(line, col, file), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+	bool exprIsContinue
+) : ASTNode(s), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
 llvm::Value* ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
@@ -774,8 +758,8 @@ void ExpressionStmt::print(int indent) {
 	}
 }
 
-Program::Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file)
-: ASTNode(line, col, file), statements(std::move(programStatements)) {}
+Program::Program(std::vector<ExpressionStmt>&& programStatements, Span s)
+: ASTNode(s), statements(std::move(programStatements)) {}
 
 llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
 	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);

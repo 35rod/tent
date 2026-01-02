@@ -5,6 +5,7 @@
 #include "opcodes.hpp"
 #include "token.hpp"
 #include "ast.hpp"
+#include "diagnostics.hpp"
 
 extern std::vector<std::string> nativeLibs;
 
@@ -36,8 +37,9 @@ class Parser {
     std::vector<Token> tokens;
     std::vector<Token>::size_type pos = 0;
 
-    std::string source;
     std::string filename;
+
+    Diagnostics& diags;
 
     const std::vector<std::string> file_search_dirs;
 
@@ -49,9 +51,10 @@ class Parser {
     std::vector<ExpressionStmt> parse_block();
     ExpressionStmt parse_statement();
     ASTPtr parse_expression(int minBp);
+    void exitErrors();
 
     public:
         ASTPtr parse_program();
 
-        Parser(std::vector<Token> parserTokens, std::string input, std::string file, std::vector<std::string> search_dirs);
+        Parser(std::vector<Token> parserTokens, Diagnostics& diagnostics, std::string fname, std::vector<std::string> search_dirs);
 };

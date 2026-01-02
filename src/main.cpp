@@ -7,7 +7,7 @@
 
 #define TENT_MAIN_CPP_FILE
 #include "lexer.hpp"
-// #include "parser.hpp"
+#include "parser.hpp"
 // #include "evaluator.hpp"
 #include "compiler.hpp"
 #include "diagnostics.hpp"
@@ -69,8 +69,14 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 				continue;
 			}
 
-			// Parser parser(lexer.tokens, buffer, "<stdin>", search_dirs);
-			// ASTPtr program = parser.parse_program();
+			Parser parser(lexer.tokens, diags, "<stdin>", search_dirs);
+			ASTPtr program = parser.parse_program();
+
+			if (diags.has_errors()) {
+				diags.print_errors();
+				buffer.clear();
+				continue;
+			}
 
 			// Evaluator evaluator(buffer);
 			// evaluator.evalProgram(std::move(program), {});
@@ -130,8 +136,13 @@ int32_t main(int32_t argc, char **argv) {
 		return 1;
 	}
 
-	// Parser parser(lexer.tokens, output, SRC_FILENAME, search_dirs);
-	// program = parser.parse_program();
+	Parser parser(lexer.tokens, diags, SRC_FILENAME, search_dirs);
+	program = parser.parse_program();
+
+	if (diags.has_errors()) {
+		diags.print_errors();
+		return 1;
+	}
 
 	// if (IS_FLAG_SET(DEBUG))
 	// 	program->print(0);

@@ -17,12 +17,12 @@
 
 std::vector<std::string> nativeLibs;
 
-Parser::Parser(std::vector<Token> parserTokens, std::string input, std::string file, std::vector<std::string> search_dirs)
-: tokens(parserTokens), source(input), filename(file), file_search_dirs(search_dirs) {}
+Parser::Parser(std::vector<Token> parserTokens, Diagnostics& diagnostics, std::string fname, std::vector<std::string> search_dirs)
+: tokens(parserTokens), filename(fname), diags(diagnostics), file_search_dirs(search_dirs) {}
 
 Token Parser::current() {
 	if (pos >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, tokens[pos-1].lineNo, tokens[pos-1].colNo);
+		return Token("\0", TokenType::EOF_TOK, tokens.back().span);
 	}
 
 	return tokens[pos];
@@ -30,7 +30,7 @@ Token Parser::current() {
 
 Token Parser::peek(int num) {
 	if ((pos+num) >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, 0, 0);
+		return Token("\0", TokenType::EOF_TOK, tokens.back().span);
 	}
 
 	return tokens[pos+num];
@@ -38,7 +38,7 @@ Token Parser::peek(int num) {
 
 Token Parser::advance(int num) {
 	if (pos >= tokens.size()) {
-		return Token("\0", TokenType::EOF_TOK, 0, 0);
+		return Token("\0", TokenType::EOF_TOK, tokens.back().span);
 	}
 
 	Token token = tokens[pos];
@@ -52,16 +52,11 @@ Token Parser::expect(TokenType ttype) {
 		return current();
 	}
 
-	SyntaxError(
+	diags.report<SyntaxError>(
 		"Expected " + tokenTypeToString(ttype) +
-		", got " + tokenTypeToString(current().kind),
-		current().lineNo,
-		current().colNo,
-		filename,
-		"",
-		getLineText(source, current().lineNo)
-	).print();
-	exit(1);
+		", got " + tokenTypeToString(current().kind), current().span,
+		"", filename
+	);
 
 	return current();
 }
@@ -92,7 +87,7 @@ ASTPtr Parser::parse_program() {
 		}
 	}
 
-	return std::make_unique<Program>(std::move(stmts), -1, -1, filename);
+	return std::make_unique<Program>(std::move(stmts), current().span);
 }
 
 std::vector<ExpressionStmt> Parser::parse_block() {
@@ -103,15 +98,12 @@ std::vector<ExpressionStmt> Parser::parse_block() {
 
 	while (current().kind != TokenType::CLOSE_BRAC) {
 		if (current().kind == TokenType::EOF_TOK) {
-			SyntaxError(
-				"Closing braces required for code block", 
-				current().lineNo,
-				current().colNo,
-				filename,
-				"Did you forget a closing brace (})?",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
+			diags.report<SyntaxError>(
+				"Closing braces required for code block", current().span,
+				"Did you forget a closing brace?", filename
+			);
+
+			exitErrors();
 		}
 
 		ExpressionStmt&& stmt = parse_statement();
@@ -136,15 +128,12 @@ ExpressionStmt Parser::parse_statement() {
 		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
-			MissingTerminatorError(
-				"Missing statement terminator after load statement",
-				current().lineNo,
-				current().colNo,
-				filename,
-				"Did you forget a semicolon (;)?",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
+			diags.report<MissingTerminatorError>(
+				"Missing statement terminator after load statement", current().span,
+				"Did you forget a semicolon?", filename
+			);
+
+			advance();
 		}
 
 		if (fname.size() >= 5 && fname.substr(fname.size() - 5) == ".tent") {
@@ -163,15 +152,15 @@ ExpressionStmt Parser::parse_statement() {
 				output.push_back('\n');
 			}
 
-			Lexer lexer(output);
+			Lexer lexer(output, diags);
 			lexer.nextChar();
 			lexer.getTokens();
 
-			Parser parser(lexer.tokens, output, fname, file_search_dirs);
+			Parser parser(lexer.tokens, diags, fname, file_search_dirs);
 
-			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements), -1, -1, filename);
+			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements), current().span);
 
-			return ExpressionStmt(std::move(imported_program), false, false, false, current().lineNo, current().colNo, filename);
+			return ExpressionStmt(std::move(imported_program), Span::combine(token.span, current().span), false, false, false);
 		}
 
 		using RegisterFn = void(*)(std::unordered_map<std::string, NativeFn>&);
@@ -230,11 +219,11 @@ ExpressionStmt Parser::parse_statement() {
 
 		nativeLibs.push_back(fname);
 
-		return ExpressionStmt(std::make_unique<NoOp>(), true, false, false, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::make_unique<NoOp>(), Span::combine(token.span, current().span), true, false, false);
 	} else if (token.kind == TokenType::SEM) {
 		advance();
 
-		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), true, false, false, current().lineNo, current().colNo, filename);
+		ExpressionStmt expressionStmt = ExpressionStmt(std::make_unique<NoOp>(), current().span, true, false, false);
 
 		return expressionStmt;
 	} else if (token.kind == TokenType::FORM || token.kind == TokenType::CLASS) {
@@ -248,20 +237,17 @@ ExpressionStmt Parser::parse_statement() {
 
 		while (current().kind != TokenType::CLOSE_PAREN) {
 			if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError(
-					"Closing parenthesis required for function/class definition",
-					current().lineNo,
-					current().colNo,
-					filename,
-					"Did you forget closing parenthesis ())?",
-					getLineText(source, current().lineNo)
-				).print();
-				exit(1);
+				diags.report<SyntaxError>(
+					"Closing parenthesis required for function/class definition", current().span,
+					"Did you forget closing parenthesis?", filename
+				);
+
+				exitErrors();
 			}
 
 			Token param = expect(TokenType::IDENT);
 
-			params.push_back(std::make_unique<Variable>(param.text, nullptr, current().lineNo, current().colNo, filename));
+			params.push_back(std::make_unique<Variable>(param.text, current().span, nullptr));
 
 			advance();
 
@@ -274,41 +260,20 @@ ExpressionStmt Parser::parse_statement() {
 			advance();
 		}
 
+		Span parenSpan = current().span;
+
 		advance();
 		std::vector<ExpressionStmt> stmts = parse_block();
 
 		ASTPtr res = nullptr;
 
 		if (token.kind == TokenType::FORM) {
-			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts), nullptr, current().lineNo, current().colNo, filename);
+			res = std::make_unique<FunctionStmt>(name.text, std::move(params), std::move(stmts), Span::combine(token.span, parenSpan), nullptr);
 		} else {
-			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts), current().lineNo, current().colNo, filename);
+			res = std::make_unique<ClassStmt>(name.text, std::move(params), std::move(stmts), Span::combine(token.span, parenSpan));
 		}
 		
-		return ExpressionStmt(std::move(res), false, false, false, current().lineNo, current().colNo, filename);
-	} else if (token.kind == TokenType::CONTRACT) {
-		advance();
-		Token name = expect(TokenType::IDENT);
-		advance();
-		ASTPtr value = parse_expression(0);
-
-		if (auto dl = dynamic_cast<DicLiteral*>(value.get())) {
-			advance();
-
-			ASTPtr contractStmt = std::make_unique<ContractStmt>(name.text, std::move(dl->dic), current().lineNo, current().colNo, filename);
-
-			return ExpressionStmt(std::move(contractStmt), false, false, false, current().lineNo, current().colNo, filename);
-		} else {
-			SyntaxError(
-				"Invalid syntax for contract definition",
-				current().lineNo,
-				current().colNo,
-				filename,
-				"",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
-		}
+		return ExpressionStmt(std::move(res), Span::combine(token.span, parenSpan), false, false, false);
 	} else if (token.kind == TokenType::RETURN) {
 		advance();
 
@@ -317,20 +282,17 @@ ExpressionStmt Parser::parse_statement() {
 		if (peek().kind == TokenType::SEM) {
 			advance();
 		} else {
-			MissingTerminatorError(
-				"Missing statement terminator after return statement",
-				current().lineNo,
-				current().colNo,
-				filename,
-				"Did you forget a semicolon (;)?",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
+			diags.report<MissingTerminatorError>(
+				"Missing statement terminator after return statement", current().span,
+				"Did you forget a semicolon?", filename
+			);
+
+			advance();
 		}
 
-		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value), current().lineNo, current().colNo, filename);
+		ASTPtr returnStmt = std::make_unique<ReturnStmt>(std::move(value), Span::combine(token.span, current().span));
 
-		return ExpressionStmt(std::move(returnStmt), false, false, false, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::move(returnStmt), Span::combine(token.span, current().span), false, false, false);
 	} else if (token.kind == TokenType::WHILE) {
 		advance();
 		ASTPtr condition = parse_expression(0);
@@ -338,15 +300,17 @@ ExpressionStmt Parser::parse_statement() {
 
 		std::vector<ExpressionStmt> stmts;
 
+		Span endSpan = current().span;
+
 		if (current().kind != TokenType::OPEN_BRAC) {
 			stmts.push_back(parse_statement());
 		} else {
 			stmts = parse_block();
 		}
 
-		ASTPtr whileStmt = std::make_unique<WhileStmt>(std::move(condition), std::move(stmts), current().lineNo, current().colNo, filename);
+		ASTPtr whileStmt = std::make_unique<WhileStmt>(std::move(condition), std::move(stmts), Span::combine(token.span, endSpan));
 
-		return ExpressionStmt(std::move(whileStmt), false, false, false, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::move(whileStmt), Span::combine(token.span, endSpan), false, false, false);
 	} else if (token.kind == TokenType::FOR) {
 		advance();
 		ASTPtr var = parse_expression(0);
@@ -358,15 +322,17 @@ ExpressionStmt Parser::parse_statement() {
 
 		std::vector<ExpressionStmt> stmts;
 
+		Span endSpan = current().span;
+
 		if (current().kind != TokenType::OPEN_BRAC) {
 			stmts.push_back(parse_statement());
 		} else {
 			stmts = parse_block();
 		}
 
-		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts), current().lineNo, current().colNo, filename);
+		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts), Span::combine(token.span, endSpan));
 
-		return ExpressionStmt(std::move(forStmt), false, false, false, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::move(forStmt), Span::combine(token.span, endSpan), false, false, false);
 	} else if (token.kind == TokenType::IF) {
 		advance();
 
@@ -375,6 +341,8 @@ ExpressionStmt Parser::parse_statement() {
 
 		advance();
 
+		Span endSpan = current().span;
+
 		if (current().kind != TokenType::OPEN_BRAC) {
 			thenStmts.push_back(parse_statement());
 		} else {
@@ -382,9 +350,9 @@ ExpressionStmt Parser::parse_statement() {
 		}
 
 		if (current().kind != TokenType::ELSE) {
-			ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::vector<ExpressionStmt>(), current().lineNo, current().colNo, filename);
+			ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), Span::combine(token.span, endSpan), std::vector<ExpressionStmt>());
 
-			return ExpressionStmt(std::move(ifStmt), false, false, false, current().lineNo, current().colNo, filename);
+			return ExpressionStmt(std::move(ifStmt), Span::combine(token.span, endSpan), false, false, false);
 		}
 
 		advance();
@@ -395,25 +363,22 @@ ExpressionStmt Parser::parse_statement() {
 			elseStmts = parse_block();
 		}
 
-		ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), std::move(elseStmts), current().lineNo, current().colNo, filename);
+		ASTPtr ifStmt = std::make_unique<IfStmt>(std::move(condition), std::move(thenStmts), Span::combine(token.span, endSpan), std::move(elseStmts));
 
-		return ExpressionStmt(std::move(ifStmt), false, false, false, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::move(ifStmt), Span::combine(token.span, endSpan), false, false, false);
 	} else if (token.kind == TokenType::BREAK || token.kind == TokenType::CONTINUE) {
 		if (peek().kind == TokenType::SEM)
 			advance();
 		else {
-			MissingTerminatorError(
-				"Missing statement terminator after break statement",
-				current().lineNo,
-				current().colNo,
-				filename,
-				"Did you forget a semicolon (;)?",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
+			diags.report<MissingTerminatorError>(
+				"Missing statement terminator after break statement", current().span,
+				"Did you forget a semicolon?", filename
+			);
+
+			advance();
 		}
 
-		return ExpressionStmt(std::make_unique<NoOp>(), true, true, token.kind == TokenType::CONTINUE, current().lineNo, current().colNo, filename);
+		return ExpressionStmt(std::make_unique<NoOp>(), Span::combine(token.span, current().span), true, true, token.kind == TokenType::CONTINUE);
 	}
 
 	ASTPtr expr = parse_expression(0);
@@ -421,18 +386,15 @@ ExpressionStmt Parser::parse_statement() {
 	if (peek().kind == TokenType::SEM) {
 		advance();
 	} else {
-		MissingTerminatorError(
-			"Missing statement terminator after expression",
-			current().lineNo,
-			current().colNo,
-			filename,
-			"Did you forget a semicolon (;)?",
-			getLineText(source, current().lineNo)
-		).print();
-		exit(1);
+		diags.report<MissingTerminatorError>(
+			"Missing statement terminator after expression", current().span,
+			"Did you forget a semicolon?", filename
+		);
+
+		advance();
 	}
 
-	return ExpressionStmt(std::move(expr), false, false, false, current().lineNo, current().colNo, filename);
+	return ExpressionStmt(std::move(expr), Span::combine(token.span, current().span), false, false, false);
 }
 
 ASTPtr Parser::parse_expression(int min_bp) {
@@ -449,7 +411,8 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		TokenType new_token_type = (token.kind == TokenType::SUB)
 			? TokenType::NEGATE
 			: token.kind;
-		left = std::make_unique<UnaryOp>(new_token_type, std::move(operand), current().lineNo, current().colNo, filename);
+		
+		left = std::make_unique<UnaryOp>(new_token_type, std::move(operand), Span::combine(token.span, current().span));
 	} else if (token.kind >= TokenType::INT_HEX && token.kind <= TokenType::INT_BIN) {
 		int8_t base = -1;
 		if (token.kind == TokenType::INT_HEX)
@@ -461,40 +424,35 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		if (token.kind == TokenType::INT_BIN)
 			base = 2;
 		if (base == -1) {
-			SyntaxError(
-				"Invalid radix base",
-				current().lineNo,
-				current().colNo,
-				filename,
-				"Please report this in the Issue Tracker",
-				getLineText(source, current().lineNo)
-			).print();
-			exit(1);
+			diags.report<SyntaxError>(
+				"Invalid radix base", current().span,
+				"Please report this in the Issue Tracker", filename
+			);
 		}
 
-		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base), current().lineNo, current().colNo, filename);
+		left = std::make_unique<IntLiteral>(std::strtoll(token.text.c_str(), NULL, base), current().span);
 	} else if (token.kind == TokenType::FLOAT) {
-		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL), current().lineNo, current().colNo, filename);
+		left = std::make_unique<FloatLiteral>(std::strtof(token.text.c_str(), NULL), current().span);
 	} else if (token.kind == TokenType::STR) {
-		left = std::make_unique<StrLiteral>(read_escape(token.text), current().lineNo, current().colNo, filename);
+		left = std::make_unique<StrLiteral>(read_escape(token.text), current().span);
 	} else if (token.kind == TokenType::TYPE_INT) {
-		left = std::make_unique<TypeInt>(current().lineNo, current().colNo, filename);
+		left = std::make_unique<TypeInt>(current().span);
 	} else if (token.kind == TokenType::TYPE_FLOAT) {
-		left = std::make_unique<TypeFloat>(current().lineNo, current().colNo, filename);
+		left = std::make_unique<TypeFloat>(current().span);
 	} else if (token.kind == TokenType::TYPE_STR) {
-		left = std::make_unique<TypeStr>(current().lineNo, current().colNo, filename);
+		left = std::make_unique<TypeStr>(current().span);
 	} else if (token.kind == TokenType::TYPE_BOOL) {
-		left = std::make_unique<TypeBool>(current().lineNo, current().colNo, filename);
+		left = std::make_unique<TypeBool>(current().span);
 	} else if (token.kind == TokenType::TYPE_VEC) {
-		left = std::make_unique<TypeVec>(current().lineNo, current().colNo, filename);
+		left = std::make_unique<TypeVec>(current().span);
 	} else if (token.kind == TokenType::TYPE_DIC) {
-	    left = std::make_unique<TypeDic>(current().lineNo, current().colNo, filename);
+	    left = std::make_unique<TypeDic>(current().span);
 	} else if (token.kind == TokenType::CHR) {
 		char c = 0;
 		get_escape(token.text, &c);
-		left = std::make_unique<IntLiteral>(c, current().lineNo, current().colNo, filename);
+		left = std::make_unique<IntLiteral>(c, current().span);
 	} else if (token.kind == TokenType::BOOL) {
-		left = std::make_unique<BoolLiteral>(token.text == "true", current().lineNo, current().colNo, filename);
+		left = std::make_unique<BoolLiteral>(token.text == "true", current().span);
 	} else if (token.kind == TokenType::OPEN_BRACKET) {
 		advance();
 
@@ -502,15 +460,12 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		
 		while (current().kind != TokenType::CLOSE_BRACKET) {
 			if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError(
-					"Unterminated vector literal",
-					current().lineNo,
-					current().colNo,
-					filename,
-					"Did you forget a closing bracket (])?",
-					getLineText(source, current().lineNo)
-				).print();
-				exit(1);
+				diags.report<SyntaxError>(
+					"Unterminated vector literal", current().span,
+					"Did you forget a closing bracket?", filename
+				);
+
+				exitErrors();
 			}
 
 			ASTPtr elem = parse_expression(0);
@@ -526,7 +481,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 			advance();
 		}
 		
-		left = std::make_unique<VecLiteral>(std::move(elems), current().lineNo, current().colNo, filename);
+		left = std::make_unique<VecLiteral>(std::move(elems), Span::combine(token.span, current().span));
 	} else if (token.kind == TokenType::OPEN_BRAC) {
 	    advance();
 
@@ -534,15 +489,12 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 	    while (current().kind != TokenType::CLOSE_BRAC) {
 	        if (current().kind == TokenType::EOF_TOK) {
-				SyntaxError(
-					"Unterminated dictionary literal",
-					current().lineNo,
-					current().colNo,
-					filename,
-					"Did you forget a closing brace (})?",
-					getLineText(source, current().lineNo)
-				).print();
-	            exit(1);
+				diags.report<SyntaxError>(
+					"Unterminated dictionary literal", current().span,
+					"Did you forget a closing brace?", filename
+				);
+
+				exitErrors();
 	        }
 
 	        ASTPtr key = parse_expression(0);
@@ -562,7 +514,7 @@ ASTPtr Parser::parse_expression(int min_bp) {
 	        advance();
 	    }
 
-	    left = std::make_unique<DicLiteral>(std::move(dic), current().lineNo, current().colNo, filename);
+	    left = std::make_unique<DicLiteral>(std::move(dic), Span::combine(token.span, current().span));
 	} else if (token.kind == TokenType::IDENT) {
 		if (peek().kind == TokenType::OPEN_PAREN) {
 			advance(2);
@@ -571,15 +523,12 @@ ASTPtr Parser::parse_expression(int min_bp) {
 
 			while (current().kind != TokenType::CLOSE_PAREN) {
 				if (current().kind == TokenType::EOF_TOK) {
-					SyntaxError(
-						"Closing parenthesis required for function call", 
-						current().lineNo,
-						current().colNo,
-						filename,
-						"Did you forget closing parenthesis ())?",
-						getLineText(source, current().lineNo)
-					).print();
-					exit(1);
+					diags.report<SyntaxError>(
+						"Closing parenthesis required for function call", current().span,
+						"Did you forget a closing parenthesis?", filename
+					);
+
+					exitErrors();
 				}
 
 				ASTPtr param = parse_expression(0);
@@ -595,11 +544,11 @@ ASTPtr Parser::parse_expression(int min_bp) {
 				advance();
 			}
 
-			ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params), current().lineNo, current().colNo, filename);
+			ASTPtr call = std::make_unique<FunctionCall>(token.text, std::move(params), Span::combine(token.span, current().span));
 
 			left = std::move(call);
 		} else {
-			left = std::make_unique<Variable>(token.text, nullptr, current().lineNo, current().colNo, filename);
+			left = std::make_unique<Variable>(token.text, Span::combine(token.span, current().span), nullptr);
 		}
 	} else if (token.kind == TokenType::OPEN_PAREN) {
 		advance();
@@ -607,25 +556,22 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		advance();
 		expect(TokenType::CLOSE_PAREN);
 	} else {
-		SyntaxError(
+		diags.report<SyntaxError>(
 			"Unexpected token in expression: " + tokenTypeToString(token.kind) +
-			(token.text.empty() ? "" : (", '" + token.text + "'")),
-			token.lineNo,
-			token.colNo,
-			filename,
-			"",
-			getLineText(source, token.lineNo)
-		).print();
-		exit(1);
+			(token.text.empty() ? "" : (", '" + token.text + "'")), current().span,
+			"", filename
+		);
 	}
 
 	while (true) {
+		Span startSpan = current().span;
+
 		Token nextToken = peek();
 
 		if (nextToken.kind == TokenType::INCREMENT || nextToken.kind == TokenType::DECREMENT) {
 			advance();
 
-			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left), current().lineNo, current().colNo, filename);
+			left = std::make_unique<UnaryOp>(nextToken.kind, std::move(left), Span::combine(startSpan, nextToken.span));
 			continue;
 		}
 
@@ -646,8 +592,13 @@ ASTPtr Parser::parse_expression(int min_bp) {
 		advance();
 
 		ASTPtr right = parse_expression(isRightAssoc(op.kind) ? bp : bp+1);
-		left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right), current().lineNo, current().colNo, filename);
+		left = std::make_unique<BinaryOp>(op.kind, std::move(left), std::move(right), Span::combine(startSpan, current().span));
 	}
 
 	return left;
+}
+
+void Parser::exitErrors() {
+	diags.print_errors();
+	exit(1);
 }

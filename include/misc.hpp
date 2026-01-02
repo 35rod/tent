@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include "span.hpp"
 
 namespace llvm {
 	class LLVMContext;
@@ -15,12 +16,9 @@ inline void printIndent(int indent) {
 
 class ASTNode {
 	protected:
-		int lineNo;
-		int colNo;
-		std::string filename;
+		Span span;
 	public:
-		ASTNode(int line = -1, int col = -1, std::string file = "")
-		: lineNo(line), colNo(col), filename(file) {}
+		ASTNode(Span s) : span(s) {}
 
 		virtual llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) { return nullptr; }
 
@@ -36,6 +34,8 @@ class ASTNode {
 
 class NullLiteral : public ASTNode {
     public:
+		NullLiteral() : ASTNode(Span()) {}
+
 		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
 
         void print(int indent) override {
@@ -46,6 +46,8 @@ class NullLiteral : public ASTNode {
 
 class NoOp : public ASTNode {
 	public:
+		NoOp() : ASTNode(Span()) {}
+
 		llvm::Value* codegen(llvm::LLVMContext&, llvm::IRBuilderBase&, llvm::Module&) override { return nullptr; }
 
 		void print(int indent) override {

@@ -5,6 +5,7 @@
 #include <memory>
 #include "opcodes.hpp"
 #include "types.hpp"
+#include "span.hpp"
 
 namespace llvm {
 	class LLVMContext;
@@ -23,7 +24,7 @@ class IntLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		IntLiteral(tn_int_t literalValue, int line, int col, std::string file);
+		IntLiteral(tn_int_t literalValue, Span s);
 };
 
 class FloatLiteral : public ASTNode {
@@ -34,7 +35,7 @@ class FloatLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		FloatLiteral(tn_dec_t literalValue, int line, int col, std::string file);
+		FloatLiteral(tn_dec_t literalValue, Span s);
 };
 
 class StrLiteral : public ASTNode {
@@ -45,7 +46,7 @@ class StrLiteral : public ASTNode {
 		
 		void print(int indent) override;
 
-		StrLiteral(std::string literalValue, int line, int col, std::string file);
+		StrLiteral(std::string literalValue, Span s);
 };
 
 class BoolLiteral : public ASTNode {
@@ -56,7 +57,7 @@ class BoolLiteral : public ASTNode {
 		
 		void print(int indent) override;
 
-		BoolLiteral(tn_bool_t literalValue, int line, int col, std::string file);
+		BoolLiteral(tn_bool_t literalValue, Span s);
 };
 
 class VecLiteral : public ASTNode {
@@ -65,7 +66,7 @@ class VecLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		VecLiteral(std::vector<ASTPtr> literalValue, int line, int col, std::string file);
+		VecLiteral(std::vector<ASTPtr> literalValue, Span s);
 };
 
 class DicLiteral : public ASTNode {
@@ -74,49 +75,49 @@ class DicLiteral : public ASTNode {
 
 		void print(int indent) override;
 
-		DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
+		DicLiteral(std::map<ASTPtr, ASTPtr> literalDic, Span s);
 };
 
 class TypeInt : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeInt(int line, int col, std::string file);
+		TypeInt(Span s);
 };
 
 class TypeFloat : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeFloat(int line, int col, std::string file);
+		TypeFloat(Span s);
 };
 
 class TypeStr : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeStr(int line, int col, std::string file);
+		TypeStr(Span s);
 };
 
 class TypeBool : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeBool(int line, int col, std::string file);
+		TypeBool(Span s);
 };
 
 class TypeVec : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeVec(int line, int col, std::string file);
+		TypeVec(Span s);
 };
 
 class TypeDic : public ASTNode {
 	public:
 		void print(int indent) override;
 
-		TypeDic(int line, int col, std::string file);
+		TypeDic(Span s);
 };
 
 class Variable : public ASTNode {
@@ -128,7 +129,7 @@ class Variable : public ASTNode {
 
 		void print(int indent) override;
 
-		Variable(std::string varName, ASTPtr varValue=nullptr, int line=-1, int col=-1, std::string file="");
+		Variable(std::string varName, Span s, ASTPtr varValue=nullptr);
 };
 
 class UnaryOp : public ASTNode {
@@ -138,7 +139,7 @@ class UnaryOp : public ASTNode {
 
 		void print(int indent) override;
 
-		UnaryOp(TokenType opOp, ASTPtr opOperand, int line, int col, std::string file);
+		UnaryOp(TokenType opOp, ASTPtr opOperand, Span s);
 };
 
 class BinaryOp : public ASTNode {
@@ -151,7 +152,7 @@ class BinaryOp : public ASTNode {
 
 		void print(int indent) override;
 
-		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, int line, int col, std::string file);
+		BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, Span s);
 };
 
 class ExpressionStmt : public ASTNode {
@@ -167,12 +168,10 @@ class ExpressionStmt : public ASTNode {
 
 		ExpressionStmt(
 			ASTPtr expr,
+			Span s,
 			bool exprNoOp=false,
 			bool exprIsBreak=false,
-			bool exprIsContinue=false,
-			int line = -1,
-			int col = -1,
-			std::string file = ""
+			bool exprIsContinue=false
 		);
 };
 
@@ -188,11 +187,9 @@ class IfStmt : public ASTNode {
 
 		IfStmt(
 			ASTPtr stmtCondition, 
-			std::vector<ExpressionStmt> thenStmts, 
-			std::vector<ExpressionStmt> elseStmts={},
-			int line=-1,
-			int col=-1,
-			std::string file=""
+			std::vector<ExpressionStmt> thenStmts,
+			Span s,
+			std::vector<ExpressionStmt> elseStmts={}
 		);
 };
 
@@ -205,7 +202,7 @@ class WhileStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, int line, int col, std::string file);
+		WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, Span s);
 };
 
 class ForStmt : public ASTNode {
@@ -220,9 +217,7 @@ class ForStmt : public ASTNode {
 			std::string stmtVar, 
 			ASTPtr stmtIter, 
 			std::vector<ExpressionStmt> stmtStmts,
-			int line,
-			int col,
-			std::string file
+			Span s
 		);
 };
 
@@ -235,7 +230,7 @@ class FunctionCall : public ASTNode {
 
 		void print(int indent) override;
 
-		FunctionCall(std::string callName, std::vector<ASTPtr> callParams, int line, int col, std::string file);
+		FunctionCall(std::string callName, std::vector<ASTPtr> callParams, Span s);
 };
 
 class ReturnStmt : public ASTNode {
@@ -244,17 +239,7 @@ class ReturnStmt : public ASTNode {
 
 		void print(int indent) override;
 
-		ReturnStmt(ASTPtr stmtValue, int line, int col, std::string file);
-};
-
-class ContractStmt : public ASTNode {
-	public:
-		std::string name;
-		std::map<ASTPtr, ASTPtr> dic;
-
-		void print(int indent) override;
-
-		ContractStmt(std::string stmtName, std::map<ASTPtr, ASTPtr> literalDic, int line, int col, std::string file);
+		ReturnStmt(ASTPtr stmtValue, Span s);
 };
 
 class FunctionStmt : public ASTNode {
@@ -270,10 +255,8 @@ class FunctionStmt : public ASTNode {
 			std::string stmtName, 
 			std::vector<ASTPtr> stmtParams, 
 			std::vector<ExpressionStmt> stmtStmts, 
-			ASTPtr stmtReturnValue=nullptr,
-			int line=-1,
-			int col=-1,
-			std::string file=""
+			Span s,
+			ASTPtr stmtReturnValue=nullptr
 		);
 };
 
@@ -289,9 +272,7 @@ class ClassStmt : public ASTNode {
 			std::string literalName, 
 			std::vector<ASTPtr> literalParams, 
 			std::vector<ExpressionStmt> literalStmts,
-			int line,
-			int col,
-			std::string file
+			Span s
 		);
 };
 
@@ -303,5 +284,5 @@ class Program : public ASTNode {
 
 		void print(int indent) override;
 
-		Program(std::vector<ExpressionStmt>&& programStatements, int line, int col, std::string file);
+		Program(std::vector<ExpressionStmt>&& programStatements, Span s);
 };
