@@ -15,16 +15,13 @@
 #include "errors.hpp"
 #include "ast.hpp"
 
-Evaluator::Evaluator(std::string input) : source(input) {
+Evaluator::Evaluator(std::string input, Diagnostics& diagnostics, std::string fname)
+: source(input), diags(diagnostics), filename(fname) {
 	nativeMethods["type_int"]["parse"] = [&](const Value&, const std::vector<Value>& rhs) {
 		if (!std::holds_alternative<std::string>(rhs[0].v)) {
-			throw TypeError(
-				"int.parse(s: str[, b: int]): invalid argument(s) passed: first argument must be 'string'",
-				lineNo,
-				colNo,
-				filename,
-				"",
-				getLineText(source, lineNo)
+			diags.report<TypeError>(
+				"int.parse(s: str[, b:int]): invalid argument(s) passed: first argument must be 'string'", rhs[0].span,
+				"", filename
 			);
 		}
 
@@ -32,20 +29,19 @@ Evaluator::Evaluator(std::string input) : source(input) {
 		if (rhs.size() == 2 && std::holds_alternative<tn_int_t>(rhs[1].v))
 			base = std::get<tn_int_t>(rhs[1].v);
 		else if (rhs.size() == 2) {
-			throw TypeError(
-				"int.parse(s: str[, b: int]): invalid argument(s) passed: second argument must be 'int', if present",
-				lineNo,
-				colNo,
-				filename,
-				"",
-				getLineText(source, lineNo)
+			diags.report<TypeError>(
+				"int.parse(s: str[, b: int]): invalid argument(s) passed: second argument must be 'int', if present", rhs[1].span,
+				"", filename
 			);
 		}
 
 		try {
 			return Value(tn_int_t(std::stoi(std::get<std::string>(rhs[0].v), nullptr, base)));
 		} catch (std::exception&) {
-			throw TypeError("error converting string to integer");
+			diags.report<TypeError>(
+				"Error converting string to integer", rhs[0].span,
+				"", filename
+			);
 		}
 
 		return Value();
@@ -57,13 +53,9 @@ Evaluator::Evaluator(std::string input) : source(input) {
 
 		if (rhs.size() > 1) {
 			if (!is_primitive_val(rhs[1])) {
-				throw TypeError(
-					"vec.fill(n: int[, v: any\\class_instance]): invalid argument(s) passed: second argument is of an invalid type for this function",
-					lineNo,
-					colNo,
-					filename,
-					"",
-					getLineText(source, lineNo)
+				diags.report<TypeError>(
+					"vec.fill(n: int[, v: any\\class_instance]): invalid argument(s) passed: second arugment is of an invalid type for this function", rhs[1].span,
+					"", filename
 				);
 			}
 
@@ -109,13 +101,9 @@ Evaluator::Evaluator(std::string input) : source(input) {
 		Value::VecT vec = std::get<Value::VecT>(lhs.v);
 
 		if (vec->size() < 1) {
-			throw Error(
-				"attempted to pop an element back from an empty vector",
-				lineNo,
-				colNo,
-				filename,
-				"",
-				getLineText(source, lineNo)
+			diags.report<Error>(
+				"attempted to pop an element back from an empty vector", lhs.span,
+				"", filename
 			);
 		}
 
@@ -151,75 +139,81 @@ Value Evaluator::evalProgram(ASTPtr program, const std::vector<std::string> args
 Value Evaluator::evalStmt(ExpressionStmt& stmt) {
 	ASTNode* expr = stmt.expr.get();
 	
-	if (!expr) throw Error("Invalid expression");
+	if (!expr) {
+		diags.report<Error>(
+			"Invalid expression", stmt.span,
+			"", filename
+		);
+	}
 
 	return evalExpr(expr);
 }
 
 Value Evaluator::evalExpr(ASTNode* node) {
-	if (!node) throw Error("Null AST node in evaluator");
+	if (!node) {
+		diags.report<Error>(
+			"Null AST node in evaluator", Span(),
+			"", filename
+		);
+	}
 
 	if (auto il = dynamic_cast<IntLiteral*>(node)) {
-		return Value(il->value);
+		return Value(il->value).setSpan(il->span);
 	} else if (auto fl = dynamic_cast<FloatLiteral*>(node)) {
-		return Value(fl->value);
+		return Value(fl->value).setSpan(fl->span);
 	} else if (auto sl = dynamic_cast<StrLiteral*>(node)) {
-		return Value(sl->value);
+		return Value(sl->value).setSpan(sl->span);
 	} else if (auto bl = dynamic_cast<BoolLiteral*>(node)) {
-		return Value(bl->value);
+		return Value(bl->value).setSpan(bl->span);
 	} else if (auto vl = dynamic_cast<VecLiteral*>(node)) {
 		std::vector<Value> elems;
 		elems.reserve(vl->elems.size());
 
 		for (auto& elem : vl->elems) {
-			elems.push_back(evalExpr(elem.get()));
+			elems.push_back(evalExpr(elem.get()).setSpan(elem->span));
 		}
 
-		return Value(std::make_shared<std::vector<Value>>(elems));
+		return Value(std::make_shared<std::vector<Value>>(elems)).setSpan(vl->span);
 	} else if (auto dl = dynamic_cast<DicLiteral*>(node)) {
 		std::map<std::string, Value> dic;
 		
 		for (auto& pair : dl->dic) {
-			const Value first_in_pair = evalExpr(pair.first.get());
+			const Value first_in_pair = evalExpr(pair.first.get()).setSpan(pair.first->span);
 			if (!std::holds_alternative<std::string>(first_in_pair.v)) {
-				throw Error(
-					"dictionary key must be a string",
-					dl->lineNo,
-					dl->colNo,
-					dl->filename,
-					"",
-					getLineText(source, dl->lineNo)
+				diags.report<TypeError>(
+					"dictionary key must be a string", dl->span,
+					"", filename
 				);
 			}
 
-			dic[std::get<std::string>(first_in_pair.v)] = evalExpr(pair.second.get());
+			dic[std::get<std::string>(first_in_pair.v)] = evalExpr(pair.second.get()).setSpan(pair.second->span);
 		}
 
-		return Value(std::make_shared<std::map<std::string, Value>>(dic));
+		return Value(std::make_shared<std::map<std::string, Value>>(dic)).setSpan(dl->span);
 	} else if (dynamic_cast<TypeInt*>(node)) {
         Value res;
         res.typeInt = true;
-        return res;
+        return res.setSpan(node->span);
 	} else if (dynamic_cast<TypeFloat*>(node)) {
 		Value res;
 		res.typeFloat = true;
-		return res;
+		return res.setSpan(node->span);
 	} else if (dynamic_cast<TypeStr*>(node)) {
 		Value res;
 		res.typeStr = true;
-		return res;
+		return res.setSpan(node->span);
 	} else if (dynamic_cast<TypeBool*>(node)) {
 		Value res;
 		res.typeBool = true;
-		return res;
+		return res.setSpan(node->span);
 	} else if (dynamic_cast<TypeVec*>(node)) {
 		Value res;
 		res.typeVec = true;
-		return res;
+		return res.setSpan(node->span);
 	} else if (dynamic_cast<TypeDic*>(node)) {
 		Value res;
 		res.typeDic = true;
-		return res;
+		return res.setSpan(node->span);
 	} else if (auto ifl = dynamic_cast<IfStmt*>(node)) {
 		const bool condition = std::get<tn_bool_t>(evalExpr(ifl->condition.get()).v);
 		Value cur_res;
@@ -279,7 +273,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		Value::DicT::element_type::iterator dic_it;
 		bool is_dic = false;
 		
-	    Value iter = evalExpr(fl->iter.get());
+	    Value iter = evalExpr(fl->iter.get()).setSpan(fl->iter->span);
 
 	    if (std::holds_alternative<tn_int_t>(iter.v)) {
 	        length = std::get<tn_int_t>(iter.v);
@@ -329,7 +323,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 		return Value();
 	} else if (auto rl = dynamic_cast<ReturnStmt*>(node)) {
-		Value v = evalExpr(rl->value.get());
+		Value v = evalExpr(rl->value.get()).setSpan(rl->span);
 		v.isReturn = true;
 
 		return v;
@@ -392,13 +386,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				for (const auto& param : fc->params) {
 					if (!param)  {
-						throw Error(
-							"Null parameter AST Node",
-							param->lineNo,
-							param->colNo,
-							param->filename,
-							"",
-							getLineText(source, fc->lineNo)
+						diags.report<Error>(
+							"Null parameter AST node", fc->span,
+							"", filename
 						);
 					}
 
@@ -407,24 +397,17 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 				return nit->second(evalArgs);
 			} else {
-				throw Error(
-					"Undefined function: " + fc->name,
-					fc->lineNo,
-					fc->colNo,
-					fc->filename,
-					"",
-					getLineText(source, fc->lineNo)
+				diags.report<Error>(
+					"Undefined function: " + fc->name, fc->span,
+					"", filename
 				);
 			}
 		}
 
 		if (fc->params.size() != func->params.size()) {
-			throw Error(
-				"Parameter count mismatch in function call to " + fc->name,
-				fc->lineNo,
-				fc->colNo,
-				fc->filename,
-				getLineText(source, fc->lineNo)
+			diags.report<Error>(
+				"Parameter count mismatch in function call to " + fc->name, fc->span,
+				"", filename
 			);
 		}
 
@@ -433,13 +416,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		for (size_t i = 0; i < func->params.size(); i++) {
 			Variable* formalParam = dynamic_cast<Variable*>(func->params[i].get());
 			if (!formalParam) {
-				throw Error(
-					"Function parameter is not a variable",
-					formalParam->lineNo,
-					formalParam->colNo,
-					formalParam->filename,
-					"",
-					getLineText(source, formalParam->lineNo)
+				diags.report<Error>(
+					"Function parameter is not a variable", func->span,
+					"", filename
 				);
 			}
 			
@@ -479,29 +458,21 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		if (variables.count(v->name)) {
 			return variables[v->name];
 		} else {
-			throw SyntaxError(
-				"Undefined variable: " + v->name,
-				v->lineNo,
-				v->colNo,
-				v->filename,
-				"",
-				getLineText(source, v->lineNo)
+			diags.report<SyntaxError>(
+				"Undefined variable: " + v->name, v->span,
+				"", filename
 			);
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {
-			return evalUnaryOp(evalExpr(un->operand.get()), un->op);
+			return evalUnaryOp(evalExpr(un->operand.get()).setSpan(un->operand->span), un->op).setSpan(un->span);
 		}
 
 		if (auto var = dynamic_cast<Variable*>(un->operand.get())) {
 			if (variables.count(var->name) != 1) {
-				throw SyntaxError(
-					"Undefined variable: " + var->name,
-					var->lineNo,
-					var->colNo,
-					var->filename,
-					"",
-					getLineText(source, var->lineNo)
+				diags.report<SyntaxError>(
+					"Undefined variable: " + var->name, var->span,
+					"", filename
 				);
 			}
 			
@@ -513,13 +484,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 				}
 			}
 		} else {
-			throw TypeError(
-				"Increment/decrement operator applied to non-variable",
-				var->lineNo,
-				var->colNo,
-				var->filename,
-				"",
-				getLineText(source, var->lineNo)
+			diags.report<TypeError>(
+				"Increment/decrement operator applied to non-varaible", var->span,
+				"", filename
 			);
 		}
 	} else if (auto bin = dynamic_cast<BinaryOp*>(node)) {
@@ -527,43 +494,40 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			if (auto* leftIndex = dynamic_cast<BinaryOp*>(bin->left.get())) {
 				if (leftIndex->op == TokenType::INDEX && bin->op == TokenType::ASSIGN) {
 					if (auto* vecVar = dynamic_cast<Variable*>(leftIndex->left.get())) {
-						if (variables.count(vecVar->name) != 1) SyntaxError("Undefined variable: " + vecVar->name, -1);
+						if (variables.count(vecVar->name) != 1) {
+							diags.report<SyntaxError>(
+								"Undefined variable: " + vecVar->name, vecVar->span,
+								"", filename
+							);
+						}
+
 						Value& holder = variables[vecVar->name];
 
 						if (std::holds_alternative<Value::VecT>(holder.v)) {
 							auto vecPtr = std::get<Value::VecT>(holder.v);
 
 							if (!vecPtr) {
-								throw Error(
-									"null vector",
-									vecVar->lineNo,
-									vecVar->colNo,
-									vecVar->filename,
-									"",
-									getLineText(source, vecVar->lineNo)
+								diags.report<Error>(
+									"null vector", vecVar->span,
+									"", filename
 								);
 							}
 
 							Value idxVal = evalExpr(leftIndex->right.get());
-							if (!std::holds_alternative<tn_int_t>(idxVal.v)) throw TypeError(
-								"index must be an integer",
-								vecVar->lineNo,
-								vecVar->colNo,
-								vecVar->filename,
-								"",
-								getLineText(source, vecVar->lineNo)
-							);
+							if (!std::holds_alternative<tn_int_t>(idxVal.v)) {
+								diags.report<TypeError>(
+									"index must be an integer", vecVar->span,
+									"", filename
+								);
+							}
 
 							tn_int_t idx = std::get<tn_int_t>(idxVal.v);
 
 							if (idx < 0 || (size_t)idx >= vecPtr->size()) {
-								throw Error(
-									"index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()) + ".",
-									vecVar->lineNo,
-									vecVar->colNo,
-									vecVar->filename,
-									"",
-									getLineText(source, vecVar->lineNo)
+								diags.report<Error>(
+									"index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()),
+									vecVar->span, "",
+									filename
 								);
 							}
 
@@ -575,25 +539,20 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							auto dictPtr = std::get<Value::DicT>(holder.v);
 
 							if (!dictPtr) {
-								throw Error(
-									"null dictionary",
-									vecVar->lineNo,
-									vecVar->colNo,
-									vecVar->filename,
-									"",
-									getLineText(source, vecVar->lineNo)
+								diags.report<Error>(
+									"null dictionary", vecVar->span,
+									"", filename
 								);
 							}
 
 							Value idxVal = evalExpr(leftIndex->right.get());
-							if (!std::holds_alternative<std::string>(idxVal.v)) throw TypeError(
-								"dictionary key must be a string",
-								vecVar->lineNo,
-								vecVar->colNo,
-								vecVar->filename,
-								"",
-								getLineText(source, vecVar->lineNo)
-							);
+
+							if (!std::holds_alternative<std::string>(idxVal.v)) {
+								diags.report<TypeError>(
+									"dictionary key must be a string", vecVar->span,
+									"", filename
+								);
+							}
 
 							std::string idx = std::get<std::string>(idxVal.v);
 
@@ -601,13 +560,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							(*dictPtr)[idx] = rhs;
 						}
 					} else {
-						throw TypeError(
-							"Left-hand side of indexed assignment must be a variable",
-							leftIndex->left->lineNo,
-							leftIndex->left->colNo,
-							leftIndex->left->filename,
-							"",
-							getLineText(source, leftIndex->left->lineNo)
+						diags.report<TypeError>(
+							"Left-hand side of indexed assignment must be a variable", leftIndex->span,
+							"", filename
 						);
 					}
 				}
@@ -630,11 +585,11 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 					target = evalBinaryOp(target, right, (TokenType)((uint16_t)bin->op - ((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN)));
 
-					return target;
+					return target.setSpan(bin->span);
 				}
 			}
 		} else if (bin->op == TokenType::DOT) {
-			Value lhs = evalExpr(bin->left.get());
+			Value lhs = evalExpr(bin->left.get()).setSpan(bin->left->span);
 
 			if (auto fc = dynamic_cast<FunctionCall*>(bin->right.get())) {
 				std::string name = fc->name;
@@ -686,13 +641,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return result;
 					} else {
-						throw TypeError(
-							"Unknown method '" + name + "' for class '" + inst->name + "'",
-							fc->lineNo,
-							fc->colNo,
-							fc->filename,
-							"",
-							getLineText(source, fc->lineNo)
+						diags.report<TypeError>(
+							"Unknown method '" + name + "' for class '" + inst->name + "'", fc->span,
+							"", filename
 						);
 					}
 				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
@@ -702,13 +653,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return nativeMethods["str"][name](*strPtr, args);
 					} else {
-						throw TypeError(
-							"Unknown string method: " + name,
-							fc->lineNo,
-							fc->colNo,
-							fc->filename,
-							"",
-							getLineText(source, fc->lineNo)
+						diags.report<TypeError>(
+							"Unknown string method: " + name, fc->span,
+							"", filename
 						);
 					}
 				} else if (auto vecPtr = std::get_if<Value::VecT>(&lhs.v)) {
@@ -718,13 +665,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 						return nativeMethods["vec"][name](*vecPtr, args);
 					} else {
-						throw TypeError(
-							"Unknown vector method: " + name,
-							fc->lineNo,
-							fc->colNo,
-							fc->filename,
-							"",
-							getLineText(source, fc->lineNo)
+						diags.report<TypeError>(
+							"Unknown vector method: " + name, fc->span,
+							"", filename
 						);
 					}
 				} else if (std::get_if<NullLiteral>(&lhs.v)) {
@@ -744,13 +687,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 						}
 					}
 				} else {
-					throw TypeError(
-						"Method call not supported on this type",
-						fc->lineNo,
-						fc->colNo,
-						fc->filename,
-						"",
-						getLineText(source, fc->lineNo)
+					diags.report<TypeError>(
+						"Method call not supported on this type", fc->span,
+						"", filename
 					);
 				}
 			} else if (auto var = dynamic_cast<Variable*>(bin->right.get())) {
@@ -763,33 +702,21 @@ Value Evaluator::evalExpr(ASTNode* node) {
 						return fieldIt->second;
 					}
 
-					throw TypeError(
-						"Unknown property '" + propName + "' for class '" + inst->name + "'",
-						var->lineNo,
-						var->colNo,
-						var->filename,
-						"",
-						getLineText(source, var->lineNo)
+					diags.report<TypeError>(
+						"Unknown property '" + propName + "' for class '" + inst->name + "'", var->span,
+						"", filename
 					);
 				} else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
 					if (propName == "length") return tn_int_t(strPtr->length());
 
-					throw TypeError(
-						"Unknown string property: " + propName,
-						var->lineNo,
-						var->colNo,
-						var->filename,
-						"",
-						getLineText(source, var->lineNo)
+					diags.report<TypeError>(
+						"Unknown string property: " + propName, var->span,
+						"", filename
 					);
 				} else {
-					throw TypeError(
-						"Property access not supported on this type",
-						var->lineNo,
-						var->colNo,
-						var->filename,
-						"",
-						getLineText(source, var->lineNo)
+					diags.report<TypeError>(
+						"Property access not supported on this type", var->span,
+						"", filename
 					);
 				}
 			}
@@ -800,13 +727,9 @@ Value Evaluator::evalExpr(ASTNode* node) {
 		
 		return evalBinaryOp(std::move(left), std::move(right), bin->op);
 	} else {
-		throw Error(
-			"Unknown AST node type in evaluator",
-			node->lineNo,
-			node->colNo,
-			node->filename,
-			"",
-			getLineText(source, node->lineNo)
+		diags.report<Error>(
+			"Unknown AST node type in evaluator", node->span,
+			"", filename
 		);
 	}
 
@@ -814,7 +737,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 }
 
 Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType op) {
-	auto visitor = [&op](auto l, auto r) -> Value {
+	auto visitor = [&op, &left, &right, this](auto l, auto r) -> Value {
 		using L = std::decay_t<decltype(l)>;
 		using R = std::decay_t<decltype(r)>;
 
@@ -832,7 +755,12 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 		} else if constexpr (std::is_same_v<L, std::string> && std::is_integral_v<R>) {
 			if (op == TokenType::INDEX) {
 				tn_int_t idx = static_cast<tn_int_t>(r);
-				if (idx < 0 || (size_t)idx >= l.size()) Error("string index out of bounds", -1);
+				if (idx < 0 || (size_t)idx >= l.size()) {
+					diags.report<Error>(
+						"string index out of bounds", Span::combine(left.span, right.span),
+						"", filename
+					);
+				}
 
 				return Value(std::string(1, l[(size_t)idx]));
 			}
@@ -864,8 +792,10 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			
 			if (op >= TokenType::FLOOR_DIV
 			 && op <= TokenType::RSHIFT)
-				TypeError("failed to apply operator "
-						+ std::to_string((uint16_t)op) + " to non-integral operand(s)", -1);
+				diags.report<TypeError>(
+					"failed to apply operator " + std::to_string((uint16_t)op) + " to non-integral operand(s)",
+					Span::combine(left.span, right.span), "", filename
+				);
 			switch (op) {
 			case TokenType::ADD: return a + b;
 			case TokenType::SUB: return a - b;
@@ -886,31 +816,51 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			case TokenType::AND: return a && b;
 			case TokenType::OR: return a || b;
 			default:
-				Error("unknown operator for arithmetic operands: "
-						+ std::to_string((uint16_t)op), -1);
+				diags.report<Error>(
+					"Unknown operator for arithmetic operands: " + std::to_string((uint16_t)op), Span::combine(left.span, right.span),
+					"", filename
+				);
 			}
 		} else if constexpr (std::is_same_v<L, Value::VecT> && std::is_integral_v<R>) {
 			// op is vector index it just doesn't say so
 			assert(op == TokenType::INDEX);
 			auto vecPtr = l;
-			if (!vecPtr) Error("null vector", -1);
+
+			if (!vecPtr) {
+				diags.report<Error>(
+					"null vector", Span::combine(left.span, right.span),
+					"", filename
+				);
+			}
+
 			tn_int_t idx = static_cast<tn_int_t>(r);
 
 			if (idx < 0 || (size_t)idx >= vecPtr->size()) {
-				Error("index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()), -1);
+				diags.report<Error>(
+					"index " + std::to_string(idx) + " is out of bounds for vector of size " + std::to_string(vecPtr->size()),
+					Span::combine(left.span, right.span), "", filename
+				);
 			}
 
 			return (*vecPtr)[(size_t)idx];
 		} else if constexpr (std::is_same_v<L, Value::DicT> && std::is_same_v<R, std::string>) {
 			assert(op == TokenType::INDEX);
 			Value::DicT dictPtr = l;
-			if (!dictPtr) Error("null dictionary", -1);
+			if (!dictPtr) {
+				diags.report<Error>(
+					"null dictionary", Span::combine(left.span, right.span),
+					"", filename
+				);
+			}
 			std::string idx = static_cast<std::string>(r);
 			
 			try {
 				return dictPtr->at(idx);
 			} catch (std::exception&) {
-				Error("key '" + idx + "' was not found in dictionary", -1);
+				diags.report<Error>(
+					"key '" + idx + "' was n ot found in dictionary", Span::combine(left.span, right.span),
+					"", filename
+				);
 			}
 		}
 
@@ -928,15 +878,22 @@ Value Evaluator::evalUnaryOp(const Value& operand, TokenType op) {
 			return Value(~std::get<tn_int_t>(operand.v));
 		else if (std::holds_alternative<tn_bool_t>(operand.v))
 			return Value(~std::get<tn_int_t>(operand.v));
-		else
-			TypeError("failed to apply operator BIT_NOT to non-integral operand", -1);
+		else {
+			diags.report<TypeError>(
+				"failed to apply operator BIT_NOT to non-integral operand", operand.span,
+				"", filename
+			);
+		}
 	} else if (op == TokenType::NEGATE) {
 		if (std::holds_alternative<tn_int_t>(operand.v)) {
 			return Value(-std::get<tn_int_t>(operand.v));
 		} else if (std::holds_alternative<tn_dec_t>(operand.v)) {
 			return Value(-std::get<tn_dec_t>(operand.v));
 		} else {
-			TypeError("Unary minus operator applied to non-numeric type", -1);
+			diags.report<TypeError>(
+				"Unary minus operator applied to non-mueric type", operand.span,
+				"", filename
+			);
 		}
 	}
 

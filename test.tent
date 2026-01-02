@@ -1,5 +1,7 @@
 load "io";
 
-form "hello"() {
-	println("Hello World!");
+form add(a, b) {
+	return a + b;
 }
+
+println(ad(3, 5));

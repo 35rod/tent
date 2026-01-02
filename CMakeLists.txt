@@ -29,7 +29,7 @@ set(SOURCE_FILES
     src/ast.cpp
     src/args.cpp
     src/lexer.cpp
-    # src/evaluator.cpp
+    src/evaluator.cpp
     src/compiler.cpp
     src/parser.cpp
     src/diagnostics.cpp

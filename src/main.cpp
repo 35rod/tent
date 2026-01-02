@@ -8,7 +8,7 @@
 #define TENT_MAIN_CPP_FILE
 #include "lexer.hpp"
 #include "parser.hpp"
-// #include "evaluator.hpp"
+#include "evaluator.hpp"
 #include "compiler.hpp"
 #include "diagnostics.hpp"
 #include "errors.hpp"
@@ -78,8 +78,14 @@ void start_repl(const std::vector<std::string>& search_dirs) {
 				continue;
 			}
 
-			// Evaluator evaluator(buffer);
-			// evaluator.evalProgram(std::move(program), {});
+			Evaluator evaluator(buffer, diags, "<stdin>");
+			evaluator.evalProgram(std::move(program), {});
+
+			if (diags.has_errors()) {
+				diags.print_errors();
+				buffer.clear();
+				continue;
+			}
 		} catch (const std::exception& e) {
 			std::cerr << RED << "Error: " << e.what() << RESET << "\n";
 		}
@@ -144,27 +150,27 @@ int32_t main(int32_t argc, char **argv) {
 		return 1;
 	}
 
-	// if (IS_FLAG_SET(DEBUG))
-	// 	program->print(0);
+	if (IS_FLAG_SET(DEBUG))
+		program->print(0);
 
-	// if (IS_FLAG_SET(COMPILE)) {
-	// 	Compiler::compile(static_cast<Program*>(program.get()), OUT_FILENAME);
+	if (IS_FLAG_SET(COMPILE)) {
+		Compiler::compile(static_cast<Program*>(program.get()), OUT_FILENAME);
 
-	// 	return 0;
-	// } else {
-	// 	if (!IS_FLAG_SET(DRY_RUN)) {
-	// 		try {
-	// 			Evaluator evaluator(output);
-	// 			evaluator.evalProgram(std::move(program), prog_args);
-	// 		} catch (const Error& e) {
-	// 			e.print();
-	// 			return 1;
-	// 		} catch (const std::exception& e) {
-	// 			std::cerr << "Unexpected error: " << e.what() << std::endl;
-	// 			return 1;
-	// 		}
-	// 	}
-	// }
+		return 0;
+	} else {
+		if (!IS_FLAG_SET(DRY_RUN)) {
+			try {
+				Evaluator evaluator(output, diags, SRC_FILENAME);
+				evaluator.evalProgram(std::move(program), prog_args);
+			} catch (const std::exception& e) {
+				if (diags.has_errors()) {
+					diags.print_errors();
+				}
+
+				return 1;
+			}
+		}
+	}
 
 	return 0;
 }
