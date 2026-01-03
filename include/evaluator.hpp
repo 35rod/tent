@@ -32,6 +32,8 @@ class Evaluator {
 	Value evalStmt(ExpressionStmt& stmt);
 	Value evalExpr(ASTNode* node);
 
+	void exitErrors();
+
 	friend class VM;
 
 	public:

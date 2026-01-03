@@ -390,6 +390,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 							"Null parameter AST node", fc->span,
 							"", filename
 						);
+
+						exitErrors();
 					}
 
 					evalArgs.push_back(evalExpr(param.get()));
@@ -401,6 +403,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					"Undefined function: " + fc->name, fc->span,
 					"", filename
 				);
+
+				exitErrors();
 			}
 		}
 
@@ -409,6 +413,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 				"Parameter count mismatch in function call to " + fc->name, fc->span,
 				"", filename
 			);
+
+			exitErrors();
 		}
 
 		CallFrame frame;
@@ -420,6 +426,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					"Function parameter is not a variable", func->span,
 					"", filename
 				);
+
+				exitErrors();
 			}
 			
 			Value evalValue = evalExpr(fc->params[i].get());
@@ -898,4 +906,9 @@ Value Evaluator::evalUnaryOp(const Value& operand, TokenType op) {
 	}
 
 	return Value();
+}
+
+void Evaluator::exitErrors() {
+	diags.print_errors();
+	exit(1);
 }
