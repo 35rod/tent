@@ -48,11 +48,12 @@ else()
     find_program(LLVM_CONFIG_EXECUTABLE llvm-config)
     if(LLVM_CONFIG_EXECUTABLE)
         execute_process(COMMAND
-            ${LLVM_CONFIG_EXECUTABLE} --libs core support irreader analysis passes transformutils instrumentation profiledata bitreader bitwriter object support
+            ${LLVM_CONFIG_EXECUTABLE} --ldflags --libs core support irreader analysis passes transformutils instrumentation profiledata bitreader bitwriter object support
             OUTPUT_VARIABLE LLVM_LIBS_RAW
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         separate_arguments(LLVM_LIBS_RAW)
+        string(REPLACE "\n" " " LLVM_LIBS_RAW "${LLVM_LIBS_RAW}")
         target_link_libraries(tent PRIVATE ${LLVM_LIBS_RAW})
         message(STATUS "Found LLVM via llvm-config with link flags: ${LLVM_LIBS_RAW}")
 
