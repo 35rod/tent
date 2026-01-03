@@ -42,7 +42,7 @@ if(LLVM_FOUND AND TARGET LLVM::Core)
     message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-    include_directories(${LLVM_INCLUDE_DIRS})
+    target_include_directories(tent SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
     #add_definitions(${LLVM_DEFINITIONS})
 else()
     find_program(LLVM_CONFIG_EXECUTABLE llvm-config)
@@ -61,7 +61,7 @@ else()
             OUTPUT_VARIABLE LLVM_INCLUDE_DIRS_RAW
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        include_directories(${LLVM_INCLUDE_DIRS_RAW})
+        target_include_directories(tent SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS_RAW})
     else()
         message(FATAL_ERROR "LLVM not found: set LLVM_DIR or LLVM_CONFIG_EXECUTABLE")
     endif()
