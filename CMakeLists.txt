@@ -43,7 +43,6 @@ if(LLVM_FOUND AND TARGET LLVM::Core)
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
     target_include_directories(tent SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
-    #add_definitions(${LLVM_DEFINITIONS})
 else()
     find_program(LLVM_CONFIG_EXECUTABLE llvm-config)
     if(LLVM_CONFIG_EXECUTABLE)
@@ -52,8 +51,8 @@ else()
             OUTPUT_VARIABLE LLVM_LIBS_RAW
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        separate_arguments(LLVM_LIBS_RAW)
         string(REPLACE "\n" " " LLVM_LIBS_RAW "${LLVM_LIBS_RAW}")
+        separate_arguments(LLVM_LIBS_RAW)
         target_link_libraries(tent PRIVATE ${LLVM_LIBS_RAW})
         message(STATUS "Found LLVM via llvm-config with link flags: ${LLVM_LIBS_RAW}")
 
