@@ -2,7 +2,7 @@
 
 load "io";
 load "stdtent";
-load "file.tent";
+load "examples/file.tent";
 
 if ARG_COUNT < 1 {
 	println("usage: bf <filename>");
