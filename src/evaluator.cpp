@@ -455,10 +455,10 @@ Value Evaluator::evalExpr(ASTNode* node) {
 
 		return result;
 	} else if (auto v = dynamic_cast<Variable*>(node)) {
-		for (auto it = callStack.rbegin(); it != callStack.rend(); it++) {
-			auto found = it->locals.find(v->name);
-
-			if (found != it->locals.end()) {
+		if (!callStack.empty()) {
+			auto& frame = callStack.back();
+			auto found = frame.locals.find(v->name);
+			if (found != frame.locals.end()) {
 				return found->second;
 			}
 		}
@@ -470,6 +470,8 @@ Value Evaluator::evalExpr(ASTNode* node) {
 				"Undefined variable: " + v->name, v->span,
 				"", filename
 			);
+			
+			exitErrors();
 		}
 	} else if (auto un = dynamic_cast<UnaryOp*>(node)) {
 		if (un->op != TokenType::INCREMENT && un->op != TokenType::DECREMENT) {

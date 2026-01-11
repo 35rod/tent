@@ -1,7 +1,12 @@
 load "io";
 
-form add(a, b) {
-	return a + b;
+form f2(b) {
+	println(b);
+	println(a);
 }
 
-println(ad(3, 5));
+form f1(a) {
+	f2(a);
+}
+
+f1("John Doe");

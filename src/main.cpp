@@ -166,10 +166,16 @@ int32_t main(int32_t argc, char **argv) {
 				if (diags.has_errors()) {
 					diags.print_errors();
 				}
-
+				
+				std::cerr << RED << "Runtime Error: " << e.what() << RESET << "\n";
 				return 1;
 			}
 		}
+	}
+
+	if (diags.has_errors()) {
+		diags.print_errors();
+		return 1;
 	}
 
 	return 0;
