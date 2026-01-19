@@ -1,12 +1,3 @@
 load "io";
 
-form f2(b) {
-	println(b);
-	println(a);
-}
-
-form f1(a) {
-	f2(a);
-}
-
-f1("John Doe");
+println(3 + "5");

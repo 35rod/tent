@@ -53,6 +53,27 @@ struct Value {
         span = newSpan;
         return *this;
     }
+
+    std::string getTypeName() const {
+        if (std::holds_alternative<tn_int_t>(v)) {
+            return "int";
+        } else if (std::holds_alternative<tn_dec_t>(v)) {
+            return "float";
+        } else if (std::holds_alternative<tn_bool_t>(v)) {
+            return "bool";
+        } else if (std::holds_alternative<std::string>(v)) {
+            return "string";
+        } else if (std::holds_alternative<VecT>(v)) {
+            return "vector";
+        } else if (std::holds_alternative<DicT>(v)) {
+            return "dictionary";
+        } else if (std::holds_alternative<ClassInstance>(v)) {
+            return std::get<ClassInstance>(v).name;
+        } else if (std::holds_alternative<NullLiteral>(v)) {
+            return "null";
+        }
+        return "unknown";
+    }
 };
 
 inline Value make_vec(const std::vector<Value>& elems) {

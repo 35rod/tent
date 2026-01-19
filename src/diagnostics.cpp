@@ -41,8 +41,14 @@ std::string Diagnostics::format(const Error& err) const {
         if (span.getStartCol() != 0 && span.getEndCol() >= span.getStartCol()) {
             out << GRAY << std::string(paddingWidth, ' ') << " | " << RESET;
 
-            for (size_t i = 0; i < span.getStartCol()-2; ++i) {
-                out << (i < lineText.size() && lineText[i] == '\t' ? '\t' : ' ');
+            if (span.getStartCol() > 0) {
+                for (size_t i = 0; i < span.getStartCol() - 1; ++i) {
+                    if (i < lineText.size() && lineText[i] == '\t') {
+                        out << '\t';
+                    } else {
+                        out << ' ';
+                    }
+                }
             }
 
             out << BOLD << RED << std::string(span.getEndCol() - span.getStartCol() + 1, '^');

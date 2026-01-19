@@ -8,6 +8,13 @@
 
 void Lexer::nextChar(int num) {
     for (int i = 0; i < num; i++) {
+        if (curChar == '\n') {
+            lineNo++;
+            colNo = 1;
+        } else {
+            colNo++;
+        }
+
         curPos++;
 
         if (curPos >= source.length()) {
@@ -16,13 +23,6 @@ void Lexer::nextChar(int num) {
         }
 
         curChar = source[curPos];
-
-        if (curChar == '\n') {
-            lineNo++;
-            colNo = 1;
-        } else {
-            colNo++;
-        }
     }
 }
 

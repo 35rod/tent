@@ -874,6 +874,13 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			}
 		}
 
+		diags.report<TypeError>(
+			"Unsupported operand types for binary operation: " + left.getTypeName() + " and " + right.getTypeName(),
+			Span::combine(left.span, right.span),
+			"",
+			filename
+		);
+
 		return Value();
 	};
 
