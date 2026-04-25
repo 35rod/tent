@@ -158,7 +158,8 @@ ExpressionStmt Parser::parse_statement() {
 
 			Parser parser(lexer.tokens, diags, fname, file_search_dirs);
 
-			ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parser.parse_program().get())->statements), current().span);
+			ASTPtr parsed = parser.parse_program();
+		ASTPtr imported_program = std::make_unique<Program>(std::move(dynamic_cast<Program*>(parsed.get())->statements), current().span);
 
 			return ExpressionStmt(std::move(imported_program), Span::combine(token.span, current().span), false, false, false);
 		}
@@ -330,7 +331,15 @@ ExpressionStmt Parser::parse_statement() {
 			stmts = parse_block();
 		}
 
-		ASTPtr forStmt = std::make_unique<ForStmt>(dynamic_cast<Variable*>(var.get())->name, std::move(iter), std::move(stmts), Span::combine(token.span, endSpan));
+		Variable* forVar = dynamic_cast<Variable*>(var.get());
+		if (!forVar) {
+			diags.report<SyntaxError>(
+				"Expected a variable name as the for-loop iteration variable", token.span,
+				"", filename
+			);
+			exitErrors();
+		}
+		ASTPtr forStmt = std::make_unique<ForStmt>(forVar->name, std::move(iter), std::move(stmts), Span::combine(token.span, endSpan));
 
 		return ExpressionStmt(std::move(forStmt), Span::combine(token.span, endSpan), false, false, false);
 	} else if (token.kind == TokenType::IF) {

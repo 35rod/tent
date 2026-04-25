@@ -28,22 +28,22 @@ static void write_val_to_string(const Value &val, std::ostream &stream, bool quo
 }
 
 static std::string vec_to_string(const Value::VecT& vecPtr) {
-	std::string out = "[";
-	std::ostringstream oss(out);
+	std::ostringstream oss;
+	oss << "[";
 
 	if (vecPtr) {
 		for (size_t i = 0; i < vecPtr->size(); i++) {
 			const Value& elem = (*vecPtr)[i];
 
-			write_val_to_string(elem, oss);
-			
-			if ((i + 1) < vecPtr->size()) out += ", ";
+			write_val_to_string(elem, oss, true);
+
+			if ((i + 1) < vecPtr->size()) oss << ", ";
 		}
 	}
 
-	out += "]";
+	oss << "]";
 
-	return out;
+	return oss.str();
 }
 
 static std::string dic_to_string(const Value::DicT& dicPtr) {
@@ -112,7 +112,7 @@ Value input(const std::vector<Value>& args) {
 	std::string input;
 
 	std::cout << prompt;
-	std::cin >> input;
+	std::getline(std::cin, input);
 
 	return Value(input);
 }
@@ -147,8 +147,10 @@ Value io__file__read_line(const std::vector<Value>& args) {
 	}
 
 	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
-	if (fd == -1)
+	if (fd < 0 || (size_t)fd >= file_handles.size()) {
 		std::cerr << "`File::readLine`: invalid file index passed" << std::endl;
+		return Value((tn_int_t)-1);
+	}
 	std::ifstream& file = file_handles[fd];
 	
 	std::string output;
@@ -164,8 +166,10 @@ Value io__file__read_file(const std::vector<Value>& args) {
 	}
 
 	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
-	if (fd == -1)
+	if (fd < 0 || (size_t)fd >= file_handles.size()) {
 		std::cerr << "`File::readFile`: invalid file index passed" << std::endl;
+		return Value((tn_int_t)-1);
+	}
 
 	std::ifstream& file = file_handles[fd];
 	
@@ -185,8 +189,10 @@ Value io__file__close_file(const std::vector<Value>& args) {
 	}
 
 	const tn_int_t& fd = std::get<tn_int_t>(args[0].v);
-	if (fd == -1)
+	if (fd < 0 || (size_t)fd >= file_handles.size()) {
 		std::cerr << "`File::closeFile`: invalid file index passed" << std::endl;
+		return Value((tn_int_t)0);
+	}
 
 	std::ifstream& file = file_handles[fd];
 	

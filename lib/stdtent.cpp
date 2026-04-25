@@ -54,7 +54,7 @@ Value stdtn__chr(const std::vector<Value>& args) {
 }
 
 Value stdtn__ord(const std::vector<Value>& args) {
-	if (args.size() != 1 || !std::holds_alternative<tn_int_t>(args[0].v))
+	if (args.size() != 1 || !std::holds_alternative<std::string>(args[0].v))
 		std::cerr << "ord(c: str): incorrect number of arguments passed: takes one 'str'" << std::endl;
 
 	return Value((tn_int_t)std::get<std::string>(args[0].v)[0]);

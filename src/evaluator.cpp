@@ -90,11 +90,7 @@ Evaluator::Evaluator(std::string input, Diagnostics& diagnostics, std::string fn
 	};
 	nativeMethods["vec"]["push"] = [](const Value& lhs, const std::vector<Value>& rhs) {
 		Value::VecT vec = std::get<Value::VecT>(lhs.v);
-
-		if (auto ip = std::get_if<tn_int_t>(&rhs[0].v)) {
-			vec->push_back(*ip);
-		}
-
+		vec->push_back(rhs[0]);
 		return Value();
 	};
 	nativeMethods["vec"]["pop"] = [&](const Value& lhs, const std::vector<Value>&) {
@@ -495,7 +491,7 @@ Value Evaluator::evalExpr(ASTNode* node) {
 			}
 		} else {
 			diags.report<TypeError>(
-				"Increment/decrement operator applied to non-varaible", var->span,
+				"Increment/decrement operator applied to non-variable", un->operand->span,
 				"", filename
 			);
 		}
@@ -868,7 +864,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 				return dictPtr->at(idx);
 			} catch (std::exception&) {
 				diags.report<Error>(
-					"key '" + idx + "' was n ot found in dictionary", Span::combine(left.span, right.span),
+					"key '" + idx + "' was not found in dictionary", Span::combine(left.span, right.span),
 					"", filename
 				);
 			}
@@ -881,6 +877,7 @@ Value Evaluator::evalBinaryOp(const Value& left, const Value& right, TokenType o
 			filename
 		);
 
+		exitErrors();
 		return Value();
 	};
 

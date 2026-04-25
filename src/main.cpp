@@ -115,8 +115,10 @@ int32_t main(int32_t argc, char **argv) {
 
 	std::ifstream fileHandle(SRC_FILENAME);
 
-	if (!fileHandle.is_open())
+	if (!fileHandle.is_open()) {
 		std::cerr << "File error: could not open file '" << SRC_FILENAME << "'." << std::endl;
+		return 1;
+	}
 
 	std::string output;
 	std::string line;
