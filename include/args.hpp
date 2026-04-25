@@ -9,16 +9,11 @@
 enum {
 	DEBUG = BIT(0),
 	DRY_RUN = BIT(1),
-	COMPILE = BIT(2),
-	REPL = BIT(3),
-	SAVE_TEMPS = BIT(4),
-	PRINT_LIB_PATH = BIT(5),
+	REPL = BIT(2),
 };
 
 #ifndef TENT_MAIN_CPP_FILE
 extern uint64_t runtime_flags;
-
-extern std::string finalLibraryPath;
 #endif
 
 #define IS_FLAG_SET(f) ((runtime_flags & f) != 0)

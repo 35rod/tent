@@ -13,7 +13,6 @@
 - [x] `parser.cpp` — unchecked `dynamic_cast` for for-loop variable
 - [x] `stdtent.cpp` — `ord()` checks for `int` instead of `string`
 - [ ] `lexer.cpp` — shadowed member variable `curChar` in identifier scan loop
-- [ ] `compiler.cpp` — command injection via `std::system()` with unsanitized paths
 
 ## Design / Code Quality
 - [ ] `evalExpr` — ~600 lines of `dynamic_cast` chains; consider visitor pattern
@@ -22,6 +21,7 @@
 - [ ] Compound-assign token arithmetic relies on fragile enum ordering; use a lookup table
 - [ ] `contract` keyword is lexed but never parsed or evaluated (dead keyword)
 - [ ] `stdtent.cpp` / `io.cpp` — duplicated print-formatting logic; extract `value_to_string()` utility
+- [ ] Bytecode VM — tree-walking interpreter is slow; consider compiling to bytecode for better performance
 
 ## Testing
 - [ ] Test coverage is nearly zero — add `.tent` test files for each language feature

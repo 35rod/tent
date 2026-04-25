@@ -1,101 +1,11 @@
 #include "ast.hpp"
 
 #include <iostream>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Verifier.h>
 
 #include "misc.hpp"
 
-llvm::StructType* DynamicValueTy = nullptr;
-
-llvm::StructType* getDynamicValueType(llvm::LLVMContext& ctx) {
-	if (DynamicValueTy) return DynamicValueTy;
-
-	std::vector<llvm::Type*> fields = {
-		llvm::Type::getInt32Ty(ctx),
-		llvm::PointerType::get(ctx, 0)
-	};
-
-	DynamicValueTy = llvm::StructType::create(ctx, fields, "DynamicValue");
-
-	return DynamicValueTy;
-}
-
-llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function* mainFunc, const std::string& varName) {
-	llvm::BasicBlock& entryBlock = mainFunc->getEntryBlock();
-	llvm::IRBuilder<> TmpBuilder(&entryBlock, entryBlock.begin());
-
-	llvm::StructType* dynamicType = getDynamicValueType(mainFunc->getContext());
-
-	return TmpBuilder.CreateAlloca(dynamicType, nullptr, varName.c_str());
-}
-
-llvm::Value* boxPrimitive(llvm::Value* val, llvm::LLVMContext& ctx, llvm::IRBuilder<>& builder, llvm::Module& module) {
-	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-	llvm::FunctionCallee boxFunc;
-	llvm::Value* arg = val;
-
-	if (val->getType()->isIntegerTy(64)) {
-		boxFunc = module.getOrInsertFunction(
-			"box_int",
-			llvm::FunctionType::get(
-				dynamicType,
-				{llvm::Type::getInt64Ty(ctx)},
-				false
-			)
-		);
-	} else if (val->getType()->isDoubleTy()) {
-		boxFunc = module.getOrInsertFunction(
-			"box_float",
-			llvm::FunctionType::get(
-				dynamicType,
-				{llvm::Type::getDoubleTy(ctx)},
-				false
-			)
-		);
-	} else if (val->getType()->isPointerTy()) {
-		boxFunc = module.getOrInsertFunction(
-			"box_string",
-			llvm::FunctionType::get(
-				dynamicType,
-				{llvm::Type::getInt8Ty(ctx)->getPointerTo()},
-				false
-			)
-		);
-	} else if (val->getType()->isIntegerTy(1)) {
-		boxFunc = module.getOrInsertFunction(
-			"box_bool",
-			llvm::FunctionType::get(
-				dynamicType,
-				{llvm::Type::getInt1Ty(ctx)},
-				false
-			)
-		);
-	}
-
-	return builder.CreateCall(boxFunc, {arg});
-}
-
-enum TypeTag {
-	INT,
-	FLOAT,
-	STRING,
-	BOOL
-};
-
-std::map<std::string, llvm::AllocaInst*> NamedValues;
-std::vector<llvm::BasicBlock*> BreakBlockStack;
-std::vector<llvm::BasicBlock*> ContinueBlockStack;
-
 IntLiteral::IntLiteral(tn_int_t literalValue, Span s)
 : ASTNode(s), value(literalValue) {}
-
-llvm::Value* IntLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module&) {
-	return llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx), value);
-}
 
 void IntLiteral::print(int indent) {
 	printIndent(indent);
@@ -105,10 +15,6 @@ void IntLiteral::print(int indent) {
 FloatLiteral::FloatLiteral(tn_dec_t literalValue, Span s)
 : ASTNode(s), value(literalValue) {}
 
-llvm::Value* FloatLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
-	return llvm::ConstantFP::get(ctx, llvm::APFloat(value));
-}
-
 void FloatLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "FloatLiteral(value=" << value << ")\n";
@@ -116,11 +22,6 @@ void FloatLiteral::print(int indent) {
 
 StrLiteral::StrLiteral(std::string literalValue, Span s)
 : ASTNode(s), value(literalValue) {}
-
-llvm::Value* StrLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-	return builder.CreateGlobalString(value, "str");
-}
 
 void StrLiteral::print(int indent) {
 	printIndent(indent);
@@ -130,10 +31,6 @@ void StrLiteral::print(int indent) {
 BoolLiteral::BoolLiteral(tn_bool_t literalValue, Span s)
 : ASTNode(s), value(literalValue) {}
 
-llvm::Value* BoolLiteral::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase&, llvm::Module&) {
-	return llvm::ConstantInt::get(llvm::Type::getInt1Ty(ctx), value, false);
-}
-
 void BoolLiteral::print(int indent) {
 	printIndent(indent);
 	std::cout << "BoolLiteral(value=" << (value ? "true" : "false") << ")\n";
@@ -141,8 +38,6 @@ void BoolLiteral::print(int indent) {
 
 VecLiteral::VecLiteral(std::vector<ASTPtr> literalValue, Span s)
 : ASTNode(s), elems(std::move(literalValue)) {}
-
-
 
 void VecLiteral::print(int indent) {
 	printIndent(indent);
@@ -208,21 +103,6 @@ void TypeDic::print(int indent) {
 Variable::Variable(std::string varName, Span s, ASTPtr varValue)
 : ASTNode(s), name(varName), value(std::move(varValue)) {}
 
-llvm::Value* Variable::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	llvm::AllocaInst* allocaInst = NamedValues.count(name) ? NamedValues.at(name) : nullptr;
-
-	if (!allocaInst) {
-		std::cerr << "Error: Undefined variable: " << name << std::endl;
-		return nullptr;
-	}
-
-	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-	return builder.CreateLoad(dynamicType, allocaInst, name + ".loaded_dynamic_value");
-}
-
 void Variable::print(int indent) {
 	printIndent(indent);
 	std::cout << "Variable(name=" << name << ")\n";
@@ -253,108 +133,6 @@ void UnaryOp::print(int indent) {
 
 BinaryOp::BinaryOp(TokenType opOp, ASTPtr opLeft, ASTPtr opRight, Span s)
 : ASTNode(s), op(opOp), left(std::move(opLeft)), right(std::move(opRight)) {}
-
-llvm::Value* BinaryOp::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-    llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	if (op == TokenType::ASSIGN) {
-		if (Variable* varNode = dynamic_cast<Variable*>(left.get())) {
-			llvm::Value* RHS_Value = right->codegen(ctx, builder, module);
-			if (!RHS_Value) return nullptr;
-
-			llvm::AllocaInst* allocaInst = NamedValues.count(varNode->name) ? NamedValues.at(varNode->name) : nullptr;
-
-			if (!allocaInst) {
-				llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
-				allocaInst = CreateEntryBlockAlloca(mainFunc, varNode->name);
-				NamedValues[varNode->name] = allocaInst;
-			}
-
-			llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-			llvm::Value* boxedRHS = (RHS_Value->getType() == dynamicType) ? RHS_Value : boxPrimitive(RHS_Value, ctx, builder, module);
-			builder.CreateStore(boxedRHS, allocaInst);
-
-			return boxedRHS;
-		}
-	}
-
-    llvm::Value* L = left->codegen(ctx, builder, module);
-    llvm::Value* R = right->codegen(ctx, builder, module);
-
-    if (!L || !R) return nullptr;
-
-	if (L->getType()->isIntegerTy(64) && R->getType()->isIntegerTy(64)) {
-		switch (op) {
-			case TokenType::ADD: return builder.CreateAdd(L, R, "add_i64");
-			case TokenType::SUB: return builder.CreateSub(L, R, "sub_i64");
-			case TokenType::MUL: return builder.CreateMul(L, R, "mul_i64");
-			case TokenType::DIV: return builder.CreateSDiv(L, R, "div_i64");
-			default: break;
-		}
-	} else if ((L->getType()->isDoubleTy() || L->getType()->isIntegerTy(64)) &&
-		(R->getType()->isDoubleTy() || R->getType()->isIntegerTy(64))) {
-			llvm::Value* Lf = L->getType()->isDoubleTy() ? L : builder.CreateSIToFP(L, llvm::Type::getDoubleTy(ctx));
-			llvm::Value* Rf = R->getType()->isDoubleTy() ? R : builder.CreateSIToFP(R, llvm::Type::getDoubleTy(ctx));
-
-			switch (op) {
-				case TokenType::ADD: return builder.CreateFAdd(Lf, Rf, "add_f64");
-				case TokenType::SUB: return builder.CreateFSub(Lf, Rf, "sub_f64");
-				case TokenType::MUL: return builder.CreateFMul(Lf, Rf, "mul_f64");
-				case TokenType::DIV: return builder.CreateFDiv(Lf, Rf, "div_f64");
-				default: break;
-			}
-		}
-
-    llvm::StructType* dynamicType = getDynamicValueType(ctx);
-	llvm::FunctionType* binOpTy = llvm::FunctionType::get(
-		dynamicType,
-		{dynamicType, dynamicType},
-		false
-	);
-
-	llvm::FunctionCallee binOpFunc;
-	std::string funcName;
-
-	switch (op) {
-		case TokenType::ADD: funcName = "dynamic_add"; break;
-		case TokenType::SUB: funcName = "dynamic_sub"; break;
-		case TokenType::MUL: funcName = "dynamic_mul"; break;
-		case TokenType::DIV: funcName = "dynamic_div"; break;
-		case TokenType::EQEQ: funcName = "dynamic_eqeq"; break;
-		case TokenType::NOTEQ: funcName = "dynamic_noteq"; break;
-		case TokenType::LESS: funcName = "dynamic_less"; break;
-		case TokenType::GREATER: funcName = "dynamic_greater"; break;
-		case TokenType::LESSEQ: funcName = "dynamic_lesseq"; break;
-		case TokenType::GREATEREQ: funcName = "dynamic_greatereq"; break;
-		default:
-			std::cerr << "Error: Dynamic operation " << tokenTypeToString(op) << " not implemented" << std::endl;
-			return nullptr;
-	}
-
-	binOpFunc = module.getOrInsertFunction(funcName, binOpTy);
-
-	llvm::Value* LB = L->getType() == dynamicType ? L : boxPrimitive(L, ctx, builder, module);
-	llvm::Value* RB = R->getType() == dynamicType ? R : boxPrimitive(R, ctx, builder, module);
-
-	llvm::Value* res = builder.CreateCall(binOpFunc, {LB, RB}, funcName + "_result");
-
-	llvm::FunctionType* freeTy = llvm::FunctionType::get(
-		llvm::Type::getVoidTy(ctx),
-		{dynamicType},
-		false
-	);
-
-	llvm::FunctionCallee freeFunc = module.getOrInsertFunction("free_dynamic_value", freeTy);
-
-	if (L->getType() != dynamicType) {
-		builder.CreateCall(freeFunc, {LB});
-	} if (R->getType() != dynamicType) {
-		builder.CreateCall(freeFunc, {RB});
-	}
-
-	return res;
-}
 
 void BinaryOp::print(int indent) {
 	printIndent(indent);
@@ -387,66 +165,6 @@ IfStmt::IfStmt(
 	std::vector<ExpressionStmt> elseStmts
 ) : ASTNode(s), condition(std::move(stmtCondition)), thenClauseStmts(std::move(thenStmts)), elseClauseStmts(std::move(elseStmts)) {}
 
-llvm::Value* IfStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	llvm::Value* condResult = condition->codegen(ctx, builder, module);
-	if (!condResult) return nullptr;
-
-	llvm::Value* Final_Cond_Value = condResult;
-	llvm::Type* i1Type = llvm::Type::getInt1Ty(ctx);
-	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-	if (condResult->getType() == dynamicType) {
-		llvm::FunctionType* unboxTy = llvm::FunctionType::get(
-			i1Type,
-			{dynamicType},
-			false
-		);
-
-		llvm::FunctionCallee unboxFunc = module.getOrInsertFunction("unbox_bool", unboxTy);
-
-		Final_Cond_Value = builder.CreateCall(unboxFunc, {condResult}, "final_cond_bool");
-	} else if (condResult->getType() == i1Type) {
-		Final_Cond_Value = condResult;
-	} else {
-		std::cerr << "Error: Conditional expression must resolve to a boolean type" << std::endl;
-		return nullptr;
-	}
-
-	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
-
-	llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(ctx, "then", mainFunc);
-	llvm::BasicBlock* ElseBB = llvm::BasicBlock::Create(ctx, "else", mainFunc);
-	llvm::BasicBlock* IfContBB = llvm::BasicBlock::Create(ctx, "ifcont");
-
-	builder.CreateCondBr(Final_Cond_Value, ThenBB, ElseBB);
-	builder.SetInsertPoint(ThenBB);
-
-	for (auto& stmt : thenClauseStmts) {
-		stmt.codegen(ctx, builder, module);
-	}
-
-	if (!builder.GetInsertBlock()->getTerminator()) {
-		builder.CreateBr(IfContBB);
-	}
-
-	builder.SetInsertPoint(ElseBB);
-
-	for (auto& stmt : elseClauseStmts) {
-		stmt.codegen(ctx, builder, module);
-	}
-
-	if (!builder.GetInsertBlock()->getTerminator()) {
-		builder.CreateBr(IfContBB);
-	}
-
-	mainFunc->insert(mainFunc->end(), IfContBB);
-	builder.SetInsertPoint(IfContBB);
-
-	return nullptr;
-}
-
 void IfStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "IfStmt(thenStmts=" << thenClauseStmts.size() << ", elseStmts=" << elseClauseStmts.size() << ")\n";
@@ -470,66 +188,6 @@ void IfStmt::print(int indent) {
 WhileStmt::WhileStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> stmtStmts, Span s) :
 ASTNode(s), condition(std::move(stmtCondition)), stmts(std::move(stmtStmts)) {}
 
-llvm::Value* WhileStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
-
-	llvm::BasicBlock* LoopCondBB = llvm::BasicBlock::Create(ctx, "loop_cond", mainFunc);
-	llvm::BasicBlock* LoopBodyBB = llvm::BasicBlock::Create(ctx, "loop_body", mainFunc);
-	llvm::BasicBlock* LoopExitBB = llvm::BasicBlock::Create(ctx, "loop_exit");
-
-	builder.CreateBr(LoopCondBB);
-	builder.SetInsertPoint(LoopCondBB);
-
-	llvm::Value* condResult = condition->codegen(ctx, builder, module);
-	if (!condResult) return nullptr;
-
-	llvm::Value* Final_Cond_Value = condResult;
-	llvm::Type* i1Type = llvm::Type::getInt1Ty(ctx);
-	llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-	if (condResult->getType() == dynamicType) {
-		llvm::FunctionType* unboxTy = llvm::FunctionType::get(
-			i1Type,
-			{dynamicType},
-			false
-		);
-
-		llvm::FunctionCallee unboxFunc = module.getOrInsertFunction("unbox_bool", unboxTy);
-
-		Final_Cond_Value = builder.CreateCall(unboxFunc, {condResult}, "final_cond_bool");
-	} else if (condResult->getType() == i1Type) {
-		Final_Cond_Value = condResult;
-	} else {
-		std::cerr << "Error: Conditional expression must resolve to a boolean type" << std::endl;
-		return nullptr;
-	}
-
-	builder.CreateCondBr(Final_Cond_Value, LoopBodyBB, LoopExitBB);
-
-	BreakBlockStack.push_back(LoopExitBB);
-	ContinueBlockStack.push_back(LoopCondBB);
-
-	builder.SetInsertPoint(LoopBodyBB);
-
-	for (auto& stmt : stmts) {
-		stmt.codegen(ctx, builder, module);
-	}
-
-	if (!builder.GetInsertBlock()->getTerminator()) {
-		builder.CreateBr(LoopCondBB);
-	}
-
-	BreakBlockStack.pop_back();
-	ContinueBlockStack.pop_back();
-
-	mainFunc->insert(mainFunc->end(), LoopExitBB);
-	builder.SetInsertPoint(LoopExitBB);
-
-	return nullptr;
-}
-
 void WhileStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "WhileStmt(statements=" << stmts.size() << ")\n";
@@ -544,7 +202,7 @@ void WhileStmt::print(int indent) {
 	}
 }
 
-ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts, Span s)  :
+ForStmt::ForStmt(std::string stmtVar, ASTPtr stmtIter, std::vector<ExpressionStmt> stmtStmts, Span s) :
 ASTNode(s), var(std::move(stmtVar)), iter(std::move(stmtIter)), stmts(std::move(stmtStmts)) {}
 
 void ForStmt::print(int indent) {
@@ -567,58 +225,6 @@ void ForStmt::print(int indent) {
 
 FunctionCall::FunctionCall(std::string callName, std::vector<ASTPtr> callParams, Span s)
 : ASTNode(s), name(callName), params(std::move(callParams)) {}
-
-llvm::Value* FunctionCall::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	if (name == "print" && !params.empty()) {
-		llvm::Value* argVal = params[0]->codegen(ctx, builder, module);
-		if (!argVal) return nullptr;
-
-		llvm::StructType* dynamicType = getDynamicValueType(ctx);
-
-		if (argVal->getType() != dynamicType) {
-			llvm::FunctionCallee printfFunc = module.getOrInsertFunction(
-				"printf",
-				llvm::FunctionType::get(
-					llvm::Type::getInt32Ty(ctx),
-					llvm::PointerType::get(llvm::Type::getInt8Ty(ctx), 0),
-					true
-				)
-			);
-
-			llvm::Value* formatStr = nullptr;
-			llvm::Value* argToPrint = argVal;
-
-			if (argVal->getType()->isIntegerTy(64)) {
-				formatStr = builder.CreateGlobalString("%lld\n", "intFormat");
-			} else if (argVal->getType()->isDoubleTy()) {
-				formatStr = builder.CreateGlobalString("%g\n", "floatFormat");
-			} else if (argVal->getType()->isPointerTy()) {
-				formatStr = builder.CreateGlobalString("%s\n", "strFormat");
-			} else if (argVal->getType()->isIntegerTy(1)) {
-				llvm::Value* trueStr = builder.CreateGlobalString("true");
-				llvm::Value* falseStr = builder.CreateGlobalString("false");
-				argToPrint = builder.CreateSelect(argVal, trueStr, falseStr);
-				formatStr = builder.CreateGlobalString("%s\n", "boolFormat");
-			}
-
-			return builder.CreateCall(printfFunc, {formatStr, argToPrint});
-		}
-
-		llvm::FunctionType* printTy = llvm::FunctionType::get(
-			llvm::Type::getVoidTy(ctx),
-			{dynamicType},
-			false
-		);
-
-		llvm::FunctionCallee printFunc = module.getOrInsertFunction("print_dynamic_value", printTy);
-
-		return builder.CreateCall(printFunc, {argVal});
-	}
-
-	return nullptr;
-}
 
 void FunctionCall::print(int indent) {
 	printIndent(indent);
@@ -705,46 +311,6 @@ ExpressionStmt::ExpressionStmt(
 	bool exprIsContinue
 ) : ASTNode(s), expr(std::move(stmtExpr)), noOp(stmtNoOp), isBreak(exprIsBreak), isContinue(exprIsContinue) {}
 
-llvm::Value* ExpressionStmt::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	llvm::IRBuilder<>& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	llvm::Function* mainFunc = builder.GetInsertBlock()->getParent();
-
-	if (isBreak) {
-		if (BreakBlockStack.empty()) {
-			std::cerr << "Error: 'break' statement outside of loop" << std::endl;
-			return nullptr;
-		}
-
-		builder.CreateBr(BreakBlockStack.back());
-
-		llvm::BasicBlock* nextBB = llvm::BasicBlock::Create(ctx, "unreachable_break", mainFunc);
-		builder.SetInsertPoint(nextBB);
-
-		return nullptr;
-	}
-
-	if (isContinue) {
-		if (ContinueBlockStack.empty()) {
-			std::cerr << "Error: 'continue' statement outside of loop" << std::endl;
-			return nullptr;
-		}
-
-		builder.CreateBr(ContinueBlockStack.back());
-
-		llvm::BasicBlock* nextBB = llvm::BasicBlock::Create(ctx, "unreachable_continue", mainFunc);
-		builder.SetInsertPoint(nextBB);
-
-		return nullptr;
-	}
-
-	if (expr) {
-		return expr->codegen(ctx, builderBase, module);
-	}
-
-	return nullptr;
-}
-
 void ExpressionStmt::print(int indent) {
 	printIndent(indent);
 	std::cout << "ExpressionStmt(break=" << (isBreak ? "true" : "false") << ")" << std::endl;
@@ -760,26 +326,6 @@ void ExpressionStmt::print(int indent) {
 Program::Program(std::vector<ExpressionStmt>&& programStatements, Span s)
 : ASTNode(s), statements(std::move(programStatements)) {}
 
-llvm::Value* Program::codegen(llvm::LLVMContext& ctx, llvm::IRBuilderBase& builderBase, llvm::Module& module) {
-	auto& builder = static_cast<llvm::IRBuilder<>&>(builderBase);
-
-	llvm::FunctionType* mainType = llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), false);
-	llvm::Function* mainFunc = llvm::Function::Create(mainType, llvm::Function::ExternalLinkage, "main", &module);
-
-	llvm::BasicBlock* entry = llvm::BasicBlock::Create(ctx, "entry", mainFunc);
-	builder.SetInsertPoint(entry);
-
-	for (auto& stmt : statements)
-		stmt.codegen(ctx, builder, module);
-	
-	builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 0));
-
-	llvm::verifyFunction(*mainFunc);
-	llvm::verifyModule(module);
-
-	return mainFunc;
-}
-
 void Program::print(int indent) {
 	printIndent(indent);
 	std::cout << "Program(statements=" << statements.size() << ")" << std::endl;
@@ -788,3 +334,4 @@ void Program::print(int indent) {
 		stmt.print(indent+2);
 	}
 }
+
