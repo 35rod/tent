@@ -1,4 +1,5 @@
 #include "native.hpp"
+#include "value_string.hpp"
 
 #include <string>
 #include <iostream>
@@ -60,7 +61,16 @@ Value stdtn__ord(const std::vector<Value>& args) {
 	return Value((tn_int_t)std::get<std::string>(args[0].v)[0]);
 }
 
+Value stdtn__tostr(const std::vector<Value>& args) {
+	if (args.size() != 1) {
+		std::cerr << "tostr(v: any): takes exactly one argument" << std::endl;
+		return Value();
+	}
+	return Value(value_to_string(args[0]));
+}
+
 extern "C" void registerFunctions(std::unordered_map<std::string, NativeFn>& table) {
+	table["tostr"] = stdtn__tostr;
 	table["exit"] = stdtn__exit;
 	table["stoi"] = stdtn__stoi;
 	table["stof"] = stdtn__stof;
