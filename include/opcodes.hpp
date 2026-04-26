@@ -48,7 +48,7 @@ enum class TokenType: TokenTypeSize {
 	OPEN_BRACKET, CLOSE_BRACKET,
 	COMMA, SEM, NEWLINE,
 	LOAD,
-	FORM, CONTRACT, WITH, RETURN,
+	FORM, WITH, RETURN,
 	IF, ELSE,
 	WHILE, BREAK, CONTINUE,
 	INT_HEX, INT_DEC, INT_OCT, INT_BIN,
@@ -145,7 +145,6 @@ inline std::string tokenTypeToString(TokenType type) {
         case TokenType::NEWLINE: return "newline";
         case TokenType::LOAD: return "load keyword";
         case TokenType::FORM: return "form keyword";
-        case TokenType::CONTRACT: return "contract keyword";
         case TokenType::WITH: return "with keyword";
         case TokenType::RETURN: return "return keyword";
         case TokenType::IF: return "if keyword";

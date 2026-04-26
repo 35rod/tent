@@ -307,8 +307,6 @@ Token Lexer::getToken() {
                     kind = TokenType::LOAD;
                 } else if (text == "form") {
                     kind = TokenType::FORM;
-                } else if (text == "contract") {
-                    kind = TokenType::CONTRACT;
                 } else if (text == "with") {
                     kind = TokenType::WITH;
                 } else if (text == "return") {
