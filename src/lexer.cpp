@@ -285,7 +285,6 @@ Token Lexer::getToken() {
             if (isalpha(curChar) || curChar == '_') {
                 int startPos = curPos;
 
-                char curChar = 0;
                 while (isalnum(curChar = peek()) || curChar == '_') {
                     nextChar();
                 }
