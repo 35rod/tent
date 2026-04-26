@@ -1,8 +1,8 @@
 load "io";
 
-set MAX = 10;
+MAX = 10;
 if ARG_COUNT > 0
-	MAX = stoll(ARGS@0);
+	MAX = int.parse(ARGS@0);
 a = 0;
 b = 0;
 while a < MAX {

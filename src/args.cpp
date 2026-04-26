@@ -71,14 +71,17 @@ void parseArgs(int32_t argc, char **argv) {
 			SET_FLAG(DRY_RUN);
 			SET_FLAG(DEBUG);
 		} else if (arg.rfind("-S", 0) == 0) {
-			if (arg.size() > 2)
-				search_dirs.push_back(arg.substr(2));
-			else if (arg_i + 1 < argc)
-				search_dirs.push_back(argv[arg_i++]);
-			else {
+			std::string found_arg;
+			if (arg.size() > 2) {
+				found_arg = arg.substr(2);
+			} else if (arg_i + 1 < argc) {
+				found_arg = argv[++arg_i];
+			} else {
 				std::cerr << "Missing path after '-S'\n";
 				printUsage();
 			}
+			if (IS_FLAG_SET(DEBUG)) std::cerr << "added directory '" << found_arg << "' to search_dirs\n";
+			search_dirs.insert(search_dirs.begin(), found_arg);
 		} else if (arg[0] == '-') {
 			std::cerr << "Unknown option: " << arg << "\n";
 			printUsage();
