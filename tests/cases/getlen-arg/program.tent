@@ -1,0 +1,12 @@
+load "io";
+
+if ARG_COUNT > 0 {
+	s = ARGS@0;
+	print(s.length);
+} else {
+	l = 0;
+	while getc() != EOF {
+		++l;
+	}
+	print(l);
+}

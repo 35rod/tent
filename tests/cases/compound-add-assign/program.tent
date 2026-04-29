@@ -1,0 +1,5 @@
+load "io";
+
+x = 10;
+x += 7;
+print(x);

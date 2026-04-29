@@ -5,11 +5,14 @@ compile_commands.json
 vgcore*
 build/*
 tests/*
-!tests/*.tent
-!tests/*.c
-!tests/*.sh
+!tests/CMakeLists.txt
+!tests/README.md
+!tests/run_tent_case.cmake
+!tests/cases/
+!tests/cases/**
 *.tnc
 *.out
+!tests/cases/**/expected.out
 lib/*.dll
 lib/*.so
 lib/*.dylib

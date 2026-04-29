@@ -1,0 +1,13 @@
+load "io";
+
+class Counter(start) {
+	value = start;
+
+	form inc() {
+		value = value + 1;
+		return value;
+	}
+}
+
+c = Counter(9);
+print(c.inc());

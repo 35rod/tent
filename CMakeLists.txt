@@ -6,6 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(tent)
 
 include_directories(include)
+include(CTest)
 
 set(SOURCE_FILES
     src/main.cpp
@@ -30,6 +31,10 @@ if(MSVC)
     target_compile_options(tent PRIVATE -O3 /W4 /WX)
 else()
     target_compile_options(tent PRIVATE -O3 -Wall -Wextra -Wpedantic)
+endif()
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
 endif()
 
 install(

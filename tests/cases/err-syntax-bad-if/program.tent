@@ -1,0 +1,5 @@
+load "io";
+
+if {
+	print(1);
+}
