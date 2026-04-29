@@ -1,6 +1,7 @@
 #include "types.hpp"
 
 #include <cstdint>
+#include <unordered_map>
 
 #include "opcodes.hpp"
 
@@ -87,6 +88,52 @@ int64_t ipow(int64_t base, uint8_t exp) {
 }
 
 bool isRightAssoc(const TokenType& op) {
-	return ((op >= TokenType::ASSIGN && op <= TokenType::RSHIFT_ASSIGN)
-		|| op == TokenType::POW);
+	switch (op) {
+	case TokenType::ASSIGN:
+	case TokenType::ADD_ASSIGN:
+	case TokenType::SUB_ASSIGN:
+	case TokenType::MOD_ASSIGN:
+	case TokenType::POW_ASSIGN:
+	case TokenType::MUL_ASSIGN:
+	case TokenType::DIV_ASSIGN:
+	case TokenType::AND_ASSIGN:
+	case TokenType::OR_ASSIGN:
+	case TokenType::FLOOR_DIV_ASSIGN:
+	case TokenType::BIT_AND_ASSIGN:
+	case TokenType::BIT_XOR_ASSIGN:
+	case TokenType::BIT_OR_ASSIGN:
+	case TokenType::LSHIFT_ASSIGN:
+	case TokenType::RSHIFT_ASSIGN:
+	case TokenType::POW:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool getCompoundAssignOp(const TokenType& op, TokenType& out) {
+	static const std::unordered_map<TokenType, TokenType> compoundToBinary = {
+		{TokenType::ADD_ASSIGN, TokenType::ADD},
+		{TokenType::SUB_ASSIGN, TokenType::SUB},
+		{TokenType::MOD_ASSIGN, TokenType::MOD},
+		{TokenType::POW_ASSIGN, TokenType::POW},
+		{TokenType::MUL_ASSIGN, TokenType::MUL},
+		{TokenType::DIV_ASSIGN, TokenType::DIV},
+		{TokenType::AND_ASSIGN, TokenType::AND},
+		{TokenType::OR_ASSIGN, TokenType::OR},
+		{TokenType::FLOOR_DIV_ASSIGN, TokenType::FLOOR_DIV},
+		{TokenType::BIT_AND_ASSIGN, TokenType::BIT_AND},
+		{TokenType::BIT_XOR_ASSIGN, TokenType::BIT_XOR},
+		{TokenType::BIT_OR_ASSIGN, TokenType::BIT_OR},
+		{TokenType::LSHIFT_ASSIGN, TokenType::LSHIFT},
+		{TokenType::RSHIFT_ASSIGN, TokenType::RSHIFT},
+	};
+
+	auto it = compoundToBinary.find(op);
+	if (it == compoundToBinary.end()) {
+		return false;
+	}
+
+	out = it->second;
+	return true;
 }

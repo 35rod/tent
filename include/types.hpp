@@ -110,3 +110,4 @@ static inline std::string_view getLineText(const std::string& source, size_t lin
 
 int64_t ipow(int64_t base, uint8_t exp);
 bool isRightAssoc(const TokenType& op);
+bool getCompoundAssignOp(const TokenType& op, TokenType& out);

@@ -589,7 +589,15 @@ Value Evaluator::evalExpr(ASTNode* node) {
 					? callStack.back().locals[varNode->name]
 					: variables[varNode->name];
 
-					target = evalBinaryOp(target, right, (TokenType)((uint16_t)bin->op - ((uint16_t)TokenType::MOD - (uint16_t)TokenType::MOD_ASSIGN)));
+					TokenType compoundOp;
+					if (!getCompoundAssignOp(bin->op, compoundOp)) {
+						diags.report<SyntaxError>(
+							"invalid compound assignment operator: " + tokenTypeToString(bin->op), bin->span,
+							"", filename
+						);
+					}
+
+					target = evalBinaryOp(target, right, compoundOp);
 
 					return target.setSpan(bin->span);
 				}
