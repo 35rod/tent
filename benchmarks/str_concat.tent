@@ -1,0 +1,9 @@
+load "io";
+
+s = "";
+i = 0;
+while i < 2000 {
+	s = s + "x";
+	i = i + 1;
+}
+println(s.len());

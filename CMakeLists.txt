@@ -37,6 +37,11 @@ if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
+option(BUILD_BENCHMARKS "Build benchmark runner" OFF)
+if(BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
+
 install(
     TARGETS tent
     RUNTIME DESTINATION bin

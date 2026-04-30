@@ -1,0 +1,26 @@
+load "io";
+
+limit = 10000;
+flags = vec.fill(limit + 1, 1);
+
+i = 2;
+while i * i <= limit {
+	if flags@i == 1 {
+		j = i * i;
+		while j <= limit {
+			flags@j = 0;
+			j = j + i;
+		}
+	}
+	i = i + 1;
+}
+
+count = 0;
+k = 2;
+while k <= limit {
+	if flags@k == 1 {
+		count = count + 1;
+	}
+	k = k + 1;
+}
+println(count);
