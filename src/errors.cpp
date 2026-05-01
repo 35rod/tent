@@ -1,11 +1,20 @@
 #include "errors.hpp"
 
+#include <utility>
+
+TracebackFrame::TracebackFrame(
+    std::string frameLabel,
+    Span frameSpan,
+    std::string frameFilename
+) : label(frameLabel), span(frameSpan), filename(frameFilename) {}
+
 Error::Error(
     std::string msg,
     Span s,
     std::string hintMsg,
-    std::string fname
-) : message(msg), span(s), hint(hintMsg), filename(fname) {}
+    std::string fname,
+    std::vector<TracebackFrame> tb
+) : message(msg), span(s), hint(hintMsg), filename(fname), traceback(std::move(tb)) {}
 
 std::string Error::getClassName() const {
     return "Error";
@@ -53,4 +62,16 @@ TypeError::TypeError(
 
 std::string TypeError::getClassName() const {
     return "TypeError";
+}
+
+RuntimeError::RuntimeError(
+    std::string msg,
+    Span s,
+    std::string hintMsg,
+    std::string fname,
+    std::vector<TracebackFrame> tb
+) : Error(msg, s, hintMsg, fname, std::move(tb)) {}
+
+std::string RuntimeError::getClassName() const {
+    return "RuntimeError";
 }

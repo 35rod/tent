@@ -12,6 +12,9 @@
 
 struct CallFrame {
   std::unordered_map<std::string, Value> locals;
+  std::string callableName;
+  Span callSite;
+  std::string callsiteFilename;
 };
 
 class Evaluator : public ASTVisitor {
@@ -37,6 +40,9 @@ class Evaluator : public ASTVisitor {
   Value evalUnaryOp(const Value &operand, TokenType op);
   Value evalStmt(ExpressionStmt &stmt);
   Value evalExpr(ASTNode *node);
+  std::vector<TracebackFrame> collectTraceback() const;
+  void reportRuntimeError(const std::string &msg, const Span &span,
+                          const std::string &hint = "");
 
   void exitErrors();
 

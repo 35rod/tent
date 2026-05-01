@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <dlfcn.h>
 #include <exception>
-#include <stdexcept>
 #include <string>
 #include <variant>
 
@@ -14,6 +13,24 @@
 #include "native.hpp"
 #include "opcodes.hpp"
 #include "types.hpp"
+
+namespace {
+class ScopedCallFrame {
+  std::vector<CallFrame> &stack;
+
+public:
+  ScopedCallFrame(std::vector<CallFrame> &callStack, CallFrame frame)
+      : stack(callStack) {
+    stack.push_back(std::move(frame));
+  }
+
+  ~ScopedCallFrame() {
+    if (!stack.empty()) {
+      stack.pop_back();
+    }
+  }
+};
+} // namespace
 
 Evaluator::Evaluator(std::string input, Diagnostics &diagnostics,
                      std::string fname)
@@ -162,6 +179,27 @@ Value Evaluator::evalExpr(ASTNode *node) {
   }
 
   return node->accept(*this);
+}
+
+std::vector<TracebackFrame> Evaluator::collectTraceback() const {
+  std::vector<TracebackFrame> frames;
+  frames.reserve(callStack.size());
+
+  for (const CallFrame &frame : callStack) {
+    if (frame.callableName.empty())
+      continue;
+
+    frames.emplace_back(
+        frame.callableName, frame.callSite,
+        frame.callsiteFilename.empty() ? filename : frame.callsiteFilename);
+  }
+
+  return frames;
+}
+
+void Evaluator::reportRuntimeError(const std::string &msg, const Span &span,
+                                   const std::string &hint) {
+  diags.report<RuntimeError>(msg, span, hint, filename, collectTraceback());
 }
 
 // Literal nodes
@@ -375,6 +413,9 @@ Value Evaluator::visit(FunctionCall &node) {
     Value::ClassInstance instance(classDef->name);
 
     CallFrame frame;
+    frame.callableName = "class " + classDef->name + "()";
+    frame.callSite = node.span;
+    frame.callsiteFilename = filename;
 
     for (size_t i = 0; i < node.params.size(); i++) {
       Variable *paramVar = dynamic_cast<Variable *>(classDef->params[i].get());
@@ -383,7 +424,7 @@ Value Evaluator::visit(FunctionCall &node) {
       frame.locals[paramVar->name] = argVal;
     }
 
-    callStack.push_back(std::move(frame));
+    ScopedCallFrame scopedFrame(callStack, std::move(frame));
 
     for (ExpressionStmt &stmt : classDef->stmts) {
       if (auto fn = dynamic_cast<FunctionStmt *>(stmt.expr.get())) {
@@ -398,8 +439,6 @@ Value Evaluator::visit(FunctionCall &node) {
         evalStmt(stmt);
       }
     }
-
-    callStack.pop_back();
 
     return Value(instance);
   }
@@ -446,6 +485,9 @@ Value Evaluator::visit(FunctionCall &node) {
   }
 
   CallFrame frame;
+  frame.callableName = "form " + node.name + "()";
+  frame.callSite = node.span;
+  frame.callsiteFilename = filename;
 
   for (size_t i = 0; i < func->params.size(); i++) {
     Variable *formalParam = dynamic_cast<Variable *>(func->params[i].get());
@@ -459,7 +501,7 @@ Value Evaluator::visit(FunctionCall &node) {
     frame.locals[formalParam->name] = evalValue;
   }
 
-  callStack.push_back(std::move(frame));
+  ScopedCallFrame scopedFrame(callStack, std::move(frame));
 
   Value result;
 
@@ -468,14 +510,11 @@ Value Evaluator::visit(FunctionCall &node) {
 
     if (result.isReturn) {
       result.isReturn = false;
-      callStack.pop_back();
       return result;
     }
     if (result.isExit)
       return result;
   }
-
-  callStack.pop_back();
 
   return result;
 }
@@ -639,6 +678,9 @@ Value Evaluator::visit(BinaryOp &node) {
           FunctionStmt *method = it->second;
 
           CallFrame frame;
+          frame.callableName = "method " + inst->name + "." + name + "()";
+          frame.callSite = fc->span;
+          frame.callsiteFilename = filename;
 
           for (auto &[fieldName, fieldVal] : inst->fields) {
             frame.locals[fieldName] = fieldVal;
@@ -650,7 +692,7 @@ Value Evaluator::visit(BinaryOp &node) {
             frame.locals[formalParam->name] = evalExpr(fc->params[i].get());
           }
 
-          callStack.push_back(std::move(frame));
+          ScopedCallFrame scopedFrame(callStack, std::move(frame));
           Value result;
 
           for (ExpressionStmt &stmt : method->stmts) {
@@ -663,8 +705,6 @@ Value Evaluator::visit(BinaryOp &node) {
                 inst->fields[k] = v;
               }
 
-              callStack.pop_back();
-
               return result;
             }
 
@@ -675,8 +715,6 @@ Value Evaluator::visit(BinaryOp &node) {
           for (auto &[k, v] : callStack.back().locals) {
             inst->fields[k] = v;
           }
-
-          callStack.pop_back();
 
           return result;
         } else {
@@ -798,8 +836,10 @@ Value Evaluator::evalBinaryOp(const Value &left, const Value &right,
         return Value(l != r);
         break;
       default:
-        throw std::runtime_error("invalid operator for string type: " +
-                                 std::to_string((uint16_t)op));
+        reportRuntimeError("invalid operator for string type: " +
+                               tokenTypeToString(op),
+                           Span::combine(left.span, right.span));
+        exitErrors();
       }
     } else if constexpr (std::is_same_v<L, std::string> &&
                          std::is_integral_v<R>) {
@@ -860,8 +900,11 @@ Value Evaluator::evalBinaryOp(const Value &left, const Value &right,
       case TokenType::MUL:
         return a * b;
       case TokenType::DIV:
-        if (b == 0)
-          throw std::runtime_error("Division by zero");
+        if (b == 0) {
+          reportRuntimeError("Division by zero",
+                             Span::combine(left.span, right.span));
+          exitErrors();
+        }
         return a / b;
       case TokenType::MOD:
         return std::fmodf(a, b);
