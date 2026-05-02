@@ -253,6 +253,16 @@ public:
             std::vector<ExpressionStmt> literalStmts, Span s);
 };
 
+class LoadStmt : public ASTNode {
+public:
+  std::string fname;
+
+  void print(int indent) override;
+  Value accept(ASTVisitor &visitor) override;
+
+  LoadStmt(std::string fname, Span s);
+};
+
 class Program : public ASTNode {
 public:
   std::vector<ExpressionStmt> statements;

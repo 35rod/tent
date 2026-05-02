@@ -5,14 +5,26 @@
 #include <cstdio>
 #include <dlfcn.h>
 #include <exception>
+#include <fstream>
 #include <string>
 #include <variant>
 
+#include "args.hpp"
 #include "ast.hpp"
 #include "errors.hpp"
+#include "lexer.hpp"
 #include "native.hpp"
 #include "opcodes.hpp"
+#include "parser.hpp"
 #include "types.hpp"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+std::vector<std::string> nativeLibs;
 
 namespace {
 class ScopedCallFrame {
@@ -33,8 +45,9 @@ public:
 } // namespace
 
 Evaluator::Evaluator(std::string input, Diagnostics &diagnostics,
-                     std::string fname)
-    : source(input), diags(diagnostics), filename(fname) {
+                     std::string fname, std::vector<std::string> search_dirs)
+    : source(input), diags(diagnostics), filename(fname),
+      file_search_dirs(search_dirs) {
   nativeMethods["type_int"]["parse"] = [&](const Value &,
                                            const std::vector<Value> &rhs) {
     if (!std::holds_alternative<std::string>(rhs[0].v)) {
@@ -388,7 +401,7 @@ Value Evaluator::visit(ForStmt &node) {
   return Value();
 }
 
-// Functions and classes
+// Functions, classes, and modules
 
 Value Evaluator::visit(FunctionStmt &node) {
   functions.push_back(&node);
@@ -517,6 +530,109 @@ Value Evaluator::visit(FunctionCall &node) {
   }
 
   return result;
+}
+
+Value Evaluator::visit(LoadStmt &node) {
+  if (node.fname.size() >= 5 &&
+      node.fname.substr(node.fname.size() - 5) == ".tent") {
+    const auto foundFile = checkSearchPathsFor(node.fname, file_search_dirs);
+    if (!foundFile.has_value()) {
+      std::cerr << "File error: could not find file'" << node.fname << "'"
+                << std::endl;
+      exit(1);
+    }
+
+    std::ifstream fileHandle(foundFile.value().first + "/" +
+                             foundFile.value().second);
+
+    std::string output, line;
+
+    while (std::getline(fileHandle, line)) {
+      output += line;
+      output.push_back('\n');
+    }
+
+    Lexer lexer(output, diags);
+    lexer.nextChar();
+    lexer.getTokens();
+
+    Parser parser(lexer.tokens, diags, node.fname);
+    ASTPtr parsed = parser.parse_program();
+    Program *p = static_cast<Program *>(parsed.get());
+
+    loaded_programs.push_back(std::move(parsed));
+
+    for (ExpressionStmt &stmt : p->statements) {
+      evalStmt(stmt);
+    }
+  } else {
+    using RegisterFn = void (*)(std::unordered_map<std::string, NativeFn> &);
+
+#if defined(_WIN32) || defined(_WIN64)
+    HMODULE handle = LoadLibraryA(("lib" + node.fname).c_str());
+    if (!handle)
+      handle = LoadLibraryA(("lib" + node.fname + ".dll").c_str());
+
+    if (!handle) {
+      for (const std::string &dir : file_search_dirs) {
+        if (handle)
+          break;
+        handle = LoadLibraryA((dir + "/lib" + node.fname).c_str());
+      }
+    }
+
+    if (!handle) {
+      std::cerr << "Failed to load library: " << node.fname << std::endl;
+      exit(1);
+    }
+
+    RegisterFn reg = reinterpret_cast<RegisterFn>(
+        GetProcAddress(handle, "registerFunctions"));
+
+    if (!reg) {
+      std::cerr << "Library missing registerFunctions symbol" << std::endl;
+      FreeLibrary(handle);
+      exit(1);
+    }
+
+    reg(nativeFunctions);
+#else
+    void *handle = NULL;
+    for (const std::string &dir : file_search_dirs) {
+      if (handle)
+        break;
+      handle = dlopen((dir + "/lib" + node.fname).c_str(), RTLD_LAZY);
+      if (!handle)
+        handle =
+            dlopen((dir + "/lib" + node.fname + ".dylib").c_str(), RTLD_LAZY);
+      if (!handle)
+        handle = dlopen((dir + "/lib" + node.fname + ".so").c_str(), RTLD_LAZY);
+    }
+
+    if (!handle) {
+      char *err_str = dlerror();
+      std::cerr << "Failed to load library: " << node.fname
+                << (err_str ? (": \n" + std::string(err_str)) : "")
+                << std::endl;
+      exit(1);
+    }
+
+    RegisterFn reg =
+        reinterpret_cast<RegisterFn>(dlsym(handle, "registerFunctions"));
+
+    if (!reg) {
+      std::cerr << "Library missing registerFunctions symbol" << std::endl;
+      dlclose(handle);
+      exit(1);
+    }
+
+    reg(nativeFunctions);
+#endif
+
+    nativeLibs.push_back(node.fname);
+  }
+
+  return Value();
 }
 
 // Variables and operators

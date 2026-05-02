@@ -17,6 +17,7 @@ class TypeDic;
 class Variable;
 class UnaryOp;
 class BinaryOp;
+class ExpressionStmt;
 class IfStmt;
 class WhileStmt;
 class ForStmt;
@@ -24,8 +25,8 @@ class FunctionCall;
 class ReturnStmt;
 class FunctionStmt;
 class ClassStmt;
+class LoadStmt;
 class Program;
-class ExpressionStmt;
 class NoOp;
 
 class ASTVisitor {
@@ -45,6 +46,7 @@ public:
   virtual Value visit(Variable &) = 0;
   virtual Value visit(UnaryOp &) = 0;
   virtual Value visit(BinaryOp &) = 0;
+  virtual Value visit(ExpressionStmt &) = 0;
   virtual Value visit(IfStmt &) = 0;
   virtual Value visit(WhileStmt &) = 0;
   virtual Value visit(ForStmt &) = 0;
@@ -52,8 +54,8 @@ public:
   virtual Value visit(ReturnStmt &) = 0;
   virtual Value visit(FunctionStmt &) = 0;
   virtual Value visit(ClassStmt &) = 0;
+  virtual Value visit(LoadStmt &) = 0;
   virtual Value visit(Program &) = 0;
-  virtual Value visit(ExpressionStmt &) = 0;
   virtual Value visit(NoOp &) = 0;
 
   virtual ~ASTVisitor() = default;

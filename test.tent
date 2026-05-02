@@ -1,11 +1,5 @@
 load "io";
+load "examples/complex.tent";
 
-form bar() {
-	return 10 / 0;
-}
-
-form foo() {
-	println(bar());
-}
-
-foo();
+complex = Complex(5, 3);
+complex.print();

@@ -41,9 +41,3 @@ class Complex(re, im) {
 		}
 	}
 }
-
-k = Complex(3, -9.3 * 2);
-k.print();
-println();
-l = k.div(Complex(2, 0));
-l.print();

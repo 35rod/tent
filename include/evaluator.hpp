@@ -35,6 +35,8 @@ class Evaluator : public ASTVisitor {
 
   Diagnostics &diags;
   std::string filename;
+  const std::vector<std::string> file_search_dirs;
+  std::vector<ASTPtr> loaded_programs;
 
   Value evalBinaryOp(const Value &left, const Value &right, TokenType op);
   Value evalUnaryOp(const Value &operand, TokenType op);
@@ -68,6 +70,7 @@ class Evaluator : public ASTVisitor {
   Value visit(ReturnStmt &node) override;
   Value visit(FunctionStmt &node) override;
   Value visit(ClassStmt &node) override;
+  Value visit(LoadStmt &node) override;
   Value visit(Program &node) override;
   Value visit(ExpressionStmt &node) override;
   Value visit(NoOp &node) override;
@@ -77,5 +80,6 @@ class Evaluator : public ASTVisitor {
 public:
   Value evalProgram(ASTPtr program, const std::vector<std::string> args = {});
 
-  Evaluator(std::string input, Diagnostics &diagnostics, std::string fname);
+  Evaluator(std::string input, Diagnostics &diagnostics, std::string fname,
+            std::vector<std::string> search_dirs);
 };

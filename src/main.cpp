@@ -68,7 +68,7 @@ void start_repl(const std::vector<std::string> &search_dirs) {
         continue;
       }
 
-      Parser parser(lexer.tokens, diags, "<stdin>", search_dirs);
+      Parser parser(lexer.tokens, diags, "<stdin>");
       ASTPtr program = parser.parse_program();
 
       if (diags.has_errors()) {
@@ -77,7 +77,7 @@ void start_repl(const std::vector<std::string> &search_dirs) {
         continue;
       }
 
-      Evaluator evaluator(buffer, diags, "<stdin>");
+      Evaluator evaluator(buffer, diags, "<stdin>", search_dirs);
       evaluator.evalProgram(std::move(program), {});
 
       if (diags.has_errors()) {
@@ -136,7 +136,7 @@ int32_t main(int32_t argc, char **argv) {
     return 1;
   }
 
-  Parser parser(lexer.tokens, diags, SRC_FILENAME, search_dirs);
+  Parser parser(lexer.tokens, diags, SRC_FILENAME);
   program = parser.parse_program();
 
   if (diags.has_errors()) {
@@ -149,7 +149,7 @@ int32_t main(int32_t argc, char **argv) {
 
   if (!IS_FLAG_SET(DRY_RUN)) {
     try {
-      Evaluator evaluator(output, diags, SRC_FILENAME);
+      Evaluator evaluator(output, diags, SRC_FILENAME, search_dirs);
       evaluator.evalProgram(std::move(program), prog_args);
     } catch (const std::exception &e) {
       if (!diags.has_errors()) {

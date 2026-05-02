@@ -171,6 +171,25 @@ void BinaryOp::print(int indent) {
   }
 }
 
+Value ExpressionStmt::accept(ASTVisitor &v) { return v.visit(*this); }
+ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, Span s, bool stmtNoOp,
+                               bool exprIsBreak, bool exprIsContinue)
+    : ASTNode(s), expr(std::move(stmtExpr)), noOp(stmtNoOp),
+      isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+
+void ExpressionStmt::print(int indent) {
+  printIndent(indent);
+  std::cout << "ExpressionStmt(break=" << (isBreak ? "true" : "false") << ")"
+            << std::endl;
+
+  if (expr) {
+    expr->print(indent + 2);
+  } else {
+    printIndent(indent + 2);
+    std::cout << "nullptr\n";
+  }
+}
+
 Value IfStmt::accept(ASTVisitor &v) { return v.visit(*this); }
 IfStmt::IfStmt(ASTPtr stmtCondition, std::vector<ExpressionStmt> thenStmts,
                Span s, std::vector<ExpressionStmt> elseStmts)
@@ -327,23 +346,13 @@ void ClassStmt::print(int indent) {
   }
 }
 
-Value ExpressionStmt::accept(ASTVisitor &v) { return v.visit(*this); }
-ExpressionStmt::ExpressionStmt(ASTPtr stmtExpr, Span s, bool stmtNoOp,
-                               bool exprIsBreak, bool exprIsContinue)
-    : ASTNode(s), expr(std::move(stmtExpr)), noOp(stmtNoOp),
-      isBreak(exprIsBreak), isContinue(exprIsContinue) {}
+Value LoadStmt::accept(ASTVisitor &v) { return v.visit(*this); }
+LoadStmt::LoadStmt(std::string fname, Span s) : ASTNode(s), fname(fname) {}
 
-void ExpressionStmt::print(int indent) {
+void LoadStmt::print(int indent) {
   printIndent(indent);
-  std::cout << "ExpressionStmt(break=" << (isBreak ? "true" : "false") << ")"
-            << std::endl;
-
-  if (expr) {
-    expr->print(indent + 2);
-  } else {
-    printIndent(indent + 2);
-    std::cout << "nullptr\n";
-  }
+  std::cout << "LoadStmt(fname=" << fname << ")\n";
+  printIndent(indent + 2);
 }
 
 Value Program::accept(ASTVisitor &v) { return v.visit(*this); }
