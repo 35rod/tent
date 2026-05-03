@@ -5,7 +5,7 @@ count = 0;
 form recurse() {
 	count++;
 
-	println("yay!");
+	io.println("yay!");
 
 	while count < 5 {
 		recurse();

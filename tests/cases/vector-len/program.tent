@@ -1,4 +1,4 @@
 load "io";
 
 v = [1, 2, 3, 4];
-print(v.len());
+io.print(v.len());

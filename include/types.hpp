@@ -21,16 +21,26 @@ struct Value;
 struct Value {
   struct ClassInstance {
     std::string name;
+    std::string moduleKey;
     std::unordered_map<std::string, Value> fields;
     std::unordered_map<std::string, FunctionStmt *> methods;
 
-    ClassInstance(std::string name_init) : name(name_init) {};
+    ClassInstance(std::string name_init, std::string key_init = "")
+        : name(std::move(name_init)), moduleKey(std::move(key_init)) {};
+  };
+
+  struct ModuleRef {
+    std::string name;
+    std::string key;
+
+    ModuleRef(std::string moduleName, std::string moduleKey)
+        : name(std::move(moduleName)), key(std::move(moduleKey)) {}
   };
 
   using VecT = std::shared_ptr<std::vector<Value>>;
   using DicT = std::shared_ptr<std::map<std::string, Value>>;
   std::variant<tn_int_t, tn_dec_t, tn_bool_t, std::string, VecT, DicT,
-               ClassInstance, NullLiteral>
+               ClassInstance, ModuleRef, NullLiteral>
       v;
   Span span;
   bool typeInt = false;
@@ -50,6 +60,7 @@ struct Value {
   Value(VecT vec) : v(vec) {}
   Value(DicT dic) : v(dic) {}
   Value(ClassInstance ci) : v(ci) {}
+  Value(ModuleRef module) : v(std::move(module)) {}
 
   Value &setSpan(Span newSpan) {
     span = newSpan;
@@ -71,6 +82,8 @@ struct Value {
       return "dictionary";
     } else if (std::holds_alternative<ClassInstance>(v)) {
       return std::get<ClassInstance>(v).name;
+    } else if (std::holds_alternative<ModuleRef>(v)) {
+      return "module";
     } else if (std::holds_alternative<NullLiteral>(v)) {
       return "null";
     }
@@ -84,7 +97,8 @@ inline Value make_vec(const std::vector<Value> &elems) {
 
 inline constexpr bool is_primitive_val(const Value &val) {
   return !std::holds_alternative<NullLiteral>(val.v) &&
-         !std::holds_alternative<Value::ClassInstance>(val.v);
+         !std::holds_alternative<Value::ClassInstance>(val.v) &&
+         !std::holds_alternative<Value::ModuleRef>(val.v);
 }
 
 static inline std::string_view getLineText(const std::string &source,

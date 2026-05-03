@@ -1,5 +1,5 @@
 load "io";
 
 if {
-	print(1);
+	io.print(1);
 }

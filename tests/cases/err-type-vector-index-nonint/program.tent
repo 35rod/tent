@@ -1,4 +1,4 @@
 load "io";
 
 v = [1, 2];
-print(v@"a");
+io.print(v@"a");

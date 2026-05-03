@@ -35,7 +35,7 @@ Anyways, here's "Hello World!" in tent:
 ```
 load "io"; ~ loads core I/O library
 
-println("Hello World!"); ~ prints Hello World
+io.println("Hello World!"); ~ prints Hello World
 ```
 
 Note that comments are denoted using the tilde ('~') character. To run this code, simply run `tent <filename>.tent`, and replace `<filename>`

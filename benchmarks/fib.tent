@@ -8,4 +8,4 @@ form fib(n) {
 }
 
 result = fib(28);
-println(result);
+io.println(result);

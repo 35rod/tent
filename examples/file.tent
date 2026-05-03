@@ -1,22 +1,22 @@
 load "io";
 
 class File(filename) {
-	fi = file__openFile(filename);
+	fi = io.file__openFile(filename);
 
 	form isOpen() {
 		return fi != -1;
 	}
 
 	form readLine() {
-		return file__readLine(fi);
+		return io.file__readLine(fi);
 	}
 
 	form readFile() {
-		return file__readFile(fi);
+		return io.file__readFile(fi);
 	}
 
 	form close() {
-		file__closeFile(fi);
+		io.file__closeFile(fi);
 		fi = -1;
 	}
 }

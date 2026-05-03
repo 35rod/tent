@@ -1,7 +1,7 @@
 load "math";
 load "io";
 
-class Complex(re, im) {
+class Complex(re, im {
 	form add(z) {
 		return Complex(re + z.re, im + z.im);
 	}
@@ -23,7 +23,7 @@ class Complex(re, im) {
 	}
 
 	form magnitude() {
-		return sqrt(re*re + im*im);
+		return math.sqrt(re*re + im*im);
 	}
 	form squaredMagnitude() {
 		return re*re + im*im;
@@ -35,9 +35,9 @@ class Complex(re, im) {
 
 	form print() {
 		if (im < 0) {
-			print(re, "-", abs(im), "i");
+			io.print(re, "-", math.abs(im), "i");
 		} else {
-			print(re, "+", abs(im), "i");
+			io.print(re, "+", math.abs(im), "i");
 		}
 	}
 }

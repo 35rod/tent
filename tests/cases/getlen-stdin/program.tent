@@ -1,13 +1,12 @@
 load "io";
 
 if ARG_COUNT > 0 {
-	print(len(ARGS@0));
-	exit();
-}
+	io.print((ARGS@0).length);
+} else {
+	l = 0;
+	while io.getc() != EOF {
+		++l;
+	}
 
-l = 0;
-while getc() != EOF {
-	++l;
+	io.print(l);
 }
-
-print(l);

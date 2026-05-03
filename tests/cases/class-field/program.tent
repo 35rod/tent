@@ -4,4 +4,4 @@ class A(v) {
 	value = v;
 }
 a = A(33);
-print(a.value);
+io.print(a.value);

@@ -5,7 +5,7 @@ form bar() {
 }
 
 form foo() {
-	println(bar());
+	io.println(bar());
 }
 
 foo();

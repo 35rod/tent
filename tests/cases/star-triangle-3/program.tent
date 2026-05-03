@@ -9,9 +9,9 @@ b = 0;
 while a < MAX {
 	b = 0;
 	while b <= a {
-		print("*");
+		io.print("*");
 		++b;
 	}
-	println("");
+	io.println("");
 	++a;
 }

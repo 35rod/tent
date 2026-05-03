@@ -3,8 +3,8 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
-#include <dlfcn.h>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <variant>
@@ -41,6 +41,50 @@ public:
       stack.pop_back();
     }
   }
+};
+
+class ScopedModuleContext {
+  std::vector<std::string> &stack;
+
+public:
+  ScopedModuleContext(std::vector<std::string> &moduleStack,
+                      std::string moduleKey)
+      : stack(moduleStack) {
+    stack.push_back(std::move(moduleKey));
+  }
+
+  ~ScopedModuleContext() {
+    if (!stack.empty()) {
+      stack.pop_back();
+    }
+  }
+};
+
+class ScopedFilename {
+  std::string &fileNameRef;
+  std::string originalName;
+
+public:
+  ScopedFilename(std::string &fname, std::string newName)
+      : fileNameRef(fname), originalName(fname) {
+    fileNameRef = std::move(newName);
+  }
+
+  ~ScopedFilename() { fileNameRef = originalName; }
+};
+
+class ScopedSetMembership {
+  std::unordered_set<std::string> &setRef;
+  std::string value;
+
+public:
+  ScopedSetMembership(std::unordered_set<std::string> &setRef_,
+                      std::string trackedValue)
+      : setRef(setRef_), value(std::move(trackedValue)) {
+    setRef.insert(value);
+  }
+
+  ~ScopedSetMembership() { setRef.erase(value); }
 };
 } // namespace
 
@@ -215,6 +259,203 @@ void Evaluator::reportRuntimeError(const std::string &msg, const Span &span,
   diags.report<RuntimeError>(msg, span, hint, filename, collectTraceback());
 }
 
+std::optional<std::string> Evaluator::activeModuleKey() const {
+  if (!callStack.empty() && !callStack.back().moduleKey.empty()) {
+    return callStack.back().moduleKey;
+  }
+
+  if (!module_context_stack.empty()) {
+    return module_context_stack.back();
+  }
+
+  return std::nullopt;
+}
+
+ModuleState *Evaluator::getModuleState(const std::string &moduleKey) {
+  auto it = modules.find(moduleKey);
+  if (it == modules.end()) {
+    return nullptr;
+  }
+
+  return &it->second;
+}
+
+const ModuleState *
+Evaluator::getModuleState(const std::string &moduleKey) const {
+  auto it = modules.find(moduleKey);
+  if (it == modules.end()) {
+    return nullptr;
+  }
+
+  return &it->second;
+}
+
+std::string Evaluator::moduleBindingNameFor(const std::string &target) const {
+  std::filesystem::path modulePath(target);
+  std::string bindingName = modulePath.stem().string();
+  if (bindingName.empty()) {
+    bindingName = modulePath.filename().string();
+  }
+
+  if (bindingName.empty()) {
+    bindingName = target;
+  }
+
+  return bindingName;
+}
+
+Value Evaluator::bindModuleValue(const std::string &bindingName,
+                                 const std::string &moduleKey,
+                                 const Span &span) {
+  Value moduleValue(Value::ModuleRef(bindingName, moduleKey));
+  moduleValue.setSpan(span);
+
+  if (!callStack.empty()) {
+    callStack.back().locals[bindingName] = moduleValue;
+    return moduleValue;
+  }
+
+  auto moduleKeyOpt = activeModuleKey();
+  if (moduleKeyOpt.has_value()) {
+    ModuleState *state = getModuleState(moduleKeyOpt.value());
+    if (state != nullptr) {
+      state->variables[bindingName] = moduleValue;
+      return moduleValue;
+    }
+  }
+
+  variables[bindingName] = moduleValue;
+  return moduleValue;
+}
+
+Value Evaluator::callNative(const NativeFn &fn,
+                            const std::vector<ASTPtr> &params) {
+  std::vector<Value> evalArgs;
+  evalArgs.reserve(params.size());
+
+  for (const auto &param : params) {
+    if (!param) {
+      diags.report<Error>("Null parameter AST node", Span(), "", filename);
+      exitErrors();
+    }
+
+    evalArgs.push_back(evalExpr(param.get()));
+  }
+
+  return fn(evalArgs);
+}
+
+Value Evaluator::executeFunction(FunctionStmt *func,
+                                 const std::vector<ASTPtr> &params,
+                                 const Span &span,
+                                 const std::string &callableName,
+                                 const std::string &moduleKey) {
+  if (func == nullptr) {
+    diags.report<Error>("Attempted to call null function", span, "", filename);
+    exitErrors();
+  }
+
+  if (params.size() != func->params.size()) {
+    diags.report<Error>("Parameter count mismatch in function call to " +
+                            func->name,
+                        span, "", filename);
+    exitErrors();
+  }
+
+  CallFrame frame;
+  frame.callableName = callableName;
+  frame.callSite = span;
+  frame.callsiteFilename = filename;
+  frame.moduleKey = moduleKey;
+
+  for (size_t i = 0; i < func->params.size(); i++) {
+    Variable *formalParam = dynamic_cast<Variable *>(func->params[i].get());
+    if (!formalParam) {
+      diags.report<Error>("Function parameter is not a variable", func->span,
+                          "", filename);
+      exitErrors();
+    }
+
+    frame.locals[formalParam->name] = evalExpr(params[i].get());
+  }
+
+  ScopedCallFrame scopedFrame(callStack, std::move(frame));
+
+  Value result;
+
+  for (ExpressionStmt &stmt : func->stmts) {
+    result = evalStmt(stmt);
+
+    if (result.isReturn) {
+      result.isReturn = false;
+      return result;
+    }
+
+    if (result.isExit) {
+      return result;
+    }
+  }
+
+  return result;
+}
+
+Value Evaluator::instantiateClass(ClassStmt *classDef,
+                                  const std::vector<ASTPtr> &params,
+                                  const Span &span,
+                                  const std::string &moduleKey) {
+  if (classDef == nullptr) {
+    diags.report<Error>("Attempted to instantiate null class", span, "",
+                        filename);
+    exitErrors();
+  }
+
+  if (params.size() != classDef->params.size()) {
+    diags.report<Error>("Parameter count mismatch in class call to " +
+                            classDef->name,
+                        span, "", filename);
+    exitErrors();
+  }
+
+  Value::ClassInstance instance(classDef->name, moduleKey);
+
+  CallFrame frame;
+  frame.callableName = "class " + classDef->name + "()";
+  frame.callSite = span;
+  frame.callsiteFilename = filename;
+  frame.moduleKey = moduleKey;
+
+  for (size_t i = 0; i < params.size(); i++) {
+    Variable *paramVar = dynamic_cast<Variable *>(classDef->params[i].get());
+    if (!paramVar) {
+      diags.report<Error>("Class parameter is not a variable", classDef->span,
+                          "", filename);
+      exitErrors();
+    }
+
+    Value argVal = evalExpr(params[i].get());
+    instance.fields[paramVar->name] = argVal;
+    frame.locals[paramVar->name] = argVal;
+  }
+
+  ScopedCallFrame scopedFrame(callStack, std::move(frame));
+
+  for (ExpressionStmt &stmt : classDef->stmts) {
+    if (auto *fn = dynamic_cast<FunctionStmt *>(stmt.expr.get())) {
+      instance.methods[fn->name] = fn;
+    } else if (auto *bin = dynamic_cast<BinaryOp *>(stmt.expr.get())) {
+      if (auto *var = dynamic_cast<Variable *>(bin->left.get())) {
+        instance.fields[var->name] = evalExpr(bin->right.get());
+      }
+    } else if (auto *varStmt = dynamic_cast<Variable *>(stmt.expr.get())) {
+      instance.fields[varStmt->name] = Value();
+    } else {
+      evalStmt(stmt);
+    }
+  }
+
+  return Value(instance);
+}
+
 // Literal nodes
 
 Value Evaluator::visit(IntLiteral &node) {
@@ -367,17 +608,34 @@ Value Evaluator::visit(ForStmt &node) {
   while (((is_dic && dic_it != std::get<Value::DicT>(iter.v)->end()) ||
           (index < length)) &&
          !break_for_loop) {
+    auto assignLoopVar = [&](Value value) {
+      if (!callStack.empty()) {
+        callStack.back().locals[node.var] = value;
+        return;
+      }
+
+      auto moduleKey = activeModuleKey();
+      if (moduleKey.has_value()) {
+        ModuleState *state = getModuleState(moduleKey.value());
+        if (state != nullptr) {
+          state->variables[node.var] = value;
+          return;
+        }
+      }
+
+      variables[node.var] = value;
+    };
+
     if (std::holds_alternative<tn_int_t>(iter.v)) {
-      variables[node.var] = Value((tn_int_t)index);
+      assignLoopVar(Value((tn_int_t)index));
     } else if (std::holds_alternative<std::string>(iter.v)) {
-      variables[node.var] =
-          Value(std::string(1, std::get<std::string>(iter.v)[index]));
+      assignLoopVar(
+          Value(std::string(1, std::get<std::string>(iter.v)[index])));
     } else if (std::holds_alternative<Value::VecT>(iter.v)) {
-      variables[node.var] = (*std::get<Value::VecT>(iter.v))[index];
+      assignLoopVar((*std::get<Value::VecT>(iter.v))[index]);
     } else if (std::holds_alternative<Value::DicT>(iter.v)) {
       std::vector<Value> single = {Value(dic_it->first), dic_it->second};
-      variables[node.var] =
-          Value(std::make_shared<Value::VecT::element_type>(single));
+      assignLoopVar(Value(std::make_shared<Value::VecT::element_type>(single)));
       dic_it++;
     }
 
@@ -404,7 +662,16 @@ Value Evaluator::visit(ForStmt &node) {
 // Functions, classes, and modules
 
 Value Evaluator::visit(FunctionStmt &node) {
-  functions.push_back(&node);
+  auto moduleKey = activeModuleKey();
+  if (moduleKey.has_value()) {
+    ModuleState *state = getModuleState(moduleKey.value());
+    if (state != nullptr) {
+      state->functions[node.name] = &node;
+      return Value();
+    }
+  }
+
+  functions[node.name] = &node;
   return Value();
 }
 
@@ -415,126 +682,70 @@ Value Evaluator::visit(ReturnStmt &node) {
 }
 
 Value Evaluator::visit(ClassStmt &node) {
+  auto moduleKey = activeModuleKey();
+  if (moduleKey.has_value()) {
+    ModuleState *state = getModuleState(moduleKey.value());
+    if (state != nullptr) {
+      state->classes[node.name] = &node;
+      return Value();
+    }
+  }
+
   classes[node.name] = &node;
   return Value();
 }
 
 Value Evaluator::visit(FunctionCall &node) {
-  if (classes.count(node.name)) {
-    ClassStmt *classDef = classes[node.name];
+  std::optional<std::string> moduleKey = activeModuleKey();
 
-    Value::ClassInstance instance(classDef->name);
-
-    CallFrame frame;
-    frame.callableName = "class " + classDef->name + "()";
-    frame.callSite = node.span;
-    frame.callsiteFilename = filename;
-
-    for (size_t i = 0; i < node.params.size(); i++) {
-      Variable *paramVar = dynamic_cast<Variable *>(classDef->params[i].get());
-      Value argVal = evalExpr(node.params[i].get());
-      instance.fields[paramVar->name] = argVal;
-      frame.locals[paramVar->name] = argVal;
-    }
-
-    ScopedCallFrame scopedFrame(callStack, std::move(frame));
-
-    for (ExpressionStmt &stmt : classDef->stmts) {
-      if (auto fn = dynamic_cast<FunctionStmt *>(stmt.expr.get())) {
-        instance.methods[fn->name] = fn;
-      } else if (auto bin = dynamic_cast<BinaryOp *>(stmt.expr.get())) {
-        if (auto var = dynamic_cast<Variable *>(bin->left.get())) {
-          instance.fields[var->name] = evalExpr(bin->right.get());
-        }
-      } else if (auto varStmt = dynamic_cast<Variable *>(stmt.expr.get())) {
-        instance.fields[varStmt->name] = Value();
-      } else {
-        evalStmt(stmt);
-      }
-    }
-
-    return Value(instance);
-  }
-
-  FunctionStmt *func = nullptr;
-
-  for (FunctionStmt *f : functions) {
-    if (f->name == node.name) {
-      func = f;
-      break;
-    }
-  }
-
-  if (!func) {
-    auto nit = nativeFunctions.find(node.name);
-
-    if (nit != nativeFunctions.end()) {
-      std::vector<Value> evalArgs;
-      evalArgs.reserve(node.params.size());
-
-      for (const auto &param : node.params) {
-        if (!param) {
-          diags.report<Error>("Null parameter AST node", node.span, "",
-                              filename);
-          exitErrors();
-        }
-
-        evalArgs.push_back(evalExpr(param.get()));
+  if (moduleKey.has_value()) {
+    const ModuleState *state = getModuleState(moduleKey.value());
+    if (state != nullptr) {
+      auto classIt = state->classes.find(node.name);
+      if (classIt != state->classes.end()) {
+        return instantiateClass(classIt->second, node.params, node.span,
+                                moduleKey.value());
       }
 
-      return nit->second(evalArgs);
-    } else {
-      diags.report<Error>("Undefined function: " + node.name, node.span, "",
-                          filename);
-      exitErrors();
+      auto fnIt = state->functions.find(node.name);
+      if (fnIt != state->functions.end()) {
+        return executeFunction(fnIt->second, node.params, node.span,
+                               "form " + node.name + "()", moduleKey.value());
+      }
+
+      auto nativeIt = state->nativeFunctions.find(node.name);
+      if (nativeIt != state->nativeFunctions.end()) {
+        return callNative(nativeIt->second, node.params);
+      }
     }
   }
 
-  if (node.params.size() != func->params.size()) {
-    diags.report<Error>("Parameter count mismatch in function call to " +
-                            node.name,
-                        node.span, "", filename);
-    exitErrors();
+  auto classIt = classes.find(node.name);
+  if (classIt != classes.end()) {
+    return instantiateClass(classIt->second, node.params, node.span, "");
   }
 
-  CallFrame frame;
-  frame.callableName = "form " + node.name + "()";
-  frame.callSite = node.span;
-  frame.callsiteFilename = filename;
-
-  for (size_t i = 0; i < func->params.size(); i++) {
-    Variable *formalParam = dynamic_cast<Variable *>(func->params[i].get());
-    if (!formalParam) {
-      diags.report<Error>("Function parameter is not a variable", func->span,
-                          "", filename);
-      exitErrors();
-    }
-
-    Value evalValue = evalExpr(node.params[i].get());
-    frame.locals[formalParam->name] = evalValue;
+  auto fnIt = functions.find(node.name);
+  if (fnIt != functions.end()) {
+    return executeFunction(fnIt->second, node.params, node.span,
+                           "form " + node.name + "()", "");
   }
 
-  ScopedCallFrame scopedFrame(callStack, std::move(frame));
-
-  Value result;
-
-  for (ExpressionStmt &stmt : func->stmts) {
-    result = evalStmt(stmt);
-
-    if (result.isReturn) {
-      result.isReturn = false;
-      return result;
-    }
-    if (result.isExit)
-      return result;
+  auto nativeIt = nativeFunctions.find(node.name);
+  if (nativeIt != nativeFunctions.end()) {
+    return callNative(nativeIt->second, node.params);
   }
 
-  return result;
+  diags.report<Error>("Undefined function: " + node.name, node.span, "",
+                      filename);
+  exitErrors();
+  return Value();
 }
 
 Value Evaluator::visit(LoadStmt &node) {
-  if (node.fname.size() >= 5 &&
-      node.fname.substr(node.fname.size() - 5) == ".tent") {
+  const std::string bindingName = moduleBindingNameFor(node.fname);
+
+  if (std::filesystem::path(node.fname).extension() == ".tent") {
     const auto foundFile = checkSearchPathsFor(node.fname, file_search_dirs);
     if (!foundFile.has_value()) {
       std::cerr << "File error: could not find file'" << node.fname << "'"
@@ -542,31 +753,77 @@ Value Evaluator::visit(LoadStmt &node) {
       exit(1);
     }
 
-    std::ifstream fileHandle(foundFile.value().first + "/" +
-                             foundFile.value().second);
-
-    std::string output, line;
-
-    while (std::getline(fileHandle, line)) {
-      output += line;
-      output.push_back('\n');
+    const std::filesystem::path foundPath =
+        std::filesystem::path(foundFile.value().first) /
+        foundFile.value().second;
+    std::error_code canonicalErr;
+    std::filesystem::path canonicalPath =
+        std::filesystem::weakly_canonical(foundPath, canonicalErr);
+    if (canonicalErr) {
+      canonicalPath = foundPath.lexically_normal();
     }
 
-    Lexer lexer(output, diags);
-    lexer.nextChar();
-    lexer.getTokens();
-
-    Parser parser(lexer.tokens, diags, node.fname);
-    ASTPtr parsed = parser.parse_program();
-    Program *p = static_cast<Program *>(parsed.get());
-
-    loaded_programs.push_back(std::move(parsed));
-
-    for (ExpressionStmt &stmt : p->statements) {
-      evalStmt(stmt);
+    const std::string moduleKey = canonicalPath.string();
+    auto moduleIt = modules.find(moduleKey);
+    if (moduleIt != modules.end()) {
+      return bindModuleValue(bindingName, moduleKey, node.span);
     }
+
+    ModuleState &state = modules[moduleKey];
+    state.key = moduleKey;
+    state.name = bindingName;
+
+    if (modules_in_progress.count(moduleKey)) {
+      return bindModuleValue(bindingName, moduleKey, node.span);
+    }
+
+    {
+      ScopedSetMembership loadingGuard(modules_in_progress, moduleKey);
+      ScopedModuleContext scopedModule(module_context_stack, moduleKey);
+      ScopedFilename scopedFile(filename, moduleKey);
+
+      std::ifstream fileHandle(canonicalPath.string());
+
+      std::string output, line;
+
+      while (std::getline(fileHandle, line)) {
+        output += line;
+        output.push_back('\n');
+      }
+
+      Lexer lexer(output, diags, moduleKey);
+      lexer.nextChar();
+      lexer.getTokens();
+
+      Parser parser(lexer.tokens, diags, moduleKey);
+      ASTPtr parsed = parser.parse_program();
+      Program *p = static_cast<Program *>(parsed.get());
+
+      loaded_programs.push_back(std::move(parsed));
+
+      for (ExpressionStmt &stmt : p->statements) {
+        evalStmt(stmt);
+      }
+    }
+
+    state.initialized = true;
+    return bindModuleValue(bindingName, moduleKey, node.span);
   } else {
     using RegisterFn = void (*)(std::unordered_map<std::string, NativeFn> &);
+    const std::string moduleKey = "native:" + node.fname;
+    auto moduleIt = modules.find(moduleKey);
+    if (moduleIt != modules.end()) {
+      return bindModuleValue(bindingName, moduleKey, node.span);
+    }
+
+    ModuleState &state = modules[moduleKey];
+    state.key = moduleKey;
+    state.name = bindingName;
+    if (modules_in_progress.count(moduleKey)) {
+      return bindModuleValue(bindingName, moduleKey, node.span);
+    }
+
+    ScopedSetMembership loadingGuard(modules_in_progress, moduleKey);
 
 #if defined(_WIN32) || defined(_WIN64)
     HMODULE handle = LoadLibraryA(("lib" + node.fname).c_str());
@@ -595,7 +852,7 @@ Value Evaluator::visit(LoadStmt &node) {
       exit(1);
     }
 
-    reg(nativeFunctions);
+    reg(state.nativeFunctions);
 #else
     void *handle = NULL;
     for (const std::string &dir : file_search_dirs) {
@@ -626,13 +883,13 @@ Value Evaluator::visit(LoadStmt &node) {
       exit(1);
     }
 
-    reg(nativeFunctions);
+    reg(state.nativeFunctions);
 #endif
 
     nativeLibs.push_back(node.fname);
+    state.initialized = true;
+    return bindModuleValue(bindingName, moduleKey, node.span);
   }
-
-  return Value();
 }
 
 // Variables and operators
@@ -643,6 +900,17 @@ Value Evaluator::visit(Variable &node) {
     auto found = frame.locals.find(node.name);
     if (found != frame.locals.end()) {
       return found->second;
+    }
+  }
+
+  auto moduleKey = activeModuleKey();
+  if (moduleKey.has_value()) {
+    ModuleState *state = getModuleState(moduleKey.value());
+    if (state != nullptr) {
+      auto found = state->variables.find(node.name);
+      if (found != state->variables.end()) {
+        return found->second;
+      }
     }
   }
 
@@ -665,19 +933,50 @@ Value Evaluator::visit(UnaryOp &node) {
   }
 
   if (auto var = dynamic_cast<Variable *>(node.operand.get())) {
-    if (variables.count(var->name) != 1) {
+    Value *target = nullptr;
+
+    if (!callStack.empty()) {
+      auto &frame = callStack.back();
+      auto found = frame.locals.find(var->name);
+      if (found != frame.locals.end()) {
+        target = &found->second;
+      }
+    }
+
+    if (target == nullptr) {
+      auto moduleKey = activeModuleKey();
+      if (moduleKey.has_value()) {
+        ModuleState *state = getModuleState(moduleKey.value());
+        if (state != nullptr) {
+          auto found = state->variables.find(var->name);
+          if (found != state->variables.end()) {
+            target = &found->second;
+          }
+        }
+      }
+    }
+
+    if (target == nullptr) {
+      auto found = variables.find(var->name);
+      if (found != variables.end()) {
+        target = &found->second;
+      }
+    }
+
+    if (target == nullptr) {
       diags.report<SyntaxError>("Undefined variable: " + var->name, var->span,
                                 "", filename);
     }
 
-    if (std::holds_alternative<tn_int_t>(variables[var->name].v)) {
+    if (target != nullptr && std::holds_alternative<tn_int_t>(target->v)) {
       if (node.op == TokenType::INCREMENT) {
-        return variables[var->name] =
-                   std::get<tn_int_t>(variables[var->name].v) + 1;
+        return *target = std::get<tn_int_t>(target->v) + 1;
       } else {
-        return variables[var->name] =
-                   std::get<tn_int_t>(variables[var->name].v) - 1;
+        return *target = std::get<tn_int_t>(target->v) - 1;
       }
+    } else if (target != nullptr) {
+      diags.report<TypeError>("Increment/decrement operator requires integer",
+                              node.operand->span, "", filename);
     }
   } else {
     diags.report<TypeError>(
@@ -689,19 +988,57 @@ Value Evaluator::visit(UnaryOp &node) {
 }
 
 Value Evaluator::visit(BinaryOp &node) {
+  auto resolveVariableRef = [&](const std::string &name,
+                                bool createFallback = false) -> Value * {
+    if (!callStack.empty()) {
+      auto &locals = callStack.back().locals;
+      auto found = locals.find(name);
+      if (found != locals.end()) {
+        return &found->second;
+      }
+    }
+
+    auto moduleKey = activeModuleKey();
+    if (moduleKey.has_value()) {
+      ModuleState *state = getModuleState(moduleKey.value());
+      if (state != nullptr) {
+        auto found = state->variables.find(name);
+        if (found != state->variables.end()) {
+          return &found->second;
+        }
+
+        if (createFallback && callStack.empty()) {
+          return &state->variables[name];
+        }
+      }
+    }
+
+    auto foundGlobal = variables.find(name);
+    if (foundGlobal != variables.end()) {
+      return &foundGlobal->second;
+    }
+
+    if (createFallback) {
+      return &variables[name];
+    }
+
+    return nullptr;
+  };
+
   if (isRightAssoc(node.op)) {
     if (auto *leftIndex = dynamic_cast<BinaryOp *>(node.left.get())) {
       if (leftIndex->op == TokenType::INDEX && node.op == TokenType::ASSIGN) {
         if (auto *vecVar = dynamic_cast<Variable *>(leftIndex->left.get())) {
-          if (variables.count(vecVar->name) != 1) {
+          Value *holder = resolveVariableRef(vecVar->name);
+          if (holder == nullptr) {
             diags.report<SyntaxError>("Undefined variable: " + vecVar->name,
                                       vecVar->span, "", filename);
+            exitErrors();
           }
 
-          Value &holder = variables[vecVar->name];
-
-          if (std::holds_alternative<Value::VecT>(holder.v)) {
-            auto vecPtr = std::get<Value::VecT>(holder.v);
+          if (holder != nullptr &&
+              std::holds_alternative<Value::VecT>(holder->v)) {
+            auto vecPtr = std::get<Value::VecT>(holder->v);
 
             if (!vecPtr) {
               diags.report<Error>("null vector", vecVar->span, "", filename);
@@ -726,8 +1063,9 @@ Value Evaluator::visit(BinaryOp &node) {
             (*vecPtr)[(size_t)idx] = rhs;
 
             return rhs;
-          } else if (std::holds_alternative<Value::DicT>(holder.v)) {
-            auto dictPtr = std::get<Value::DicT>(holder.v);
+          } else if (holder != nullptr &&
+                     std::holds_alternative<Value::DicT>(holder->v)) {
+            auto dictPtr = std::get<Value::DicT>(holder->v);
 
             if (!dictPtr) {
               diags.report<Error>("null dictionary", vecVar->span, "",
@@ -761,13 +1099,23 @@ Value Evaluator::visit(BinaryOp &node) {
           frame.locals[varNode->name] = right;
           return right;
         } else {
+          auto moduleKey = activeModuleKey();
+          if (moduleKey.has_value()) {
+            ModuleState *state = getModuleState(moduleKey.value());
+            if (state != nullptr) {
+              return state->variables[varNode->name] = right;
+            }
+          }
+
           return variables[varNode->name] = right;
         }
       } else {
-        Value &target =
-            (!callStack.empty() && callStack.back().locals.count(varNode->name))
-                ? callStack.back().locals[varNode->name]
-                : variables[varNode->name];
+        Value *target = resolveVariableRef(varNode->name, true);
+        if (target == nullptr) {
+          diags.report<SyntaxError>("Undefined variable: " + varNode->name,
+                                    varNode->span, "", filename);
+          exitErrors();
+        }
 
         TokenType compoundOp;
         if (!getCompoundAssignOp(node.op, compoundOp)) {
@@ -776,9 +1124,9 @@ Value Evaluator::visit(BinaryOp &node) {
                                     node.span, "", filename);
         }
 
-        target = evalBinaryOp(target, right, compoundOp);
+        *target = evalBinaryOp(*target, right, compoundOp);
 
-        return target.setSpan(node.span);
+        return target->setSpan(node.span);
       }
     }
   } else if (node.op == TokenType::DOT) {
@@ -787,16 +1135,54 @@ Value Evaluator::visit(BinaryOp &node) {
     if (auto fc = dynamic_cast<FunctionCall *>(node.right.get())) {
       std::string name = fc->name;
 
-      if (auto inst = std::get_if<Value::ClassInstance>(&lhs.v)) {
+      if (auto module = std::get_if<Value::ModuleRef>(&lhs.v)) {
+        ModuleState *state = getModuleState(module->key);
+        if (state == nullptr) {
+          diags.report<TypeError>("Unknown module: " + module->name, fc->span,
+                                  "", filename);
+          exitErrors();
+        }
+
+        auto classIt = state->classes.find(name);
+        if (classIt != state->classes.end()) {
+          return instantiateClass(classIt->second, fc->params, fc->span,
+                                  module->key);
+        }
+
+        auto fnIt = state->functions.find(name);
+        if (fnIt != state->functions.end()) {
+          return executeFunction(fnIt->second, fc->params, fc->span,
+                                 "form " + module->name + "." + name + "()",
+                                 module->key);
+        }
+
+        auto nativeIt = state->nativeFunctions.find(name);
+        if (nativeIt != state->nativeFunctions.end()) {
+          return callNative(nativeIt->second, fc->params);
+        }
+
+        diags.report<TypeError>("Unknown module member '" + name + "' for '" +
+                                    module->name + "'",
+                                fc->span, "", filename);
+        exitErrors();
+      } else if (auto inst = std::get_if<Value::ClassInstance>(&lhs.v)) {
         auto it = inst->methods.find(name);
 
         if (it != inst->methods.end()) {
           FunctionStmt *method = it->second;
 
+          if (fc->params.size() != method->params.size()) {
+            diags.report<Error>("Parameter count mismatch in method call to " +
+                                    inst->name + "." + name,
+                                fc->span, "", filename);
+            exitErrors();
+          }
+
           CallFrame frame;
           frame.callableName = "method " + inst->name + "." + name + "()";
           frame.callSite = fc->span;
           frame.callsiteFilename = filename;
+          frame.moduleKey = inst->moduleKey;
 
           for (auto &[fieldName, fieldVal] : inst->fields) {
             frame.locals[fieldName] = fieldVal;
@@ -895,6 +1281,19 @@ Value Evaluator::visit(BinaryOp &node) {
         diags.report<TypeError>("Unknown property '" + propName +
                                     "' for class '" + inst->name + "'",
                                 var->span, "", filename);
+      } else if (auto module = std::get_if<Value::ModuleRef>(&lhs.v)) {
+        ModuleState *state = getModuleState(module->key);
+        if (state != nullptr) {
+          auto exportIt = state->variables.find(propName);
+          if (exportIt != state->variables.end()) {
+            return exportIt->second;
+          }
+        }
+
+        diags.report<TypeError>("Unknown module export '" + propName +
+                                    "' for '" + module->name + "'",
+                                var->span, "", filename);
+        exitErrors();
       } else if (auto strPtr = std::get_if<std::string>(&lhs.v)) {
         if (propName == "length")
           return tn_int_t(strPtr->length());

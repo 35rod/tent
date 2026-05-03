@@ -3,4 +3,4 @@ load "io";
 form add(a, b) {
 	return a + b;
 }
-print(add(2, 5));
+io.print(add(2, 5));

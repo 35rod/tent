@@ -10,4 +10,4 @@ class Counter(start) {
 }
 
 c = Counter(9);
-print(c.inc());
+io.print(c.inc());

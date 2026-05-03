@@ -5,15 +5,15 @@ load "stdtent";
 load "examples/file.tent";
 
 if ARG_COUNT < 1 {
-	println("usage: bf <filename>");
-	exit();
+	io.println("usage: bf <filename>");
+	stdtent.exit();
 }
 DATA_SIZE = 32768;
 
 source_file = File(ARGS@0);
 if !source_file.isOpen() {
-	println("failed to open file '", ARGS@0, "'");
-	exit();
+	io.println("failed to open file '", ARGS@0, "'");
+	stdtent.exit();
 }
 instr = source_file.readFile();
 source_file.close();
@@ -44,9 +44,9 @@ while instr_pos < (instr.length - 1) {
 	} else if instr@instr_pos == "-" {
 		data@data_pos = data@data_pos - 1;
 	} else if instr@instr_pos == "." {
-		print(chr(data@data_pos));
+		io.print(stdtent.chr(data@data_pos));
 	} else if instr@instr_pos == "," {
-		data@data_pos = getc();
+		data@data_pos = io.getc();
 	} else if instr@instr_pos == "[" && data@data_pos == 0 {
 		save_nested = n_nested;
 		++n_nested;

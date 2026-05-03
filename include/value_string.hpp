@@ -56,6 +56,8 @@ inline std::string value_to_string(const Value& val, bool quote_string) {
 		return dic_to_string(std::get<Value::DicT>(val.v));
 	else if (std::holds_alternative<Value::ClassInstance>(val.v))
 		return "<" + std::get<Value::ClassInstance>(val.v).name + ">";
+	else if (std::holds_alternative<Value::ModuleRef>(val.v))
+		return "<module " + std::get<Value::ModuleRef>(val.v).name + ">";
 	else
 		return "null";
 }

@@ -2,19 +2,32 @@
 
 #include "ast.hpp"
 #include "diagnostics.hpp"
+#include "native.hpp"
 #include "opcodes.hpp"
 #include "types.hpp"
 #include "visitor.hpp"
 #include <functional>
-#include <map>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 struct CallFrame {
   std::unordered_map<std::string, Value> locals;
   std::string callableName;
   Span callSite;
   std::string callsiteFilename;
+  std::string moduleKey;
+};
+
+struct ModuleState {
+  std::string key;
+  std::string name;
+  std::unordered_map<std::string, Value> variables;
+  std::unordered_map<std::string, FunctionStmt *> functions;
+  std::unordered_map<std::string, ClassStmt *> classes;
+  std::unordered_map<std::string, NativeFn> nativeFunctions;
+  bool initialized = false;
 };
 
 class Evaluator : public ASTVisitor {
@@ -23,9 +36,12 @@ class Evaluator : public ASTVisitor {
   bool program_should_terminate = false;
 
   std::vector<CallFrame> callStack;
-  std::map<std::string, Value> variables;
-  std::vector<FunctionStmt *> functions;
+  std::unordered_map<std::string, Value> variables;
+  std::unordered_map<std::string, FunctionStmt *> functions;
   std::unordered_map<std::string, ClassStmt *> classes;
+  std::unordered_map<std::string, ModuleState> modules;
+  std::unordered_set<std::string> modules_in_progress;
+  std::vector<std::string> module_context_stack;
   std::unordered_map<
       std::string,
       std::unordered_map<
@@ -45,6 +61,18 @@ class Evaluator : public ASTVisitor {
   std::vector<TracebackFrame> collectTraceback() const;
   void reportRuntimeError(const std::string &msg, const Span &span,
                           const std::string &hint = "");
+  std::optional<std::string> activeModuleKey() const;
+  ModuleState *getModuleState(const std::string &moduleKey);
+  const ModuleState *getModuleState(const std::string &moduleKey) const;
+  std::string moduleBindingNameFor(const std::string &target) const;
+  Value bindModuleValue(const std::string &bindingName,
+                        const std::string &moduleKey, const Span &span);
+  Value callNative(const NativeFn &fn, const std::vector<ASTPtr> &params);
+  Value executeFunction(FunctionStmt *func, const std::vector<ASTPtr> &params,
+                        const Span &span, const std::string &callableName,
+                        const std::string &moduleKey);
+  Value instantiateClass(ClassStmt *classDef, const std::vector<ASTPtr> &params,
+                         const Span &span, const std::string &moduleKey);
 
   void exitErrors();
 

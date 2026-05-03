@@ -1,7 +1,7 @@
 load "io";
 
 if true && !false {
-	print(1);
+	io.print(1);
 } else {
-	print(0);
+	io.print(0);
 }

@@ -6,4 +6,4 @@ form fact(n) {
 	}
 	return n * fact(n - 1);
 }
-print(fact(5));
+io.print(fact(5));

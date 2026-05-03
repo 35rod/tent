@@ -1,7 +1,7 @@
 load "io";
 
 if ARG_COUNT == 2 {
-	print(1);
+	io.print(1);
 } else {
-	print(0);
+	io.print(0);
 }

@@ -5,7 +5,7 @@ class Name(value) {
 }
 
 class User(name) {
-    println(name.aura);
+    io.println(name.aura);
 }
 
 User(Name("John"));

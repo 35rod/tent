@@ -1,4 +1,4 @@
 load "io";
 
 s = "hello";
-print(s.length);
+io.print(s.length);

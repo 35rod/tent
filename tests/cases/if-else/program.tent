@@ -2,7 +2,7 @@ load "io";
 
 x = 3;
 if x > 5 {
-	print(1);
+	io.print(1);
 } else {
-	print(2);
+	io.print(2);
 }

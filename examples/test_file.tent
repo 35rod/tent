@@ -4,11 +4,11 @@ load "file.tent";
 
 f = File(ARGS@0);
 if !f.isOpen() {
-	println("failed to open file '" + ARGS@0 + "'");
-	exit();
+	io.println("failed to open file '" + ARGS@0 + "'");
+	stdtent.exit();
 }
 
 s = f.readFile();
-print(s);
+io.print(s);
 
 f.close();

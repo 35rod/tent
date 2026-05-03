@@ -1,6 +1,6 @@
 load "io";
 load "time";
 
-println("Hello World!");
-sleep(1);
-println("Hello after one second!");
+io.println("Hello World!");
+time.sleep(1);
+io.println("Hello after one second!");

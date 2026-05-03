@@ -2,4 +2,4 @@ load "io";
 
 v = [1, 2, 3];
 v@1 = 9;
-print(v@1);
+io.print(v@1);

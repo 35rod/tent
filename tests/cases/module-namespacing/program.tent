@@ -1,0 +1,6 @@
+load "io";
+load "examples/complex.tent";
+load "examples/complex.tent";
+
+z = complex.Complex(3, 4);
+io.print(z.magnitude());

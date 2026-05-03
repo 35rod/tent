@@ -1,3 +1,5 @@
+load "io";
+
 ` no enums yet so this'll do
 set UP_DIRECTION = 'A';
 set DOWN_DIRECTION = 'B';
@@ -6,7 +8,7 @@ set LEFT_DIRECTION = 'D';
 form get_direction() {
 	set c = -1;
 	set arrow_key = 0;
-	while (c = getc()) != EOF {
+	while (c = io.getc()) != EOF {
 		if c == 0x1b {
 			arrow_key = 1;
 			continue;

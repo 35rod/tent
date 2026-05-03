@@ -1,5 +1,5 @@
 load "io";
 load "examples/complex.tent";
 
-complex = Complex(5, 3);
-complex.print();
+z = complex.Complex(5, 3);
+z.print();
