@@ -1,7 +1,7 @@
 load "math";
 load "io";
 
-class Complex(re, im {
+class Complex(re, im) {
 	form add(z) {
 		return Complex(re + z.re, im + z.im);
 	}
