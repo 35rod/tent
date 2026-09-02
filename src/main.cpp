@@ -96,7 +96,7 @@ void start_repl(const std::vector<std::string> &search_dirs) {
   }
 }
 
-int32_t main(int32_t argc, char **argv) {
+int main(int argc, char **argv) {
   parseArgs(argc, argv);
 
   if (IS_FLAG_SET(REPL)) {
